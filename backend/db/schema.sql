@@ -44,6 +44,25 @@ CREATE TABLE IF NOT EXISTS prompt_templates (
 
 CREATE INDEX IF NOT EXISTS prompt_templates_profile_id_idx ON prompt_templates (profile_id);
 
+-- One run of a prompt template through the AI provider. An immutable record:
+-- the exact prompt that was sent, what came back, and which provider/model
+-- produced it. Kept even if the source template is later deleted (the link is
+-- nulled); removed with its profile.
+CREATE TABLE IF NOT EXISTS generations (
+    id                 uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    profile_id         uuid        NOT NULL REFERENCES profiles (id) ON DELETE CASCADE,
+    prompt_template_id uuid            REFERENCES prompt_templates (id) ON DELETE SET NULL,
+    input_prompt       text        NOT NULL,
+    output             text        NOT NULL DEFAULT '',
+    status             text        NOT NULL,
+    error              text        NOT NULL DEFAULT '',
+    provider           text        NOT NULL,
+    model              text        NOT NULL DEFAULT '',
+    created_at         timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS generations_profile_id_idx ON generations (profile_id);
+
 -- Login sessions for the single admin user. We store only a SHA-256 hash of
 -- the session token, so a leak of this table does not expose live sessions.
 CREATE TABLE IF NOT EXISTS sessions (
