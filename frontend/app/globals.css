@@ -1,0 +1,13 @@
+/* Minimal reset only. All screen styling comes from Ant Design. */
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+/* Primary UI font: Sukhumvit Set, self-hosted via next/font/local (app/fonts.ts).
+   --font-sukhumvit already expands to the font + its size-adjusted fallback +
+   the platform Thai fallback stack. */
+body {
+  font-family: var(--font-sukhumvit);
+}
