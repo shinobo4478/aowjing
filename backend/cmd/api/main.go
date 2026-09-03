@@ -47,7 +47,7 @@ func run() error {
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           server.New(db),
+		Handler:           server.New(db, cfg),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

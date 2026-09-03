@@ -9,10 +9,28 @@ ACMP API server — Go, [chi](https://github.com/go-chi/chi) router,
 cmd/api/            server entrypoint (config, DB, graceful shutdown)
 internal/config/    env -> Config
 internal/database/  pgx connection pool
-internal/server/    chi router + handlers
+internal/auth/      single-admin login, DB-backed session cookie, middleware
+internal/profiles/  Profile CRUD (session-protected)
+internal/server/    chi router, CORS, route mounting
 db/schema.sql       DDL (source of truth for docker + sqlc)
 db/query/           sqlc query definitions
 ```
+
+## Auth
+
+One admin user, credentials from `ADMIN_USERNAME` / `ADMIN_PASSWORD`. Login
+mints a random opaque token; only its SHA-256 hash is stored in the `sessions`
+table, and the raw token goes to the browser in an `HttpOnly` cookie
+(`acmp_session`). Logout and expiry delete the row, so access is revoked at
+once. Everything except `/healthz` and `/auth/*` requires a live session.
+
+| Method | Path | |
+| --- | --- | --- |
+| POST | `/auth/login` | `{username,password}` -> 200 + `Set-Cookie`, or 401 |
+| POST | `/auth/logout` | 204, clears the cookie and the session row |
+| GET | `/auth/me` | 200 `{"user":{…}}` when signed in, else 401 |
+
+Browsers must send the cookie: `fetch(url, { credentials: "include" })`.
 
 ## Local development
 
