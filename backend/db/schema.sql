@@ -63,6 +63,14 @@ CREATE TABLE IF NOT EXISTS generations (
 
 CREATE INDEX IF NOT EXISTS generations_profile_id_idx ON generations (profile_id);
 
+-- Global key/value settings — provider credentials and the like. One row per
+-- key, not duplicated per profile. The API whitelists which keys it accepts.
+CREATE TABLE IF NOT EXISTS settings (
+    key        text        PRIMARY KEY,
+    value      text        NOT NULL DEFAULT '',
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
 -- Login sessions for the single admin user. We store only a SHA-256 hash of
 -- the session token, so a leak of this table does not expose live sessions.
 CREATE TABLE IF NOT EXISTS sessions (

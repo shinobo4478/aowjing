@@ -16,6 +16,7 @@ import (
 	"github.com/shinobo4478/aowjing/backend/internal/generations"
 	"github.com/shinobo4478/aowjing/backend/internal/profiles"
 	"github.com/shinobo4478/aowjing/backend/internal/prompttemplates"
+	"github.com/shinobo4478/aowjing/backend/internal/settings"
 )
 
 // Server holds the shared dependencies handlers need.
@@ -46,6 +47,7 @@ func New(db *pgxpool.Pool, cfg config.Config) http.Handler {
 		r.Mount("/profiles", profiles.NewHandler(queries).Routes())
 		r.Mount("/channels", channels.NewHandler(queries).Routes())
 		r.Mount("/prompt-templates", prompttemplates.NewHandler(queries).Routes())
+		r.Mount("/settings", settings.NewHandler(queries).Routes())
 
 		// Phase 2: this will become a factory that picks the generator per
 		// profile (TextGenerator vs a provider-backed one) from config +
@@ -67,7 +69,7 @@ func cors(cfg config.Config) func(http.Handler) http.Handler {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.Header().Set("Vary", "Origin")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 			if r.Method == http.MethodOptions {
 				w.WriteHeader(http.StatusNoContent)

@@ -12,6 +12,7 @@ import type {
   ProfileInput,
   PromptTemplate,
   PromptTemplateInput,
+  Settings,
 } from "./types";
 
 export const API_BASE =
@@ -180,4 +181,18 @@ export function runGeneration(promptTemplateId: string) {
 
 export function deleteGeneration(id: string) {
   return request<void>(`/generations/${id}`, { method: "DELETE" });
+}
+
+// --- Settings (global provider credentials) ---
+
+export function getSettings() {
+  return request<{ settings: Settings }>("/settings").then((r) => r.settings);
+}
+
+/** Upserts only the keys present in `partial`; returns the full settings. */
+export function updateSettings(partial: Partial<Settings>) {
+  return request<{ settings: Settings }>("/settings", {
+    method: "PUT",
+    body: JSON.stringify(partial),
+  }).then((r) => r.settings);
 }
