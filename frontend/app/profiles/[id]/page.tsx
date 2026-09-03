@@ -18,6 +18,7 @@ import { deleteProfile, getProfile, updateProfile } from "@/lib/api";
 import type { Profile } from "@/lib/types";
 import ProfileForm from "../ProfileForm";
 import ChannelsSection from "./ChannelsSection";
+import PromptTemplatesSection from "./PromptTemplatesSection";
 
 export default function ProfileDetailPage({
   params,
@@ -148,6 +149,7 @@ export default function ProfileDetailPage({
           </Space>
 
           <ChannelsSection profileId={id} />
+          <PromptTemplatesSection profileId={id} />
         </>
       )}
     </>

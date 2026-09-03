@@ -37,3 +37,22 @@ export type ChannelInput = Pick<
   Channel,
   "name" | "platform" | "handle" | "description"
 >;
+
+export interface PromptTemplate {
+  id: string;
+  /** The profile this template belongs to. */
+  profileId: string;
+  /** Short label, e.g. "Cabinet deep-dive". */
+  name: string;
+  /** The template text, stored verbatim (no variable substitution yet). */
+  body: string;
+  description: string;
+  createdAt: string; // ISO 8601
+  updatedAt: string; // ISO 8601
+}
+
+/** Fields the client sends when creating or editing a PromptTemplate. */
+export type PromptTemplateInput = Pick<
+  PromptTemplate,
+  "name" | "body" | "description"
+>;
