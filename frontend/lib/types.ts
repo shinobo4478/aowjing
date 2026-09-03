@@ -2,6 +2,15 @@
 // return over REST/JSON, so keep them in sync with the backend's sqlc models
 // once that exists.
 
+/** Generator a profile defaults to. Keep in sync with generate.Providers() on
+ *  the backend. */
+export type ProviderKey = "text" | "fal";
+
+export const PROVIDER_OPTIONS: { value: ProviderKey; label: string }[] = [
+  { value: "text", label: "Text — prompt only, no cost" },
+  { value: "fal", label: "fal.ai video — Kling 3.0" },
+];
+
 export interface Profile {
   id: string;
   /** Display name of the channel persona. */
@@ -10,12 +19,17 @@ export interface Profile {
   niche: string;
   /** Free-form notes about tone, audience, do/don't. */
   description: string;
+  /** Which generator this profile defaults to. */
+  provider: ProviderKey;
   createdAt: string; // ISO 8601
   updatedAt: string; // ISO 8601
 }
 
 /** Fields the client sends when creating or editing a Profile. */
-export type ProfileInput = Pick<Profile, "name" | "niche" | "description">;
+export type ProfileInput = Pick<
+  Profile,
+  "name" | "niche" | "description" | "provider"
+>;
 
 export interface Channel {
   id: string;

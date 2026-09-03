@@ -37,6 +37,7 @@ type Profile struct {
 	Name        string             `json:"name"`
 	Niche       string             `json:"niche"`
 	Description string             `json:"description"`
+	Provider    string             `json:"provider"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 }
