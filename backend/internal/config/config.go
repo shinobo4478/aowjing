@@ -2,15 +2,50 @@
 package config
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 )
+
+// LoadDotEnv reads simple KEY=VALUE lines from path into the process
+// environment. A missing file is not an error. Existing variables are not
+// overridden, so real environment config still wins in deployed setups. Call
+// it before Load.
+func LoadDotEnv(path string) {
+	f, err := os.Open(path)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+
+	sc := bufio.NewScanner(f)
+	for sc.Scan() {
+		line := strings.TrimSpace(sc.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		key, val, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
+		}
+		key = strings.TrimSpace(key)
+		val = strings.Trim(strings.TrimSpace(val), `"'`)
+		if _, exists := os.LookupEnv(key); !exists {
+			_ = os.Setenv(key, val)
+		}
+	}
+}
 
 // Config holds everything the server needs to start.
 type Config struct {
 	Port        string
 	DatabaseURL string
+
+	// RedisAddr is the asynq broker, shared by the API (enqueue) and the
+	// worker (process).
+	RedisAddr string
 
 	// Single-admin credentials. No user table yet (Phase 1 scope).
 	AdminUsername string
@@ -32,6 +67,7 @@ func Load() (Config, error) {
 	cfg := Config{
 		Port:          getenv("PORT", "8080"),
 		DatabaseURL:   os.Getenv("DATABASE_URL"),
+		RedisAddr:     getenv("REDIS_ADDR", "localhost:6379"),
 		AdminUsername: getenv("ADMIN_USERNAME", "admin"),
 		AdminPassword: os.Getenv("ADMIN_PASSWORD"),
 		CookieSecure:  getenvBool("COOKIE_SECURE", false),

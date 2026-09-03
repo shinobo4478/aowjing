@@ -69,6 +69,37 @@ func (q *Queries) DeleteGeneration(ctx context.Context, id pgtype.UUID) (int64, 
 	return result.RowsAffected(), nil
 }
 
+const finishGeneration = `-- name: FinishGeneration :exec
+UPDATE generations
+SET status = $2,
+    output = $3,
+    error = $4,
+    provider = $5,
+    model = $6
+WHERE id = $1
+`
+
+type FinishGenerationParams struct {
+	ID       pgtype.UUID `json:"id"`
+	Status   string      `json:"status"`
+	Output   string      `json:"output"`
+	Error    string      `json:"error"`
+	Provider string      `json:"provider"`
+	Model    string      `json:"model"`
+}
+
+func (q *Queries) FinishGeneration(ctx context.Context, arg FinishGenerationParams) error {
+	_, err := q.db.Exec(ctx, finishGeneration,
+		arg.ID,
+		arg.Status,
+		arg.Output,
+		arg.Error,
+		arg.Provider,
+		arg.Model,
+	)
+	return err
+}
+
 const getGeneration = `-- name: GetGeneration :one
 SELECT g.id, g.profile_id, g.prompt_template_id, g.input_prompt, g.output, g.status, g.error, g.provider, g.model, g.created_at, pt.name AS template_name
 FROM generations g
