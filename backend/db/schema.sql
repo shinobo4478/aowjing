@@ -10,6 +10,9 @@ CREATE TABLE IF NOT EXISTS profiles (
     name        text        NOT NULL,
     niche       text        NOT NULL,
     description text        NOT NULL DEFAULT '',
+    -- Which Generator this profile defaults to (see internal/generate).
+    -- Stores the setting only — nothing reads it automatically yet.
+    provider    text        NOT NULL DEFAULT 'text',
     created_at  timestamptz NOT NULL DEFAULT now(),
     updated_at  timestamptz NOT NULL DEFAULT now()
 );

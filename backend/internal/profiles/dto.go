@@ -13,6 +13,7 @@ type profileDTO struct {
 	Name        string `json:"name"`
 	Niche       string `json:"niche"`
 	Description string `json:"description"`
+	Provider    string `json:"provider"`
 	CreatedAt   string `json:"createdAt"`
 	UpdatedAt   string `json:"updatedAt"`
 }
@@ -23,6 +24,7 @@ func toDTO(p sqlc.Profile) profileDTO {
 		Name:        p.Name,
 		Niche:       p.Niche,
 		Description: p.Description,
+		Provider:    p.Provider,
 		CreatedAt:   pgconv.TimeString(p.CreatedAt),
 		UpdatedAt:   pgconv.TimeString(p.UpdatedAt),
 	}

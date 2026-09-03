@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/shinobo4478/aowjing/backend/internal/database/sqlc"
+	"github.com/shinobo4478/aowjing/backend/internal/generate"
 	"github.com/shinobo4478/aowjing/backend/internal/pgconv"
 )
 
@@ -41,6 +42,8 @@ type profileInput struct {
 	Name        string `json:"name"`
 	Niche       string `json:"niche"`
 	Description string `json:"description"`
+	// Which Generator this profile defaults to. Empty means "text".
+	Provider string `json:"provider"`
 }
 
 // normalizeAndValidate trims fields and returns a map of field -> message.
@@ -50,6 +53,10 @@ func (in *profileInput) normalizeAndValidate() map[string]string {
 	in.Name = strings.TrimSpace(in.Name)
 	in.Niche = strings.TrimSpace(in.Niche)
 	in.Description = strings.TrimSpace(in.Description)
+	in.Provider = strings.TrimSpace(in.Provider)
+	if in.Provider == "" {
+		in.Provider = "text"
+	}
 
 	errs := map[string]string{}
 	switch {
@@ -63,6 +70,9 @@ func (in *profileInput) normalizeAndValidate() map[string]string {
 	}
 	if len(in.Description) > 600 {
 		errs["description"] = "Description must be 600 characters or fewer."
+	}
+	if !generate.ValidProvider(in.Provider) {
+		errs["provider"] = "Unknown provider."
 	}
 	return errs
 }
@@ -110,6 +120,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		Name:        in.Name,
 		Niche:       in.Niche,
 		Description: in.Description,
+		Provider:    in.Provider,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to create profile.")
@@ -138,6 +149,7 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 		Name:        in.Name,
 		Niche:       in.Niche,
 		Description: in.Description,
+		Provider:    in.Provider,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		writeError(w, http.StatusNotFound, "Profile not found.")

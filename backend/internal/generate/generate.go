@@ -6,7 +6,10 @@
 // (e.g. fal.ai video) implement the same interface.
 package generate
 
-import "context"
+import (
+	"context"
+	"slices"
+)
 
 // Result is what a generator returns on success.
 type Result struct {
@@ -22,3 +25,11 @@ type Generator interface {
 	Name() string
 	Generate(ctx context.Context, prompt string) (Result, error)
 }
+
+// Providers lists the provider keys a Profile may select. "fal" is accepted as
+// a forward-looking setting — its generator lands in Phase 2 item 1c; until
+// then a profile set to "fal" still generates with TextGenerator.
+func Providers() []string { return []string{"text", "fal"} }
+
+// ValidProvider reports whether s is a known provider key.
+func ValidProvider(s string) bool { return slices.Contains(Providers(), s) }
