@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import AppShell from "./AppShell";
+import AuthGate from "./AuthGate";
 import { sukhumvit } from "./fonts";
 import Providers from "./providers";
 import "./globals.css";
@@ -18,7 +18,7 @@ export default function RootLayout({
     <html lang="en" className={sukhumvit.variable}>
       <body>
         <Providers>
-          <AppShell>{children}</AppShell>
+          <AuthGate>{children}</AuthGate>
         </Providers>
       </body>
     </html>
