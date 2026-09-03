@@ -53,7 +53,7 @@ export default function ProfileForm({ initial, submitLabel, onSubmit }: Props) {
     >
       {formError && (
         <Form.Item>
-          <Alert type="error" showIcon message={formError} />
+          <Alert type="error" showIcon title={formError} />
         </Form.Item>
       )}
 

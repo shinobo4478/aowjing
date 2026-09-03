@@ -1,14 +1,13 @@
-// Client-side API wrapper.
+// Client-side API wrapper — talks to the Go backend over REST/JSON.
 //
-// Today these hit the Next.js route handlers under app/api/ (backed by the
-// temporary in-memory store). When the Go backend lands, set
-// NEXT_PUBLIC_API_BASE_URL to its origin (e.g. http://localhost:8080) and
-// adjust the paths to match the Go routes — the call sites in the pages
-// shouldn't need to change.
+// The session lives in an HttpOnly cookie set by the backend, so every request
+// goes out with `credentials: "include"`. Set NEXT_PUBLIC_API_BASE_URL to the
+// API origin (defaults to the local dev server).
 
 import type { Profile, ProfileInput } from "./types";
 
-const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+export const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
 
 export class ApiError extends Error {
   status: number;
@@ -26,8 +25,10 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+/** Low-level JSON request. Exported so lib/auth.ts shares the same behaviour. */
+export async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     ...init,
   });
@@ -37,6 +38,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
+    // A 401 on a normal request means the session lapsed mid-use. Tell the
+    // app so it can bounce to /login. Login/logout 401s are the caller's to
+    // handle, so skip those.
+    if (
+      res.status === 401 &&
+      !path.startsWith("/auth/") &&
+      typeof window !== "undefined"
+    ) {
+      window.dispatchEvent(new Event("auth:expired"));
+    }
     throw new ApiError(
       data.error ?? `Request failed (${res.status})`,
       res.status,
@@ -47,27 +58,27 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export function listProfiles() {
-  return request<{ profiles: Profile[] }>("/api/profiles").then((r) => r.profiles);
+  return request<{ profiles: Profile[] }>("/profiles").then((r) => r.profiles);
 }
 
 export function getProfile(id: string) {
-  return request<{ profile: Profile }>(`/api/profiles/${id}`).then((r) => r.profile);
+  return request<{ profile: Profile }>(`/profiles/${id}`).then((r) => r.profile);
 }
 
 export function createProfile(input: ProfileInput) {
-  return request<{ profile: Profile }>("/api/profiles", {
+  return request<{ profile: Profile }>("/profiles", {
     method: "POST",
     body: JSON.stringify(input),
   }).then((r) => r.profile);
 }
 
 export function updateProfile(id: string, input: ProfileInput) {
-  return request<{ profile: Profile }>(`/api/profiles/${id}`, {
+  return request<{ profile: Profile }>(`/profiles/${id}`, {
     method: "PATCH",
     body: JSON.stringify(input),
   }).then((r) => r.profile);
 }
 
 export function deleteProfile(id: string) {
-  return request<void>(`/api/profiles/${id}`, { method: "DELETE" });
+  return request<void>(`/profiles/${id}`, { method: "DELETE" });
 }
