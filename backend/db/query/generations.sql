@@ -21,9 +21,10 @@ RETURNING *;
 UPDATE generations
 SET status = $2,
     output = $3,
-    error = $4,
-    provider = $5,
-    model = $6
+    output_kind = $4,
+    error = $5,
+    provider = $6,
+    model = $7
 WHERE id = $1;
 
 -- name: DeleteGeneration :execrows

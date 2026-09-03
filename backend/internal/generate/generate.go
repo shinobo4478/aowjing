@@ -13,7 +13,10 @@ import (
 
 // Result is what a generator returns on success.
 type Result struct {
-	Output   string
+	// Output is the generated text, or — when Kind is "video" — a URL.
+	Output string
+	// Kind is "text" or "video".
+	Kind     string
 	Provider string
 	Model    string
 }

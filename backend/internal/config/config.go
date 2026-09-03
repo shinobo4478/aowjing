@@ -47,6 +47,12 @@ type Config struct {
 	// worker (process).
 	RedisAddr string
 
+	// FalModel is the fal.ai model id FalVideoGenerator submits to.
+	FalModel string
+	// FakeFal makes the worker use a stub instead of calling fal.ai — for
+	// local dev without an API key.
+	FakeFal bool
+
 	// Single-admin credentials. No user table yet (Phase 1 scope).
 	AdminUsername string
 	AdminPassword string
@@ -72,6 +78,8 @@ func Load() (Config, error) {
 		AdminPassword: os.Getenv("ADMIN_PASSWORD"),
 		CookieSecure:  getenvBool("COOKIE_SECURE", false),
 		CORSOrigin:    getenv("CORS_ORIGIN", "http://localhost:3000"),
+		FalModel:      getenv("FAL_MODEL", "fal-ai/kling-video/v3/standard/text-to-video"),
+		FakeFal:       getenvBool("AI_FAKE_FAL", false),
 	}
 
 	if cfg.DatabaseURL == "" {

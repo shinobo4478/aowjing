@@ -19,5 +19,5 @@ func (TextGenerator) Generate(_ context.Context, prompt string) (Result, error) 
 	if prompt == "" {
 		return Result{}, errors.New("prompt is empty")
 	}
-	return Result{Output: prompt, Provider: "text"}, nil
+	return Result{Output: prompt, Kind: "text", Provider: "text"}, nil
 }

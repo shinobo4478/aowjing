@@ -25,6 +25,7 @@ type Generation struct {
 	PromptTemplateID pgtype.UUID        `json:"prompt_template_id"`
 	InputPrompt      string             `json:"input_prompt"`
 	Output           string             `json:"output"`
+	OutputKind       string             `json:"output_kind"`
 	Status           string             `json:"status"`
 	Error            string             `json:"error"`
 	Provider         string             `json:"provider"`

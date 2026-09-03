@@ -15,7 +15,7 @@ const createGeneration = `-- name: CreateGeneration :one
 INSERT INTO generations (
     profile_id, prompt_template_id, input_prompt, output, status, error, provider, model
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, profile_id, prompt_template_id, input_prompt, output, status, error, provider, model, created_at
+RETURNING id, profile_id, prompt_template_id, input_prompt, output, output_kind, status, error, provider, model, created_at
 `
 
 type CreateGenerationParams struct {
@@ -47,6 +47,7 @@ func (q *Queries) CreateGeneration(ctx context.Context, arg CreateGenerationPara
 		&i.PromptTemplateID,
 		&i.InputPrompt,
 		&i.Output,
+		&i.OutputKind,
 		&i.Status,
 		&i.Error,
 		&i.Provider,
@@ -73,19 +74,21 @@ const finishGeneration = `-- name: FinishGeneration :exec
 UPDATE generations
 SET status = $2,
     output = $3,
-    error = $4,
-    provider = $5,
-    model = $6
+    output_kind = $4,
+    error = $5,
+    provider = $6,
+    model = $7
 WHERE id = $1
 `
 
 type FinishGenerationParams struct {
-	ID       pgtype.UUID `json:"id"`
-	Status   string      `json:"status"`
-	Output   string      `json:"output"`
-	Error    string      `json:"error"`
-	Provider string      `json:"provider"`
-	Model    string      `json:"model"`
+	ID         pgtype.UUID `json:"id"`
+	Status     string      `json:"status"`
+	Output     string      `json:"output"`
+	OutputKind string      `json:"output_kind"`
+	Error      string      `json:"error"`
+	Provider   string      `json:"provider"`
+	Model      string      `json:"model"`
 }
 
 func (q *Queries) FinishGeneration(ctx context.Context, arg FinishGenerationParams) error {
@@ -93,6 +96,7 @@ func (q *Queries) FinishGeneration(ctx context.Context, arg FinishGenerationPara
 		arg.ID,
 		arg.Status,
 		arg.Output,
+		arg.OutputKind,
 		arg.Error,
 		arg.Provider,
 		arg.Model,
@@ -101,7 +105,7 @@ func (q *Queries) FinishGeneration(ctx context.Context, arg FinishGenerationPara
 }
 
 const getGeneration = `-- name: GetGeneration :one
-SELECT g.id, g.profile_id, g.prompt_template_id, g.input_prompt, g.output, g.status, g.error, g.provider, g.model, g.created_at, pt.name AS template_name
+SELECT g.id, g.profile_id, g.prompt_template_id, g.input_prompt, g.output, g.output_kind, g.status, g.error, g.provider, g.model, g.created_at, pt.name AS template_name
 FROM generations g
 LEFT JOIN prompt_templates pt ON pt.id = g.prompt_template_id
 WHERE g.id = $1
@@ -113,6 +117,7 @@ type GetGenerationRow struct {
 	PromptTemplateID pgtype.UUID        `json:"prompt_template_id"`
 	InputPrompt      string             `json:"input_prompt"`
 	Output           string             `json:"output"`
+	OutputKind       string             `json:"output_kind"`
 	Status           string             `json:"status"`
 	Error            string             `json:"error"`
 	Provider         string             `json:"provider"`
@@ -130,6 +135,7 @@ func (q *Queries) GetGeneration(ctx context.Context, id pgtype.UUID) (GetGenerat
 		&i.PromptTemplateID,
 		&i.InputPrompt,
 		&i.Output,
+		&i.OutputKind,
 		&i.Status,
 		&i.Error,
 		&i.Provider,
@@ -141,7 +147,7 @@ func (q *Queries) GetGeneration(ctx context.Context, id pgtype.UUID) (GetGenerat
 }
 
 const listGenerationsByProfile = `-- name: ListGenerationsByProfile :many
-SELECT g.id, g.profile_id, g.prompt_template_id, g.input_prompt, g.output, g.status, g.error, g.provider, g.model, g.created_at, pt.name AS template_name
+SELECT g.id, g.profile_id, g.prompt_template_id, g.input_prompt, g.output, g.output_kind, g.status, g.error, g.provider, g.model, g.created_at, pt.name AS template_name
 FROM generations g
 LEFT JOIN prompt_templates pt ON pt.id = g.prompt_template_id
 WHERE g.profile_id = $1
@@ -154,6 +160,7 @@ type ListGenerationsByProfileRow struct {
 	PromptTemplateID pgtype.UUID        `json:"prompt_template_id"`
 	InputPrompt      string             `json:"input_prompt"`
 	Output           string             `json:"output"`
+	OutputKind       string             `json:"output_kind"`
 	Status           string             `json:"status"`
 	Error            string             `json:"error"`
 	Provider         string             `json:"provider"`
@@ -177,6 +184,7 @@ func (q *Queries) ListGenerationsByProfile(ctx context.Context, profileID pgtype
 			&i.PromptTemplateID,
 			&i.InputPrompt,
 			&i.Output,
+			&i.OutputKind,
 			&i.Status,
 			&i.Error,
 			&i.Provider,
