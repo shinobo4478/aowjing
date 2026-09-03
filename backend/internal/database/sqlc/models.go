@@ -28,6 +28,16 @@ type Profile struct {
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 }
 
+type PromptTemplate struct {
+	ID          pgtype.UUID        `json:"id"`
+	ProfileID   pgtype.UUID        `json:"profile_id"`
+	Name        string             `json:"name"`
+	Body        string             `json:"body"`
+	Description string             `json:"description"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Session struct {
 	TokenHash []byte             `json:"token_hash"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
