@@ -1,0 +1,30 @@
+# Local development database. Not for production.
+#
+#   docker compose up -d      # start Postgres
+#   docker compose down       # stop (keeps data)
+#   docker compose down -v    # stop and wipe the volume
+#
+# schema.sql is mounted into the image's init directory, so it runs once when
+# the data volume is first created. After changing schema.sql, run
+# `docker compose down -v && docker compose up -d` to re-apply it.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: acmp
+      POSTGRES_PASSWORD: acmp
+      POSTGRES_DB: acmp
+    ports:
+      - "5432:5432"
+    volumes:
+      - acmp_pgdata:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U acmp -d acmp"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  acmp_pgdata:

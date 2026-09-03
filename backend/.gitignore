@@ -1,0 +1,9 @@
+# Build output
+/bin/
+/tmp/
+
+# Local env
+.env
+
+# OS
+.DS_Store
