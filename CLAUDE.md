@@ -29,6 +29,23 @@ video content across multiple channels/profiles and social platforms. Deployed t
 - Backend owns all business logic and DB access — frontend never talks to
   Postgres directly
 
+### Generator system
+
+- Single `Generator` interface, multiple swappable implementations behind it
+  — never write code elsewhere in the app against a specific provider
+  directly
+- `TextGenerator` — produces prompt text only, no external API cost. Build
+  this first as the base/fallback implementation
+- `FalVideoGenerator` — calls fal.ai (default model: Kling 3.0), produces an
+  actual video. Built on top of the same interface as `TextGenerator`
+- Provider credentials (API keys/tokens) live in ONE central Settings
+  table/screen, global — never duplicated per Profile
+- Each Profile has a `provider` field selecting which Generator/model it
+  defaults to — this is what future automation will read to decide how to
+  generate for that profile
+- Practical order: interface → `TextGenerator` → `FalVideoGenerator` →
+  Settings screen for credentials → provider field on Profile
+
 ## Phase 1 (completed)
 
 1. ✅ Auth — DB session cookie, single admin from env
@@ -41,8 +58,13 @@ video content across multiple channels/profiles and social platforms. Deployed t
 
 ## Phase 2 scope (current focus — do not go beyond this list)
 
-1. Swap `MockGenerator` for one real AI video/prompt provider (this was
-   deferred from Phase 1 — do this first, before any new feature)
+1. Generator system — build in this order (see Architecture > Generator
+   system above for the design):
+   a. `Generator` interface
+   b. `TextGenerator` implementation (replaces `MockGenerator`)
+   c. `FalVideoGenerator` implementation (fal.ai, Kling 3.0)
+   d. Central Settings screen for provider credentials
+   e. `provider` field on Profile so each profile can pick its generator
 2. Background job queue (Redis + asynq) — move "generate" off the sync
    request path onto a worker
 3. Connect ONE platform for posting — start with YouTube (most open API of
@@ -53,9 +75,9 @@ video content across multiple channels/profiles and social platforms. Deployed t
 ## Explicitly OUT of scope for Phase 2 (do not build yet)
 
 - TikTok / Instagram integration — after YouTube is solid
-- Multi-AI-provider abstraction — still hardcoded to the one provider from
-  item 1 above
-- AI-automated prompt suggestions
+- AI-automated prompt suggestions (auto-picking which provider/prompt to run
+  — item 1e only stores the *setting*, it does not trigger anything
+  automatically yet)
 - Multi-language pipeline
 
 ## Conventions
