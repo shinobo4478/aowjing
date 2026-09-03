@@ -147,13 +147,26 @@ export default function GenerationsSection({
                 <Typography.Text type="secondary">
                   {row.status === "failed" ? "Error" : "Output"}
                 </Typography.Text>
-                <pre style={preStyle}>
-                  {row.status === "pending"
-                    ? "Waiting for the worker…"
-                    : row.status === "failed"
-                      ? row.error
-                      : row.output}
-                </pre>
+                {row.status === "succeeded" && row.outputKind === "video" ? (
+                  <div style={{ marginTop: 4 }}>
+                    <video
+                      src={row.output}
+                      controls
+                      style={{ maxWidth: "100%", maxHeight: 320, display: "block" }}
+                    />
+                    <a href={row.output} target="_blank" rel="noreferrer">
+                      Open video ↗
+                    </a>
+                  </div>
+                ) : (
+                  <pre style={preStyle}>
+                    {row.status === "pending"
+                      ? "Waiting for the worker…"
+                      : row.status === "failed"
+                        ? row.error
+                        : row.output}
+                  </pre>
+                )}
               </div>
             </div>
           ),

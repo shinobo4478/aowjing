@@ -14,7 +14,6 @@ import (
 	"github.com/shinobo4478/aowjing/backend/internal/config"
 	"github.com/shinobo4478/aowjing/backend/internal/database"
 	"github.com/shinobo4478/aowjing/backend/internal/database/sqlc"
-	"github.com/shinobo4478/aowjing/backend/internal/generate"
 	"github.com/shinobo4478/aowjing/backend/internal/generations"
 	"github.com/shinobo4478/aowjing/backend/internal/queue"
 )
@@ -43,9 +42,7 @@ func run() error {
 	defer db.Close()
 	log.Println("connected to database")
 
-	// Phase 2: swap TextGenerator for a factory keyed on the generation's
-	// provider once FalVideoGenerator exists (item 1c).
-	runner := generations.NewRunner(sqlc.New(db), generate.TextGenerator{})
+	runner := generations.NewRunner(sqlc.New(db), cfg.FalModel, cfg.FakeFal)
 
 	mux := asynq.NewServeMux()
 	mux.HandleFunc(queue.TaskGenerationRun, func(ctx context.Context, t *asynq.Task) error {

@@ -57,6 +57,8 @@ CREATE TABLE IF NOT EXISTS generations (
     prompt_template_id uuid            REFERENCES prompt_templates (id) ON DELETE SET NULL,
     input_prompt       text        NOT NULL,
     output             text        NOT NULL DEFAULT '',
+    -- 'text' -> `output` is the generated text; 'video' -> `output` is a URL.
+    output_kind        text        NOT NULL DEFAULT 'text',
     status             text        NOT NULL,
     error              text        NOT NULL DEFAULT '',
     provider           text        NOT NULL,

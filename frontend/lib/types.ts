@@ -80,7 +80,9 @@ export interface Generation {
   templateName: string;
   /** The exact prompt sent to the provider. */
   inputPrompt: string;
+  /** Generated text, or — when outputKind is "video" — a URL. */
   output: string;
+  outputKind: "text" | "video";
   status: "pending" | "succeeded" | "failed";
   /** Failure message when status is "failed". */
   error: string;
