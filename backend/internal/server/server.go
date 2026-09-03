@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/shinobo4478/aowjing/backend/internal/auth"
+	"github.com/shinobo4478/aowjing/backend/internal/channels"
 	"github.com/shinobo4478/aowjing/backend/internal/config"
 	"github.com/shinobo4478/aowjing/backend/internal/database/sqlc"
 	"github.com/shinobo4478/aowjing/backend/internal/profiles"
@@ -40,6 +41,7 @@ func New(db *pgxpool.Pool, cfg config.Config) http.Handler {
 	r.Group(func(r chi.Router) {
 		r.Use(authr.Middleware)
 		r.Mount("/profiles", profiles.NewHandler(queries).Routes())
+		r.Mount("/channels", channels.NewHandler(queries).Routes())
 	})
 
 	return r
