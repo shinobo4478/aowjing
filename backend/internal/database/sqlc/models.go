@@ -8,6 +8,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Channel struct {
+	ID          pgtype.UUID        `json:"id"`
+	ProfileID   pgtype.UUID        `json:"profile_id"`
+	Name        string             `json:"name"`
+	Platform    string             `json:"platform"`
+	Handle      string             `json:"handle"`
+	Description string             `json:"description"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Profile struct {
 	ID          pgtype.UUID        `json:"id"`
 	Name        string             `json:"name"`

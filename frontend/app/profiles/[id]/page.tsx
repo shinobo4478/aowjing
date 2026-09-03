@@ -17,6 +17,7 @@ import {
 import { deleteProfile, getProfile, updateProfile } from "@/lib/api";
 import type { Profile } from "@/lib/types";
 import ProfileForm from "../ProfileForm";
+import ChannelsSection from "./ChannelsSection";
 
 export default function ProfileDetailPage({
   params,
@@ -137,7 +138,7 @@ export default function ProfileDetailPage({
             </Button>
             <Popconfirm
               title="Delete this profile?"
-              description="This can't be undone."
+              description="This deletes its channels too. Can't be undone."
               okText="Delete"
               okButtonProps={{ danger: true, loading: deleting }}
               onConfirm={handleDelete}
@@ -145,6 +146,8 @@ export default function ProfileDetailPage({
               <Button danger>Delete</Button>
             </Popconfirm>
           </Space>
+
+          <ChannelsSection profileId={id} />
         </>
       )}
     </>
