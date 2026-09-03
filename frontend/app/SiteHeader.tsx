@@ -7,6 +7,7 @@ import { useAuth } from "./AuthGate";
 
 const items = [
   { key: "/profiles", label: <Link href="/profiles">Profiles</Link> },
+  { key: "/settings", label: <Link href="/settings">Settings</Link> },
 ];
 
 export default function SiteHeader() {

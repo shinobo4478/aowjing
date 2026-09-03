@@ -74,3 +74,9 @@ export interface Generation {
   model: string;
   createdAt: string; // ISO 8601
 }
+
+/** Global provider credentials, edited on the Settings screen. */
+export interface Settings {
+  /** fal.ai API key, used by FalVideoGenerator. */
+  falApiKey: string;
+}
