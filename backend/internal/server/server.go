@@ -13,6 +13,7 @@ import (
 	"github.com/shinobo4478/aowjing/backend/internal/config"
 	"github.com/shinobo4478/aowjing/backend/internal/database/sqlc"
 	"github.com/shinobo4478/aowjing/backend/internal/profiles"
+	"github.com/shinobo4478/aowjing/backend/internal/prompttemplates"
 )
 
 // Server holds the shared dependencies handlers need.
@@ -42,6 +43,7 @@ func New(db *pgxpool.Pool, cfg config.Config) http.Handler {
 		r.Use(authr.Middleware)
 		r.Mount("/profiles", profiles.NewHandler(queries).Routes())
 		r.Mount("/channels", channels.NewHandler(queries).Routes())
+		r.Mount("/prompt-templates", prompttemplates.NewHandler(queries).Routes())
 	})
 
 	return r

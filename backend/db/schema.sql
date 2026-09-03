@@ -30,6 +30,20 @@ CREATE TABLE IF NOT EXISTS channels (
 
 CREATE INDEX IF NOT EXISTS channels_profile_id_idx ON channels (profile_id);
 
+-- Reusable prompt templates associated with a profile. `body` is the template
+-- text; Phase 1 stores it verbatim (no variable substitution yet).
+CREATE TABLE IF NOT EXISTS prompt_templates (
+    id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    profile_id  uuid        NOT NULL REFERENCES profiles (id) ON DELETE CASCADE,
+    name        text        NOT NULL,
+    body        text        NOT NULL,
+    description text        NOT NULL DEFAULT '',
+    created_at  timestamptz NOT NULL DEFAULT now(),
+    updated_at  timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS prompt_templates_profile_id_idx ON prompt_templates (profile_id);
+
 -- Login sessions for the single admin user. We store only a SHA-256 hash of
 -- the session token, so a leak of this table does not expose live sessions.
 CREATE TABLE IF NOT EXISTS sessions (

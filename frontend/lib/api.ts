@@ -4,7 +4,14 @@
 // goes out with `credentials: "include"`. Set NEXT_PUBLIC_API_BASE_URL to the
 // API origin (defaults to the local dev server).
 
-import type { Channel, ChannelInput, Profile, ProfileInput } from "./types";
+import type {
+  Channel,
+  ChannelInput,
+  Profile,
+  ProfileInput,
+  PromptTemplate,
+  PromptTemplateInput,
+} from "./types";
 
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
@@ -112,4 +119,39 @@ export function updateChannel(id: string, input: ChannelInput) {
 
 export function deleteChannel(id: string) {
   return request<void>(`/channels/${id}`, { method: "DELETE" });
+}
+
+// --- Prompt templates (nested under a profile) ---
+
+export function listPromptTemplates(profileId: string) {
+  return request<{ promptTemplates: PromptTemplate[] }>(
+    `/prompt-templates?profileId=${encodeURIComponent(profileId)}`,
+  ).then((r) => r.promptTemplates);
+}
+
+export function getPromptTemplate(id: string) {
+  return request<{ promptTemplate: PromptTemplate }>(
+    `/prompt-templates/${id}`,
+  ).then((r) => r.promptTemplate);
+}
+
+export function createPromptTemplate(
+  profileId: string,
+  input: PromptTemplateInput,
+) {
+  return request<{ promptTemplate: PromptTemplate }>("/prompt-templates", {
+    method: "POST",
+    body: JSON.stringify({ profileId, ...input }),
+  }).then((r) => r.promptTemplate);
+}
+
+export function updatePromptTemplate(id: string, input: PromptTemplateInput) {
+  return request<{ promptTemplate: PromptTemplate }>(`/prompt-templates/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  }).then((r) => r.promptTemplate);
+}
+
+export function deletePromptTemplate(id: string) {
+  return request<void>(`/prompt-templates/${id}`, { method: "DELETE" });
 }
