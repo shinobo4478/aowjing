@@ -5,8 +5,11 @@ import Link from "next/link";
 import { App, Button, Modal, Table, Typography } from "antd";
 import type { TableColumnsType } from "antd";
 import { createProfile, listProfiles } from "@/lib/api";
-import type { Profile } from "@/lib/types";
+import { PROVIDER_OPTIONS, type Profile } from "@/lib/types";
 import ProfileForm from "./ProfileForm";
+
+const providerLabel = (v: string) =>
+  PROVIDER_OPTIONS.find((o) => o.value === v)?.label ?? v;
 
 const columns: TableColumnsType<Profile> = [
   {
@@ -15,6 +18,12 @@ const columns: TableColumnsType<Profile> = [
     render: (name: string, row) => <Link href={`/profiles/${row.id}`}>{name}</Link>,
   },
   { title: "Niche", dataIndex: "niche" },
+  {
+    title: "Generator",
+    dataIndex: "provider",
+    width: 180,
+    render: (v: string) => providerLabel(v),
+  },
   {
     title: "Updated",
     dataIndex: "updatedAt",

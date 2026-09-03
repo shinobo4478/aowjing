@@ -15,7 +15,7 @@ import {
   Typography,
 } from "antd";
 import { deleteProfile, getProfile, updateProfile } from "@/lib/api";
-import type { Profile } from "@/lib/types";
+import { PROVIDER_OPTIONS, type Profile } from "@/lib/types";
 import ProfileForm from "../ProfileForm";
 import ChannelsSection from "./ChannelsSection";
 import PromptTemplatesSection from "./PromptTemplatesSection";
@@ -89,6 +89,7 @@ export default function ProfileDetailPage({
               name: profile.name,
               niche: profile.niche,
               description: profile.description,
+              provider: profile.provider,
             }}
             submitLabel="Save changes"
             onSubmit={async (input) => {
@@ -114,6 +115,13 @@ export default function ProfileDetailPage({
             style={{ marginTop: 8 }}
             items={[
               { key: "niche", label: "Niche", children: profile.niche },
+              {
+                key: "provider",
+                label: "Generator",
+                children:
+                  PROVIDER_OPTIONS.find((o) => o.value === profile.provider)
+                    ?.label ?? profile.provider,
+              },
               {
                 key: "description",
                 label: "Description",

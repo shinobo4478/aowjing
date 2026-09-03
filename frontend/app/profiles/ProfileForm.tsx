@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Alert, Button, Form, Input } from "antd";
+import { Alert, Button, Form, Input, Select } from "antd";
 import { ApiError } from "@/lib/api";
-import type { ProfileInput } from "@/lib/types";
+import { PROVIDER_OPTIONS, type ProfileInput } from "@/lib/types";
 
 interface Props {
   initial?: ProfileInput;
@@ -11,7 +11,12 @@ interface Props {
   onSubmit: (input: ProfileInput) => Promise<void>;
 }
 
-const EMPTY: ProfileInput = { name: "", niche: "", description: "" };
+const EMPTY: ProfileInput = {
+  name: "",
+  niche: "",
+  description: "",
+  provider: "text",
+};
 
 export default function ProfileForm({ initial, submitLabel, onSubmit }: Props) {
   const [form] = Form.useForm<ProfileInput>();
@@ -26,6 +31,7 @@ export default function ProfileForm({ initial, submitLabel, onSubmit }: Props) {
         name: values.name.trim(),
         niche: values.niche.trim(),
         description: (values.description ?? "").trim(),
+        provider: values.provider,
       });
     } catch (err) {
       if (err instanceof ApiError && err.fieldErrors) {
@@ -89,6 +95,15 @@ export default function ProfileForm({ initial, submitLabel, onSubmit }: Props) {
           rows={4}
           placeholder="Tone, audience, pacing, do/don't…"
         />
+      </Form.Item>
+
+      <Form.Item
+        label="Generator"
+        name="provider"
+        rules={[{ required: true, message: "Pick a generator." }]}
+        extra="What this profile generates with by default."
+      >
+        <Select options={PROVIDER_OPTIONS} />
       </Form.Item>
 
       <Form.Item style={{ marginBottom: 0 }}>
