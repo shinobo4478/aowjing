@@ -19,6 +19,7 @@ import type { Profile } from "@/lib/types";
 import ProfileForm from "../ProfileForm";
 import ChannelsSection from "./ChannelsSection";
 import PromptTemplatesSection from "./PromptTemplatesSection";
+import GenerationsSection from "./GenerationsSection";
 
 export default function ProfileDetailPage({
   params,
@@ -31,6 +32,7 @@ export default function ProfileDetailPage({
   const [profile, setProfile] = useState<Profile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
+  const [genTick, setGenTick] = useState(0);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
@@ -149,7 +151,11 @@ export default function ProfileDetailPage({
           </Space>
 
           <ChannelsSection profileId={id} />
-          <PromptTemplatesSection profileId={id} />
+          <PromptTemplatesSection
+            profileId={id}
+            onGenerated={() => setGenTick((t) => t + 1)}
+          />
+          <GenerationsSection profileId={id} refreshTick={genTick} />
         </>
       )}
     </>

@@ -7,6 +7,7 @@ import {
   createPromptTemplate,
   deletePromptTemplate,
   listPromptTemplates,
+  runGeneration,
   updatePromptTemplate,
 } from "@/lib/api";
 import type { PromptTemplate } from "@/lib/types";
@@ -14,14 +15,18 @@ import PromptTemplateForm from "../PromptTemplateForm";
 
 export default function PromptTemplatesSection({
   profileId,
+  onGenerated,
 }: {
   profileId: string;
+  /** Called after a template is run, so the Generations list can refresh. */
+  onGenerated: () => void;
 }) {
   const { message } = App.useApp();
   const [templates, setTemplates] = useState<PromptTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<PromptTemplate | null>(null);
+  const [running, setRunning] = useState<string | null>(null);
 
   useEffect(() => {
     listPromptTemplates(profileId)
@@ -57,6 +62,23 @@ export default function PromptTemplatesSection({
     }
   }
 
+  async function handleGenerate(id: string) {
+    setRunning(id);
+    try {
+      const gen = await runGeneration(id);
+      if (gen.status === "failed") {
+        message.error(`Generation failed: ${gen.error}`);
+      } else {
+        message.success(`Generated via ${gen.provider}.`);
+      }
+      onGenerated();
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : "Failed to generate.");
+    } finally {
+      setRunning(null);
+    }
+  }
+
   const columns: TableColumnsType<PromptTemplate> = [
     { title: "Name", dataIndex: "name" },
     {
@@ -68,9 +90,17 @@ export default function PromptTemplatesSection({
     {
       title: "",
       key: "actions",
-      width: 150,
+      width: 230,
       render: (_, row) => (
         <Space>
+          <Button
+            size="small"
+            type="primary"
+            loading={running === row.id}
+            onClick={() => handleGenerate(row.id)}
+          >
+            Generate
+          </Button>
           <Button size="small" onClick={() => setEditing(row)}>
             Edit
           </Button>

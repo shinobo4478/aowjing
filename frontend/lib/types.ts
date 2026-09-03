@@ -56,3 +56,21 @@ export type PromptTemplateInput = Pick<
   PromptTemplate,
   "name" | "body" | "description"
 >;
+
+export interface Generation {
+  id: string;
+  profileId: string;
+  /** "" if the source template was deleted after this run. */
+  promptTemplateId: string;
+  /** "" if the source template was deleted. */
+  templateName: string;
+  /** The exact prompt sent to the provider. */
+  inputPrompt: string;
+  output: string;
+  status: "succeeded" | "failed";
+  /** Failure message when status is "failed". */
+  error: string;
+  provider: string;
+  model: string;
+  createdAt: string; // ISO 8601
+}
