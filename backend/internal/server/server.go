@@ -47,9 +47,10 @@ func New(db *pgxpool.Pool, cfg config.Config) http.Handler {
 		r.Mount("/channels", channels.NewHandler(queries).Routes())
 		r.Mount("/prompt-templates", prompttemplates.NewHandler(queries).Routes())
 
-		// TODO(phase-1): swap MockGenerator for a real provider once one is
-		// chosen (Anthropic / OpenAI); pick it from config.
-		r.Mount("/generations", generations.NewHandler(queries, generate.MockGenerator{}).Routes())
+		// Phase 2: this will become a factory that picks the generator per
+		// profile (TextGenerator vs a provider-backed one) from config +
+		// the profile's `provider` field.
+		r.Mount("/generations", generations.NewHandler(queries, generate.TextGenerator{}).Routes())
 	})
 
 	return r
