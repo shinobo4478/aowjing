@@ -11,6 +11,7 @@ video content across multiple channels/profiles and social platforms. Deployed t
   Requires wrapping the app with `AntdRegistry` (from `@ant-design/nextjs-registry`)
   for the CSS-in-JS to work correctly with React Server Components — set this
   up as part of the initial Next.js scaffold, not later
+- **Font**: Sukhumvit — keep using it across all new screens
 - **Backend**: Go — router: chi or gin (keep it lightweight), DB access: sqlc
   (write raw SQL, generate type-safe Go code — prefer this over a heavy ORM
   since I'm still learning Go)
@@ -28,24 +29,32 @@ video content across multiple channels/profiles and social platforms. Deployed t
 - Backend owns all business logic and DB access — frontend never talks to
   Postgres directly
 
-## Phase 1 scope (current focus — do not go beyond this list)
+## Phase 1 (completed)
 
-1. Auth (login/session for a single admin user is enough for now — no
-   multi-tenant complexity yet)
-2. Profile CRUD — a Profile represents one "channel persona" / content niche
-3. Channel CRUD — nested under a Profile
-4. Prompt template CRUD — store reusable prompt templates, associate with a
-   Profile
-5. Single AI provider integration — pick ONE video/prompt AI provider to
-   start, manual "generate" trigger only (no automation, no queue yet)
-6. Basic Next.js UI for all of the above (forms + lists, no polish needed)
+1. ✅ Auth — DB session cookie, single admin from env
+2. ✅ Profile CRUD
+3. ✅ Channel CRUD (nested under Profile, cascade delete)
+4. ✅ Prompt template CRUD (tied to Profile)
+5. ✅ Generate — runs a template through a provider + saves history, currently
+   wired to a `MockGenerator` (not a real AI provider call yet)
+6. ✅ Next.js UI for all of the above (antd, Sukhumvit font)
 
-## Explicitly OUT of scope for Phase 1 (do not build yet)
+## Phase 2 scope (current focus — do not go beyond this list)
 
-- Platform posting/OAuth integration (YouTube, TikTok, Instagram)
-- Multi-AI-provider abstraction — hardcode one provider for now
-- Statistics/analytics dashboards
-- Background job queue / async workers
+1. Swap `MockGenerator` for one real AI video/prompt provider (this was
+   deferred from Phase 1 — do this first, before any new feature)
+2. Background job queue (Redis + asynq) — move "generate" off the sync
+   request path onto a worker
+3. Connect ONE platform for posting — start with YouTube (most open API of
+   the three), OAuth account connection + manual publish trigger
+4. Basic statistics pulling from that one platform's analytics API, thumbnail
+   only, no full video storage
+
+## Explicitly OUT of scope for Phase 2 (do not build yet)
+
+- TikTok / Instagram integration — after YouTube is solid
+- Multi-AI-provider abstraction — still hardcoded to the one provider from
+  item 1 above
 - AI-automated prompt suggestions
 - Multi-language pipeline
 
