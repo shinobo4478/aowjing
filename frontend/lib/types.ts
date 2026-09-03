@@ -81,7 +81,7 @@ export interface Generation {
   /** The exact prompt sent to the provider. */
   inputPrompt: string;
   output: string;
-  status: "succeeded" | "failed";
+  status: "pending" | "succeeded" | "failed";
   /** Failure message when status is "failed". */
   error: string;
   provider: string;

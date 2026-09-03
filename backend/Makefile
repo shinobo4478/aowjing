@@ -1,12 +1,17 @@
-.PHONY: run build test tidy sqlc db-up db-down db-reset
+.PHONY: run worker build test tidy sqlc db-up db-down db-reset
 
 # Run the API server (reads .env).
 run:
 	go run ./cmd/api
 
-# Compile to ./bin/api.
+# Run the generation-queue worker (reads .env). Needs Redis (make db-up).
+worker:
+	go run ./cmd/worker
+
+# Compile both binaries to ./bin.
 build:
 	go build -o bin/api ./cmd/api
+	go build -o bin/worker ./cmd/worker
 
 test:
 	go test ./...

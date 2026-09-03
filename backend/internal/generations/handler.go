@@ -1,8 +1,11 @@
-// Package generations runs prompt templates through the AI provider and stores
-// each run. Records are immutable: create, read, list, delete.
+// Package generations records each run of a prompt template through a provider.
+// The HTTP handler only enqueues work and reads history; cmd/worker executes
+// the run via Runner. Records are immutable except for the worker filling in
+// the outcome.
 package generations
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -11,17 +14,21 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/shinobo4478/aowjing/backend/internal/database/sqlc"
-	"github.com/shinobo4478/aowjing/backend/internal/generate"
 	"github.com/shinobo4478/aowjing/backend/internal/pgconv"
 )
 
-type Handler struct {
-	q   *sqlc.Queries
-	gen generate.Generator
+// Enqueuer hands a generation off to the worker. *queue.Client satisfies it.
+type Enqueuer interface {
+	EnqueueGenerationRun(ctx context.Context, generationID string) error
 }
 
-func NewHandler(q *sqlc.Queries, gen generate.Generator) *Handler {
-	return &Handler{q: q, gen: gen}
+type Handler struct {
+	q   *sqlc.Queries
+	enq Enqueuer
+}
+
+func NewHandler(q *sqlc.Queries, enq Enqueuer) *Handler {
+	return &Handler{q: q, enq: enq}
 }
 
 // Routes returns the router to mount at /generations.
@@ -56,9 +63,8 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"generations": listRowDTOs(rows)})
 }
 
-// run executes a template through the provider and records the result. A
-// provider failure is still persisted (status "failed") and returned with 201,
-// so the history always reflects what was attempted.
+// run creates a pending generation and hands it to the worker. Returns 202
+// with the pending record; the client polls for the outcome.
 func (h *Handler) run(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		PromptTemplateID string `json:"promptTemplateId"`
@@ -86,29 +92,40 @@ func (h *Handler) run(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	params := sqlc.CreateGenerationParams{
+	// The profile's provider is the intended generator; the worker reads it.
+	profile, err := h.q.GetProfile(r.Context(), tmpl.ProfileID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to load profile.")
+		return
+	}
+
+	row, err := h.q.CreateGeneration(r.Context(), sqlc.CreateGenerationParams{
 		ProfileID:        tmpl.ProfileID,
 		PromptTemplateID: templateID,
 		InputPrompt:      tmpl.Body,
-		Provider:         h.gen.Name(),
-	}
-
-	if res, genErr := h.gen.Generate(r.Context(), tmpl.Body); genErr != nil {
-		params.Status = "failed"
-		params.Error = genErr.Error()
-	} else {
-		params.Status = "succeeded"
-		params.Output = res.Output
-		params.Provider = res.Provider
-		params.Model = res.Model
-	}
-
-	row, err := h.q.CreateGeneration(r.Context(), params)
+		Status:           "pending",
+		Provider:         profile.Provider,
+	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to save generation.")
 		return
 	}
-	writeJSON(w, http.StatusCreated, map[string]any{
+
+	genID := pgconv.UUIDString(row.ID)
+	if err := h.enq.EnqueueGenerationRun(r.Context(), genID); err != nil {
+		// The row exists but nothing will process it — mark it failed so the
+		// user sees why rather than a stuck "pending".
+		_ = h.q.FinishGeneration(r.Context(), sqlc.FinishGenerationParams{
+			ID:       row.ID,
+			Status:   "failed",
+			Error:    "could not queue the job",
+			Provider: row.Provider,
+		})
+		writeError(w, http.StatusInternalServerError, "Could not queue the generation.")
+		return
+	}
+
+	writeJSON(w, http.StatusAccepted, map[string]any{
 		"generation": modelDTO(row, tmpl.Name),
 	})
 }

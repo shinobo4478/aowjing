@@ -6,6 +6,12 @@ import type { TableColumnsType } from "antd";
 import { deleteGeneration, listGenerations } from "@/lib/api";
 import type { Generation } from "@/lib/types";
 
+const STATUS_COLOR: Record<Generation["status"], string> = {
+  pending: "blue",
+  succeeded: "green",
+  failed: "red",
+};
+
 export default function GenerationsSection({
   profileId,
   refreshTick,
@@ -40,6 +46,24 @@ export default function GenerationsSection({
     };
   }, [profileId, refreshTick, message]);
 
+  // While a generation is pending, poll for the worker to finish it. Stops
+  // when nothing is pending or after ~1 minute.
+  const hasPending = generations.some((g) => g.status === "pending");
+  useEffect(() => {
+    if (!hasPending) return;
+    let tries = 0;
+    const iv = setInterval(() => {
+      tries += 1;
+      listGenerations(profileId)
+        .then((fresh) => {
+          setGenerations(fresh);
+          if (tries >= 30) clearInterval(iv);
+        })
+        .catch(() => clearInterval(iv));
+    }, 2000);
+    return () => clearInterval(iv);
+  }, [hasPending, profileId]);
+
   async function handleDelete(id: string) {
     try {
       await deleteGeneration(id);
@@ -67,7 +91,7 @@ export default function GenerationsSection({
       dataIndex: "status",
       width: 110,
       render: (v: Generation["status"]) => (
-        <Tag color={v === "succeeded" ? "green" : "red"}>{v}</Tag>
+        <Tag color={STATUS_COLOR[v]}>{v}</Tag>
       ),
     },
     {
@@ -124,7 +148,11 @@ export default function GenerationsSection({
                   {row.status === "failed" ? "Error" : "Output"}
                 </Typography.Text>
                 <pre style={preStyle}>
-                  {row.status === "failed" ? row.error : row.output}
+                  {row.status === "pending"
+                    ? "Waiting for the worker…"
+                    : row.status === "failed"
+                      ? row.error
+                      : row.output}
                 </pre>
               </div>
             </div>

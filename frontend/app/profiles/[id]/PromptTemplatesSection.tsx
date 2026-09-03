@@ -65,13 +65,9 @@ export default function PromptTemplatesSection({
   async function handleGenerate(id: string) {
     setRunning(id);
     try {
-      const gen = await runGeneration(id);
-      if (gen.status === "failed") {
-        message.error(`Generation failed: ${gen.error}`);
-      } else {
-        message.success(`Generated via ${gen.provider}.`);
-      }
-      onGenerated();
+      await runGeneration(id);
+      message.success("Generation queued.");
+      onGenerated(); // the Generations list picks it up and polls for the result
     } catch (err) {
       message.error(err instanceof Error ? err.message : "Failed to generate.");
     } finally {

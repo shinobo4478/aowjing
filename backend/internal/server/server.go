@@ -12,10 +12,10 @@ import (
 	"github.com/shinobo4478/aowjing/backend/internal/channels"
 	"github.com/shinobo4478/aowjing/backend/internal/config"
 	"github.com/shinobo4478/aowjing/backend/internal/database/sqlc"
-	"github.com/shinobo4478/aowjing/backend/internal/generate"
 	"github.com/shinobo4478/aowjing/backend/internal/generations"
 	"github.com/shinobo4478/aowjing/backend/internal/profiles"
 	"github.com/shinobo4478/aowjing/backend/internal/prompttemplates"
+	"github.com/shinobo4478/aowjing/backend/internal/queue"
 	"github.com/shinobo4478/aowjing/backend/internal/settings"
 )
 
@@ -25,7 +25,7 @@ type Server struct {
 }
 
 // New builds the HTTP handler for the API, with middleware and routes mounted.
-func New(db *pgxpool.Pool, cfg config.Config) http.Handler {
+func New(db *pgxpool.Pool, cfg config.Config, q *queue.Client) http.Handler {
 	s := &Server{db: db}
 	queries := sqlc.New(db)
 	authr := auth.New(queries, cfg.AdminUsername, cfg.AdminPassword, cfg.CookieSecure)
@@ -49,10 +49,8 @@ func New(db *pgxpool.Pool, cfg config.Config) http.Handler {
 		r.Mount("/prompt-templates", prompttemplates.NewHandler(queries).Routes())
 		r.Mount("/settings", settings.NewHandler(queries).Routes())
 
-		// Phase 2: this will become a factory that picks the generator per
-		// profile (TextGenerator vs a provider-backed one) from config +
-		// the profile's `provider` field.
-		r.Mount("/generations", generations.NewHandler(queries, generate.TextGenerator{}).Routes())
+		// POST only enqueues; cmd/worker runs the generation.
+		r.Mount("/generations", generations.NewHandler(queries, q).Routes())
 	})
 
 	return r
