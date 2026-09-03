@@ -4,14 +4,15 @@
 // goes out with `credentials: "include"`. Set NEXT_PUBLIC_API_BASE_URL to the
 // API origin (defaults to the local dev server).
 
-import type { Profile, ProfileInput } from "./types";
+import type { Channel, ChannelInput, Profile, ProfileInput } from "./types";
 
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
 
 export class ApiError extends Error {
   status: number;
-  fieldErrors?: Partial<Record<keyof ProfileInput, string>>;
+  /** Per-field messages from a 422, keyed by input field name. */
+  fieldErrors?: Record<string, string>;
 
   constructor(
     message: string,
@@ -81,4 +82,34 @@ export function updateProfile(id: string, input: ProfileInput) {
 
 export function deleteProfile(id: string) {
   return request<void>(`/profiles/${id}`, { method: "DELETE" });
+}
+
+// --- Channels (nested under a profile) ---
+
+export function listChannels(profileId: string) {
+  return request<{ channels: Channel[] }>(
+    `/channels?profileId=${encodeURIComponent(profileId)}`,
+  ).then((r) => r.channels);
+}
+
+export function getChannel(id: string) {
+  return request<{ channel: Channel }>(`/channels/${id}`).then((r) => r.channel);
+}
+
+export function createChannel(profileId: string, input: ChannelInput) {
+  return request<{ channel: Channel }>("/channels", {
+    method: "POST",
+    body: JSON.stringify({ profileId, ...input }),
+  }).then((r) => r.channel);
+}
+
+export function updateChannel(id: string, input: ChannelInput) {
+  return request<{ channel: Channel }>(`/channels/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  }).then((r) => r.channel);
+}
+
+export function deleteChannel(id: string) {
+  return request<void>(`/channels/${id}`, { method: "DELETE" });
 }

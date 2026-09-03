@@ -16,3 +16,24 @@ export interface Profile {
 
 /** Fields the client sends when creating or editing a Profile. */
 export type ProfileInput = Pick<Profile, "name" | "niche" | "description">;
+
+export interface Channel {
+  id: string;
+  /** The profile this channel belongs to. */
+  profileId: string;
+  /** Display name, e.g. "Main YouTube". */
+  name: string;
+  /** Target platform, e.g. "youtube", "tiktok". Free text — no integration yet. */
+  platform: string;
+  /** Account handle, e.g. "@retroarcadevault". */
+  handle: string;
+  description: string;
+  createdAt: string; // ISO 8601
+  updatedAt: string; // ISO 8601
+}
+
+/** Fields the client sends when creating or editing a Channel. */
+export type ChannelInput = Pick<
+  Channel,
+  "name" | "platform" | "handle" | "description"
+>;
