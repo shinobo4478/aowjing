@@ -12,6 +12,8 @@ import (
 	"github.com/shinobo4478/aowjing/backend/internal/channels"
 	"github.com/shinobo4478/aowjing/backend/internal/config"
 	"github.com/shinobo4478/aowjing/backend/internal/database/sqlc"
+	"github.com/shinobo4478/aowjing/backend/internal/generate"
+	"github.com/shinobo4478/aowjing/backend/internal/generations"
 	"github.com/shinobo4478/aowjing/backend/internal/profiles"
 	"github.com/shinobo4478/aowjing/backend/internal/prompttemplates"
 )
@@ -44,6 +46,10 @@ func New(db *pgxpool.Pool, cfg config.Config) http.Handler {
 		r.Mount("/profiles", profiles.NewHandler(queries).Routes())
 		r.Mount("/channels", channels.NewHandler(queries).Routes())
 		r.Mount("/prompt-templates", prompttemplates.NewHandler(queries).Routes())
+
+		// TODO(phase-1): swap MockGenerator for a real provider once one is
+		// chosen (Anthropic / OpenAI); pick it from config.
+		r.Mount("/generations", generations.NewHandler(queries, generate.MockGenerator{}).Routes())
 	})
 
 	return r
