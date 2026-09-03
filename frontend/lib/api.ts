@@ -7,6 +7,7 @@
 import type {
   Channel,
   ChannelInput,
+  Generation,
   Profile,
   ProfileInput,
   PromptTemplate,
@@ -154,4 +155,29 @@ export function updatePromptTemplate(id: string, input: PromptTemplateInput) {
 
 export function deletePromptTemplate(id: string) {
   return request<void>(`/prompt-templates/${id}`, { method: "DELETE" });
+}
+
+// --- Generations (running a prompt template through the AI provider) ---
+
+export function listGenerations(profileId: string) {
+  return request<{ generations: Generation[] }>(
+    `/generations?profileId=${encodeURIComponent(profileId)}`,
+  ).then((r) => r.generations);
+}
+
+export function getGeneration(id: string) {
+  return request<{ generation: Generation }>(`/generations/${id}`).then(
+    (r) => r.generation,
+  );
+}
+
+export function runGeneration(promptTemplateId: string) {
+  return request<{ generation: Generation }>("/generations", {
+    method: "POST",
+    body: JSON.stringify({ promptTemplateId }),
+  }).then((r) => r.generation);
+}
+
+export function deleteGeneration(id: string) {
+  return request<void>(`/generations/${id}`, { method: "DELETE" });
 }

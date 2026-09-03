@@ -19,6 +19,19 @@ type Channel struct {
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 }
 
+type Generation struct {
+	ID               pgtype.UUID        `json:"id"`
+	ProfileID        pgtype.UUID        `json:"profile_id"`
+	PromptTemplateID pgtype.UUID        `json:"prompt_template_id"`
+	InputPrompt      string             `json:"input_prompt"`
+	Output           string             `json:"output"`
+	Status           string             `json:"status"`
+	Error            string             `json:"error"`
+	Provider         string             `json:"provider"`
+	Model            string             `json:"model"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+}
+
 type Profile struct {
 	ID          pgtype.UUID        `json:"id"`
 	Name        string             `json:"name"`
