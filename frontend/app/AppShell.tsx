@@ -11,11 +11,20 @@ import SiteHeader from "./SiteHeader";
 export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <Layout style={{ minHeight: "100vh" }}>
-      <Layout.Header>
+      <Layout.Header
+        style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 10,
+          paddingInline: 24,
+          borderBottom: "1px solid #ececec",
+          boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+        }}
+      >
         <SiteHeader />
       </Layout.Header>
-      <Layout.Content style={{ padding: "32px 24px 64px" }}>
-        <div style={{ maxWidth: 820, margin: "0 auto" }}>{children}</div>
+      <Layout.Content style={{ padding: "32px 24px 72px" }}>
+        <div style={{ maxWidth: 900, margin: "0 auto" }}>{children}</div>
       </Layout.Content>
     </Layout>
   );

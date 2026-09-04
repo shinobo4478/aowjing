@@ -7,7 +7,9 @@ body {
 
 /* Primary UI font: Sukhumvit Set, self-hosted via next/font/local (app/fonts.ts).
    --font-sukhumvit already expands to the font + its size-adjusted fallback +
-   the platform Thai fallback stack. */
+   the platform Thai fallback stack. Background matches the antd colorBgLayout
+   token so there's no flash of white on overscroll. */
 body {
   font-family: var(--font-sukhumvit);
+  background: #f6f7f9;
 }

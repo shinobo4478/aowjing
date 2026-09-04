@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Button, Menu, Typography } from "antd";
+import { Button, Menu, Space, Typography, theme } from "antd";
 import { useAuth } from "./AuthGate";
 
 const items = [
@@ -13,31 +13,44 @@ const items = [
 export default function SiteHeader() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { token } = theme.useToken();
   const selected = items
     .filter((i) => pathname.startsWith(i.key))
     .map((i) => i.key);
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+    <div
+      style={{ display: "flex", alignItems: "center", gap: 24, height: "100%" }}
+    >
       <Link
         href="/"
-        style={{ fontWeight: 700, letterSpacing: 0.5, color: "#fff" }}
+        style={{
+          fontWeight: 700,
+          fontSize: 16,
+          letterSpacing: 0.3,
+          color: token.colorPrimary,
+        }}
       >
         ACMP
       </Link>
       <Menu
         mode="horizontal"
-        theme="dark"
+        theme="light"
         selectedKeys={selected}
         items={items}
-        style={{ flex: 1, minWidth: 0, background: "transparent" }}
+        style={{
+          flex: 1,
+          minWidth: 0,
+          background: "transparent",
+          borderBottom: "none",
+        }}
       />
-      <Typography.Text style={{ color: "rgba(255,255,255,0.65)" }}>
-        {user.username}
-      </Typography.Text>
-      <Button size="small" onClick={logout}>
-        Sign out
-      </Button>
+      <Space size="small">
+        <Typography.Text type="secondary">{user.username}</Typography.Text>
+        <Button size="small" onClick={logout}>
+          Sign out
+        </Button>
+      </Space>
     </div>
   );
 }
