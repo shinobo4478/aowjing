@@ -34,12 +34,12 @@ export default function LoginPage() {
         display: "grid",
         placeItems: "center",
         minHeight: "100vh",
-        padding: 24,
+        padding: 16,
         background:
           "radial-gradient(1100px 600px at 50% -10%, #e8ebfd 0%, #f6f7f9 55%)",
       }}
     >
-      <div style={{ width: 360 }}>
+      <div style={{ width: "100%", maxWidth: 360 }}>
         <div style={{ textAlign: "center", marginBottom: 20 }}>
           <Typography.Title
             level={3}

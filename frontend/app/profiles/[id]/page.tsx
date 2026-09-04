@@ -143,7 +143,7 @@ export default function ProfileDetailPage({
             ]}
           />
 
-          <Space style={{ marginTop: 16 }}>
+          <Space style={{ marginTop: 16 }} wrap>
             <Button type="primary" onClick={() => setEditing(true)}>
               Edit
             </Button>

@@ -10,6 +10,7 @@ import {
   updateChannel,
 } from "@/lib/api";
 import type { Channel } from "@/lib/types";
+import { mobileModal } from "@/lib/ui";
 import ChannelForm from "../ChannelForm";
 
 export default function ChannelsSection({ profileId }: { profileId: string }) {
@@ -83,7 +84,7 @@ export default function ChannelsSection({ profileId }: { profileId: string }) {
 
   return (
     <section style={{ marginTop: 40 }}>
-      <Flex justify="space-between" align="center">
+      <Flex justify="space-between" align="center" wrap gap={12}>
         <Typography.Title level={4} style={{ margin: 0 }}>
           Channels
         </Typography.Title>
@@ -99,6 +100,7 @@ export default function ChannelsSection({ profileId }: { profileId: string }) {
         loading={loading}
         pagination={false}
         style={{ marginTop: 12 }}
+        scroll={{ x: "max-content" }}
         locale={{ emptyText: "No channels yet." }}
       />
 
@@ -108,6 +110,7 @@ export default function ChannelsSection({ profileId }: { profileId: string }) {
         onCancel={() => setCreating(false)}
         footer={null}
         destroyOnHidden
+        {...mobileModal}
       >
         <ChannelForm
           submitLabel="Create"
@@ -126,6 +129,7 @@ export default function ChannelsSection({ profileId }: { profileId: string }) {
         onCancel={() => setEditing(null)}
         footer={null}
         destroyOnHidden
+        {...mobileModal}
       >
         {editing && (
           <ChannelForm

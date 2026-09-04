@@ -6,6 +6,7 @@ import { App, Button, Modal, Table, Typography } from "antd";
 import type { TableColumnsType } from "antd";
 import { createProfile, listProfiles } from "@/lib/api";
 import { PROVIDER_OPTIONS, type Profile } from "@/lib/types";
+import { mobileModal } from "@/lib/ui";
 import ProfileForm from "./ProfileForm";
 
 const providerLabel = (v: string) =>
@@ -86,6 +87,7 @@ export default function ProfilesPage() {
         dataSource={profiles}
         loading={loading}
         pagination={false}
+        scroll={{ x: "max-content" }}
         locale={{ emptyText: "No profiles yet. Create the first one." }}
       />
 
@@ -95,6 +97,7 @@ export default function ProfilesPage() {
         onCancel={() => setCreating(false)}
         footer={null}
         destroyOnHidden
+        {...mobileModal}
       >
         <ProfileForm
           submitLabel="Create"

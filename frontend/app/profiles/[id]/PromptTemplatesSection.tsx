@@ -11,6 +11,7 @@ import {
   updatePromptTemplate,
 } from "@/lib/api";
 import type { PromptTemplate } from "@/lib/types";
+import { mobileModal } from "@/lib/ui";
 import PromptTemplateForm from "../PromptTemplateForm";
 
 export default function PromptTemplatesSection({
@@ -117,7 +118,7 @@ export default function PromptTemplatesSection({
 
   return (
     <section style={{ marginTop: 40 }}>
-      <Flex justify="space-between" align="center">
+      <Flex justify="space-between" align="center" wrap gap={12}>
         <Typography.Title level={4} style={{ margin: 0 }}>
           Prompt templates
         </Typography.Title>
@@ -133,12 +134,14 @@ export default function PromptTemplatesSection({
         loading={loading}
         pagination={false}
         style={{ marginTop: 12 }}
+        scroll={{ x: "max-content" }}
         expandable={{
           expandedRowRender: (row) => (
             <pre
               style={{
                 margin: 0,
                 whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
                 fontFamily: "inherit",
               }}
             >
@@ -156,6 +159,7 @@ export default function PromptTemplatesSection({
         footer={null}
         width={640}
         destroyOnHidden
+        {...mobileModal}
       >
         <PromptTemplateForm
           submitLabel="Create"
@@ -175,6 +179,7 @@ export default function PromptTemplatesSection({
         footer={null}
         width={640}
         destroyOnHidden
+        {...mobileModal}
       >
         {editing && (
           <PromptTemplateForm
