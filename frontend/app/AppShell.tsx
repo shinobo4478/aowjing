@@ -16,14 +16,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           position: "sticky",
           top: 0,
           zIndex: 10,
-          paddingInline: 24,
+          paddingInline: "clamp(12px, 4vw, 24px)",
           borderBottom: "1px solid #ececec",
           boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
         }}
       >
         <SiteHeader />
       </Layout.Header>
-      <Layout.Content style={{ padding: "32px 24px 72px" }}>
+      <Layout.Content
+        style={{ padding: "clamp(16px, 4vw, 32px) clamp(12px, 4vw, 24px) 64px" }}
+      >
         <div style={{ maxWidth: 900, margin: "0 auto" }}>{children}</div>
       </Layout.Content>
     </Layout>

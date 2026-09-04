@@ -135,7 +135,7 @@ export default function GenerationsSection({
         dataSource={generations}
         loading={loading}
         pagination={false}
-        scroll={{ x: 720 }}
+        scroll={{ x: "max-content" }}
         expandable={{
           expandedRowRender: (row) => (
             <div style={{ display: "grid", gap: 12 }}>
@@ -180,5 +180,6 @@ export default function GenerationsSection({
 const preStyle: React.CSSProperties = {
   margin: "4px 0 0",
   whiteSpace: "pre-wrap",
+  wordBreak: "break-word",
   fontFamily: "inherit",
 };
