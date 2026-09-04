@@ -19,9 +19,17 @@ $root     = $PSScriptRoot
 $backend  = Join-Path $root "backend"
 $frontend = Join-Path $root "frontend"
 
+# Run a docker command for its exit code only. `cmd /c` swallows stdout+stderr
+# at the shell level so Docker's harmless stderr warnings (e.g. "No blkio
+# throttle...") don't trip PowerShell's stop-on-native-stderr behaviour.
+function Invoke-DockerQuiet($argString) {
+    cmd /c "docker $argString >nul 2>nul"
+    return $LASTEXITCODE
+}
+
 if ($Down) {
     Push-Location $backend
-    docker compose down
+    cmd /c "docker compose down"
     Pop-Location
     return
 }
@@ -34,9 +42,8 @@ if (-not (Test-Path $go)) {
 }
 
 # --- docker running? ----------------------------------------------------
-docker info *> $null
-if ($LASTEXITCODE -ne 0) {
-    throw "Docker Desktop isn't running. Start it (wait for the green whale) and retry."
+if ((Invoke-DockerQuiet "info") -ne 0) {
+    throw "Docker Desktop isn't running (or its engine is still starting). Start it, wait for the green whale, and retry."
 }
 
 # --- .env ---------------------------------------------------------------
@@ -46,19 +53,15 @@ if (-not (Test-Path $envFile)) {
     Write-Host "Created backend/.env from .env.example"
 }
 
-# --- Postgres + Redis --------------------------------------------------
+# --- Postgres + Redis (compose --wait blocks until healthy) -----------
 Write-Host "Starting Postgres + Redis..."
 Push-Location $backend
-docker compose up -d
-if ($LASTEXITCODE -ne 0) { Pop-Location; throw "docker compose up failed." }
-
-foreach ($svc in "backend-db-1", "backend-redis-1") {
-    for ($i = 0; $i -lt 30; $i++) {
-        if ((docker inspect -f '{{.State.Health.Status}}' $svc 2>$null) -eq "healthy") { break }
-        Start-Sleep -Seconds 2
-    }
-}
+cmd /c "docker compose up -d --wait"
+$composeExit = $LASTEXITCODE
 Pop-Location
+if ($composeExit -ne 0) {
+    throw "docker compose up failed (exit $composeExit)."
+}
 
 # --- app processes, each in its own window ----------------------------
 function Start-DevWindow($title, $dir, $command) {
