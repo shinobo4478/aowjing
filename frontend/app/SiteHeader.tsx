@@ -56,7 +56,7 @@ export default function SiteHeader() {
         {brand}
         <Menu
           mode="horizontal"
-          theme="light"
+          theme="dark"
           selectedKeys={selected}
           items={menuItems}
           style={{
