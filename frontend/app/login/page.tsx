@@ -2,9 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Alert, Button, Card, Form, Input, Typography, theme } from "antd";
+import { Alert, Button, Card, Divider, Form, Input, Typography, theme } from "antd";
 import { ApiError } from "@/lib/api";
 import { login } from "@/lib/auth";
+import {
+  DEV_LOGIN_ENABLED,
+  DEV_LOGIN_PASSWORD,
+  DEV_LOGIN_USERNAME,
+} from "@/lib/devLogin";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,7 +17,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  async function onFinish(values: { username: string; password: string }) {
+  async function signIn(values: { username: string; password: string }) {
     setBusy(true);
     setError(null);
     try {
@@ -62,7 +67,7 @@ export default function LoginPage() {
             Sign in
           </Typography.Title>
 
-          <Form layout="vertical" onFinish={onFinish} requiredMark={false}>
+          <Form layout="vertical" onFinish={signIn} requiredMark={false}>
             {error && (
               <Form.Item>
                 <Alert type="error" showIcon title={error} />
@@ -91,6 +96,26 @@ export default function LoginPage() {
               </Button>
             </Form.Item>
           </Form>
+
+          {DEV_LOGIN_ENABLED && (
+            <>
+              <Divider plain style={{ marginBlock: 16, fontSize: 12 }}>
+                dev only
+              </Divider>
+              <Button
+                block
+                loading={busy}
+                onClick={() =>
+                  signIn({
+                    username: DEV_LOGIN_USERNAME,
+                    password: DEV_LOGIN_PASSWORD,
+                  })
+                }
+              >
+                Log in as admin
+              </Button>
+            </>
+          )}
         </Card>
       </div>
     </div>
