@@ -36,7 +36,7 @@ export default function LoginPage() {
         minHeight: "100vh",
         padding: 16,
         background:
-          "radial-gradient(1100px 600px at 50% -10%, #e8ebfd 0%, #f6f7f9 55%)",
+          "radial-gradient(1100px 600px at 50% -12%, #14141f 0%, #000000 58%)",
       }}
     >
       <div style={{ width: "100%", maxWidth: 360 }}>
@@ -52,7 +52,12 @@ export default function LoginPage() {
           </Typography.Text>
         </div>
 
-        <Card style={{ boxShadow: "0 8px 30px rgba(15, 23, 42, 0.08)" }}>
+        <Card
+          style={{
+            boxShadow: "0 12px 40px rgba(0, 0, 0, 0.6)",
+            border: "1px solid rgba(255, 255, 255, 0.08)",
+          }}
+        >
           <Typography.Title level={5} style={{ marginTop: 0 }}>
             Sign in
           </Typography.Title>

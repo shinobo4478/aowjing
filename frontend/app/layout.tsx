@@ -12,6 +12,11 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  // OLED-first dark UI. `colorScheme` tells the UA to render native controls,
+  // form widgets and scrollbars dark; `themeColor` paints the mobile browser
+  // chrome true black so it blends into the app.
+  colorScheme: "dark",
+  themeColor: "#000000",
 };
 
 export default function RootLayout({

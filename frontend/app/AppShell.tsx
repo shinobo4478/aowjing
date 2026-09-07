@@ -17,8 +17,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           top: 0,
           zIndex: 10,
           paddingInline: "clamp(12px, 4vw, 24px)",
-          borderBottom: "1px solid #ececec",
-          boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+          borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
+          boxShadow: "0 1px 0 rgba(255, 255, 255, 0.03), 0 4px 16px rgba(0, 0, 0, 0.6)",
         }}
       >
         <SiteHeader />
