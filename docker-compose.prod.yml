@@ -1,0 +1,102 @@
+# Production stack — one host, one command.
+#
+#   cp .env.prod.example .env.prod   # then fill it in
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+#
+# Caddy terminates HTTPS on 80/443 and is the only thing exposed to the
+# internet. Everything else talks over the private compose network.
+#
+# See DEPLOY.md for the full walkthrough.
+
+name: acmp
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Runs once, only when the volume is first created. Schema changes to a
+      # live DB are hand-run ALTERs — see DEPLOY.md.
+      - ./backend/db/schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # No persistence: a lost job just means re-triggering the generation.
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    env_file: .env.prod
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable
+      REDIS_ADDR: redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    entrypoint: ["/usr/local/bin/worker"]
+    env_file: .env.prod
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable
+      REDIS_ADDR: redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        # Relative — the browser hits /api on the same origin, Caddy routes it
+        # to the api service. Change the domain without rebuilding the frontend.
+        NEXT_PUBLIC_API_BASE_URL: /api
+        NEXT_PUBLIC_DEV_LOGIN: "0"
+    restart: unless-stopped
+    depends_on:
+      - api
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+      - api
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
