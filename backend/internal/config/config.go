@@ -65,6 +65,24 @@ type Config struct {
 	// CORSOrigin is the single browser origin allowed to call the API with
 	// credentials (the frontend dev server by default).
 	CORSOrigin string
+
+	// YouTube OAuth client, for connecting a channel and publishing videos
+	// (Phase 2 item 3). All three are optional — when any is empty the
+	// YouTube routes report the feature as unconfigured instead of failing
+	// to start.
+	YouTubeClientID     string
+	YouTubeClientSecret string
+	// YouTubeRedirectURL must exactly match an "Authorized redirect URI" on
+	// the Google Cloud OAuth client (e.g.
+	// http://localhost:8080/youtube/oauth/callback for local dev).
+	YouTubeRedirectURL string
+}
+
+// YouTubeConfigured reports whether the OAuth client is fully set.
+func (c Config) YouTubeConfigured() bool {
+	return c.YouTubeClientID != "" &&
+		c.YouTubeClientSecret != "" &&
+		c.YouTubeRedirectURL != ""
 }
 
 // Load reads configuration from the environment. It returns an error if a
@@ -80,6 +98,10 @@ func Load() (Config, error) {
 		CORSOrigin:    getenv("CORS_ORIGIN", "http://localhost:3000"),
 		FalModel:      getenv("FAL_MODEL", "fal-ai/kling-video/v3/standard/text-to-video"),
 		FakeFal:       getenvBool("AI_FAKE_FAL", false),
+
+		YouTubeClientID:     os.Getenv("YOUTUBE_CLIENT_ID"),
+		YouTubeClientSecret: os.Getenv("YOUTUBE_CLIENT_SECRET"),
+		YouTubeRedirectURL:  os.Getenv("YOUTUBE_REDIRECT_URL"),
 	}
 
 	if cfg.DatabaseURL == "" {
