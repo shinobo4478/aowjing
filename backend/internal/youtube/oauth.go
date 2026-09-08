@@ -15,6 +15,7 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/shinobo4478/aowjing/backend/internal/config"
+	"github.com/shinobo4478/aowjing/backend/internal/database/sqlc"
 )
 
 // Google's OAuth endpoints, inlined so we don't pull in golang.org/x/oauth2/google
@@ -94,6 +95,20 @@ func verifyState(secret, state string) (channelID string, ok bool) {
 		return "", false
 	}
 	return cid, true
+}
+
+// --- Tokens for API calls -------------------------------------------
+
+// freshToken turns the stored token into a valid one, refreshing via the
+// refresh token if the access token has expired. The caller compares the
+// result's AccessToken with what was stored and persists it if it changed.
+func freshToken(ctx context.Context, cfg config.Config, acct sqlc.YoutubeAccount) (*oauth2.Token, error) {
+	stored := &oauth2.Token{
+		AccessToken:  acct.AccessToken,
+		RefreshToken: acct.RefreshToken,
+		Expiry:       acct.TokenExpiry.Time,
+	}
+	return oauthConfig(cfg).TokenSource(ctx, stored).Token()
 }
 
 // --- YouTube identity --------------------------------------------------

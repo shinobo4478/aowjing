@@ -76,3 +76,13 @@ type YoutubeAccount struct {
 	ConnectedAt      pgtype.Timestamptz `json:"connected_at"`
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
 }
+
+type YoutubeUpload struct {
+	ID             pgtype.UUID        `json:"id"`
+	GenerationID   pgtype.UUID        `json:"generation_id"`
+	ChannelID      pgtype.UUID        `json:"channel_id"`
+	YoutubeVideoID string             `json:"youtube_video_id"`
+	Privacy        string             `json:"privacy"`
+	Title          string             `json:"title"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
