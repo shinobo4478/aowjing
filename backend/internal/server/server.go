@@ -17,6 +17,7 @@ import (
 	"github.com/shinobo4478/aowjing/backend/internal/prompttemplates"
 	"github.com/shinobo4478/aowjing/backend/internal/queue"
 	"github.com/shinobo4478/aowjing/backend/internal/settings"
+	"github.com/shinobo4478/aowjing/backend/internal/youtube"
 )
 
 // Server holds the shared dependencies handlers need.
@@ -51,6 +52,9 @@ func New(db *pgxpool.Pool, cfg config.Config, q *queue.Client) http.Handler {
 
 		// POST only enqueues; cmd/worker runs the generation.
 		r.Mount("/generations", generations.NewHandler(queries, q).Routes())
+
+		// OAuth connect + (later) publish for one platform: YouTube.
+		r.Mount("/youtube", youtube.NewHandler(queries, cfg).Routes())
 	})
 
 	return r

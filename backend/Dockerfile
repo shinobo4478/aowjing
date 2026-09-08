@@ -2,7 +2,7 @@
 # shared module. The two compose services run the same image with a
 # different entrypoint.
 
-FROM golang:1.24-alpine AS build
+FROM golang:1.25-alpine AS build
 WORKDIR /src
 
 # Cache deps: only re-download when go.mod/go.sum change.
