@@ -32,12 +32,37 @@ func NewHandler(q *sqlc.Queries, cfg config.Config) *Handler {
 func (h *Handler) Routes() http.Handler {
 	r := chi.NewRouter()
 	r.Get("/status", h.status)
+	r.Get("/accounts", h.listAccounts)
 	r.Get("/oauth/start", h.start)
 	r.Get("/oauth/callback", h.callback)
 	r.Delete("/accounts/{channelId}", h.disconnect)
 	r.Get("/uploads", h.listUploads)
 	r.Post("/publish", h.publish)
 	return r
+}
+
+// listAccounts returns every connected YouTube account under a profile, so the
+// channels table can show connection state in one request instead of one per
+// row.
+func (h *Handler) listAccounts(w http.ResponseWriter, r *http.Request) {
+	profileID, err := pgconv.ParseUUID(r.URL.Query().Get("profileId"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "A valid profileId query parameter is required.")
+		return
+	}
+	rows, err := h.q.ListYouTubeAccountsByProfile(r.Context(), profileID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to list YouTube accounts.")
+		return
+	}
+	out := make([]accountDTO, len(rows))
+	for i, a := range rows {
+		out[i] = toAccountDTO(a)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"configured": h.cfg.YouTubeConfigured(),
+		"accounts":   out,
+	})
 }
 
 // status tells the frontend whether the server has a YouTube client at all

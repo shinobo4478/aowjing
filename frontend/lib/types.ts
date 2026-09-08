@@ -96,3 +96,37 @@ export interface Settings {
   /** fal.ai API key, used by FalVideoGenerator. */
   falApiKey: string;
 }
+
+// --- YouTube (Phase 2 item 3) ---
+
+export type YouTubePrivacy = "private" | "unlisted" | "public";
+
+/** A channel's YouTube connection, as returned by /youtube/accounts + /status. */
+export interface YouTubeAccount {
+  channelId: string;
+  /** The connected YouTube channel's own id and display name. */
+  youtubeChannelId: string;
+  youtubeTitle: string;
+  connectedAt: string; // ISO 8601
+  updatedAt: string; // ISO 8601
+}
+
+export interface YouTubeStatus {
+  /** The server has an OAuth client configured at all. */
+  configured: boolean;
+  connected: boolean;
+  account?: YouTubeAccount;
+}
+
+/** One publish of a video generation to a connected channel. */
+export interface YouTubeUpload {
+  id: string;
+  generationId: string;
+  channelId: string;
+  youtubeVideoId: string;
+  /** https://www.youtube.com/watch?v=... */
+  url: string;
+  privacy: YouTubePrivacy;
+  title: string;
+  createdAt: string; // ISO 8601
+}

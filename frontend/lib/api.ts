@@ -13,6 +13,10 @@ import type {
   PromptTemplate,
   PromptTemplateInput,
   Settings,
+  YouTubeAccount,
+  YouTubePrivacy,
+  YouTubeStatus,
+  YouTubeUpload,
 } from "./types";
 
 export const API_BASE =
@@ -195,4 +199,50 @@ export function updateSettings(partial: Partial<Settings>) {
     method: "PUT",
     body: JSON.stringify(partial),
   }).then((r) => r.settings);
+}
+
+// --- YouTube (connect a channel, publish a video generation) ---
+
+/** Connection state for a single channel. */
+export function getYouTubeStatus(channelId: string) {
+  return request<YouTubeStatus>(
+    `/youtube/status?channelId=${encodeURIComponent(channelId)}`,
+  );
+}
+
+/** Every connected account under a profile, plus whether the server has an
+ *  OAuth client at all — one request for the whole channels table. */
+export function listYouTubeAccounts(profileId: string) {
+  return request<{ configured: boolean; accounts: YouTubeAccount[] }>(
+    `/youtube/accounts?profileId=${encodeURIComponent(profileId)}`,
+  );
+}
+
+/** URL for the OAuth handshake. Assign it to window.location — the callback
+ *  needs a top-level navigation, not a fetch. */
+export function youtubeConnectUrl(channelId: string) {
+  return `${API_BASE}/youtube/oauth/start?channelId=${encodeURIComponent(channelId)}`;
+}
+
+export function disconnectYouTube(channelId: string) {
+  return request<void>(`/youtube/accounts/${channelId}`, { method: "DELETE" });
+}
+
+export function listYouTubeUploads(profileId: string) {
+  return request<{ uploads: YouTubeUpload[] }>(
+    `/youtube/uploads?profileId=${encodeURIComponent(profileId)}`,
+  ).then((r) => r.uploads);
+}
+
+export function publishToYouTube(input: {
+  generationId: string;
+  channelId: string;
+  title: string;
+  description: string;
+  privacy: YouTubePrivacy;
+}) {
+  return request<{ upload?: YouTubeUpload; videoId?: string; url?: string }>(
+    "/youtube/publish",
+    { method: "POST", body: JSON.stringify(input) },
+  );
 }

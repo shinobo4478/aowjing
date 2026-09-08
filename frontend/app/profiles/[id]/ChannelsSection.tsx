@@ -1,24 +1,60 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { App, Button, Flex, Modal, Popconfirm, Space, Table, Typography } from "antd";
+import { useCallback, useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import {
+  App,
+  Button,
+  Flex,
+  Modal,
+  Popconfirm,
+  Space,
+  Table,
+  Tag,
+  Typography,
+} from "antd";
 import type { TableColumnsType } from "antd";
 import {
   createChannel,
   deleteChannel,
+  disconnectYouTube,
   listChannels,
+  listYouTubeAccounts,
   updateChannel,
+  youtubeConnectUrl,
 } from "@/lib/api";
-import type { Channel } from "@/lib/types";
+import type { Channel, YouTubeAccount } from "@/lib/types";
 import { mobileModal } from "@/lib/ui";
 import ChannelForm from "../ChannelForm";
 
 export default function ChannelsSection({ profileId }: { profileId: string }) {
   const { message } = App.useApp();
+  const router = useRouter();
+  const pathname = usePathname();
+  const search = useSearchParams();
   const [channels, setChannels] = useState<Channel[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Channel | null>(null);
+
+  // YouTube connection state, one fetch for the whole table.
+  const [ytConfigured, setYtConfigured] = useState(false);
+  const [ytByChannel, setYtByChannel] = useState<Record<string, YouTubeAccount>>(
+    {},
+  );
+
+  const loadYouTube = useCallback(() => {
+    listYouTubeAccounts(profileId)
+      .then(({ configured, accounts }) => {
+        setYtConfigured(configured);
+        setYtByChannel(
+          Object.fromEntries(accounts.map((a) => [a.channelId, a])),
+        );
+      })
+      .catch(() => {
+        /* non-fatal — the column just won't show */
+      });
+  }, [profileId]);
 
   useEffect(() => {
     listChannels(profileId)
@@ -29,7 +65,23 @@ export default function ChannelsSection({ profileId }: { profileId: string }) {
         ),
       )
       .finally(() => setLoading(false));
-  }, [profileId, message]);
+    loadYouTube();
+  }, [profileId, message, loadYouTube]);
+
+  // The OAuth callback lands back here with ?yt=connected | ?yt=error&reason=…
+  useEffect(() => {
+    const yt = search.get("yt");
+    if (!yt) return;
+    if (yt === "connected") {
+      message.success("YouTube channel connected.");
+      loadYouTube();
+    } else {
+      message.error(
+        `YouTube connection failed (${search.get("reason") ?? "unknown"}).`,
+      );
+    }
+    router.replace(pathname);
+  }, [search, pathname, router, message, loadYouTube]);
 
   async function reload() {
     setLoading(true);
@@ -54,10 +106,63 @@ export default function ChannelsSection({ profileId }: { profileId: string }) {
     }
   }
 
+  async function handleDisconnect(channelId: string) {
+    try {
+      await disconnectYouTube(channelId);
+      message.success("YouTube disconnected.");
+      loadYouTube();
+    } catch (err) {
+      message.error(
+        err instanceof Error ? err.message : "Failed to disconnect.",
+      );
+    }
+  }
+
   const columns: TableColumnsType<Channel> = [
     { title: "Name", dataIndex: "name" },
     { title: "Platform", dataIndex: "platform" },
     { title: "Handle", dataIndex: "handle" },
+    ...(ytConfigured
+      ? ([
+          {
+            title: "YouTube",
+            key: "youtube",
+            width: 220,
+            render: (_, row) => {
+              const acct = ytByChannel[row.id];
+              if (acct) {
+                return (
+                  <Space size="small" wrap>
+                    <Tag color="red" style={{ marginInlineEnd: 0 }}>
+                      ▶ {acct.youtubeTitle || "connected"}
+                    </Tag>
+                    <Popconfirm
+                      title="Disconnect this YouTube account?"
+                      okText="Disconnect"
+                      okButtonProps={{ danger: true }}
+                      onConfirm={() => handleDisconnect(row.id)}
+                    >
+                      <Button size="small" type="text">
+                        Disconnect
+                      </Button>
+                    </Popconfirm>
+                  </Space>
+                );
+              }
+              return (
+                <Button
+                  size="small"
+                  onClick={() => {
+                    window.location.href = youtubeConnectUrl(row.id);
+                  }}
+                >
+                  Connect
+                </Button>
+              );
+            },
+          },
+        ] as TableColumnsType<Channel>)
+      : []),
     {
       title: "",
       key: "actions",
