@@ -1,10 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { App, Button, Popconfirm, Table, Tag, Typography } from "antd";
 import type { TableColumnsType } from "antd";
-import { deleteGeneration, listGenerations } from "@/lib/api";
-import type { Generation } from "@/lib/types";
+import {
+  deleteGeneration,
+  listGenerations,
+  listYouTubeAccounts,
+  listYouTubeUploads,
+} from "@/lib/api";
+import type { Generation, YouTubeAccount, YouTubeUpload } from "@/lib/types";
+import PublishYouTubeModal from "./PublishYouTubeModal";
 
 const STATUS_COLOR: Record<Generation["status"], string> = {
   pending: "blue",
@@ -22,6 +28,23 @@ export default function GenerationsSection({
   const { message } = App.useApp();
   const [generations, setGenerations] = useState<Generation[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [ytAccounts, setYtAccounts] = useState<YouTubeAccount[]>([]);
+  const [uploads, setUploads] = useState<YouTubeUpload[]>([]);
+  const [publishing, setPublishing] = useState<Generation | null>(null);
+
+  const loadYouTube = useCallback(() => {
+    listYouTubeAccounts(profileId)
+      .then(({ accounts }) => setYtAccounts(accounts))
+      .catch(() => {
+        /* non-fatal */
+      });
+    listYouTubeUploads(profileId)
+      .then(setUploads)
+      .catch(() => {
+        /* non-fatal */
+      });
+  }, [profileId]);
 
   // Re-runs on mount and whenever refreshTick changes (a new generation).
   // `loading` starts true for the first paint; later refetches swap the rows in
@@ -41,10 +64,11 @@ export default function GenerationsSection({
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+    loadYouTube();
     return () => {
       cancelled = true;
     };
-  }, [profileId, refreshTick, message]);
+  }, [profileId, refreshTick, message, loadYouTube]);
 
   // While a generation is pending, poll for the worker to finish it. Stops
   // when nothing is pending or after ~1 minute.
@@ -73,6 +97,9 @@ export default function GenerationsSection({
       message.error(err instanceof Error ? err.message : "Failed to delete.");
     }
   }
+
+  const uploadsFor = (genId: string) =>
+    uploads.filter((u) => u.generationId === genId);
 
   const columns: TableColumnsType<Generation> = [
     {
@@ -168,10 +195,52 @@ export default function GenerationsSection({
                   </pre>
                 )}
               </div>
+
+              {row.status === "succeeded" && row.outputKind === "video" && (
+                <div style={{ display: "grid", gap: 6 }}>
+                  <Typography.Text type="secondary">YouTube</Typography.Text>
+                  {uploadsFor(row.id).map((u) => (
+                    <a
+                      key={u.id}
+                      href={u.url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      ▶ {u.title} — {u.privacy} ↗
+                    </a>
+                  ))}
+                  <div>
+                    <Button
+                      size="small"
+                      disabled={ytAccounts.length === 0}
+                      onClick={() => setPublishing(row)}
+                    >
+                      Publish to YouTube
+                    </Button>
+                    {ytAccounts.length === 0 && (
+                      <Typography.Text
+                        type="secondary"
+                        style={{ fontSize: 12, marginLeft: 8 }}
+                      >
+                        Connect a channel to YouTube first.
+                      </Typography.Text>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           ),
         }}
         locale={{ emptyText: "Nothing generated yet." }}
+      />
+
+      <PublishYouTubeModal
+        open={!!publishing}
+        onClose={() => setPublishing(null)}
+        onPublished={loadYouTube}
+        generationId={publishing?.id ?? null}
+        accounts={ytAccounts}
+        defaultTitle={publishing?.templateName ?? ""}
       />
     </section>
   );
