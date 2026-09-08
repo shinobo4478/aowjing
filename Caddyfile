@@ -1,0 +1,17 @@
+# Single site. Caddy gets a real certificate automatically when SITE_ADDRESS
+# is a domain (ports 80 + 443 must reach this host). For a quick LAN/IP test
+# set SITE_ADDRESS=:80 in .env.prod — plain HTTP, no cert.
+
+{$SITE_ADDRESS} {
+	encode gzip
+
+	# /api/* → backend, prefix stripped: /api/healthz → api:8080/healthz
+	handle_path /api/* {
+		reverse_proxy api:8080
+	}
+
+	# Everything else → the Next.js server.
+	handle {
+		reverse_proxy web:3000
+	}
+}

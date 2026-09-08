@@ -1,0 +1,8 @@
+# Secrets for the production compose stack — never commit.
+.env.prod
+.env.prod.*
+!.env.prod.example
+
+# Local env at the repo root, if any.
+.env
+.env.local
