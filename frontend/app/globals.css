@@ -1,15 +1,91 @@
-/* Minimal reset only. All screen styling comes from Ant Design. */
+/* Minimal reset + OLED dark-mode base. All component styling comes from
+   Ant Design (see app/providers.tsx); this file only sets the canvas the
+   antd theme sits on and a few things antd can't reach (scrollbars, native
+   overscroll, media assets). */
 html,
 body {
   margin: 0;
   padding: 0;
 }
 
+/* Tell the engine every default surface is dark — native form controls,
+   scrollbars and the overscroll gutter follow. */
+:root {
+  color-scheme: dark;
+}
+
 /* Primary UI font: Sukhumvit Set, self-hosted via next/font/local (app/fonts.ts).
    --font-sukhumvit already expands to the font + its size-adjusted fallback +
-   the platform Thai fallback stack. Background matches the antd colorBgLayout
-   token so there's no flash of white on overscroll. */
+   the platform Thai fallback stack. Background is true black to match the antd
+   colorBgLayout token, so there's no flash of a lighter colour on overscroll.
+   Default ink is a soft off-white — never pure #fff — for lower eye strain. */
 body {
   font-family: var(--font-sukhumvit);
-  background: #f6f7f9;
+  background: #000000;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+/* Ease surface and border colour changes so hover / selection / expand feel
+   like a gentle shift in depth rather than a flash. Kept to colour only —
+   layout and opacity are left to antd's own motion tokens. */
+.ant-card,
+.ant-table-cell,
+.ant-btn,
+.ant-menu-item,
+.ant-input,
+.ant-input-affix-wrapper,
+.ant-select-selector {
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+/* Whisper-subtle lift when the pointer is over a card. */
+.ant-card {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+.ant-card:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+/* Media assets: a faint frame + matching backdrop so a bright first frame or
+   a transparent PNG doesn't slam against true black. */
+img,
+video {
+  border-radius: 8px;
+}
+video {
+  background: #0d0d0f;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Scrollbars styled to read as intentional in the dark — used by the
+   horizontally-scrolling tables on small screens. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.24);
+  background-clip: content-box;
+}
+
+/* Selection uses the accent at low opacity — visible, not harsh. */
+::selection {
+  background: rgba(129, 140, 248, 0.3);
 }
