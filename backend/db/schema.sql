@@ -76,6 +76,25 @@ CREATE TABLE IF NOT EXISTS settings (
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- A YouTube connection for one channel (Phase 2 item 3). One row per channel
+-- (channel_id is the PK), created by the OAuth callback and refreshed as the
+-- access token expires. Tokens are stored as-is, same posture as the API key
+-- in `settings`. Removed with its channel.
+CREATE TABLE IF NOT EXISTS youtube_accounts (
+    channel_id         uuid        PRIMARY KEY REFERENCES channels (id) ON DELETE CASCADE,
+    -- The connected YouTube channel, for display ("Connected as ...").
+    youtube_channel_id text        NOT NULL DEFAULT '',
+    youtube_title      text        NOT NULL DEFAULT '',
+    access_token       text        NOT NULL,
+    -- Empty only if Google withheld it (it is returned on first consent with
+    -- access_type=offline; we force prompt=consent to always get one).
+    refresh_token      text        NOT NULL DEFAULT '',
+    token_expiry       timestamptz NOT NULL,
+    scope              text        NOT NULL DEFAULT '',
+    connected_at       timestamptz NOT NULL DEFAULT now(),
+    updated_at         timestamptz NOT NULL DEFAULT now()
+);
+
 -- Login sessions for the single admin user. We store only a SHA-256 hash of
 -- the session token, so a leak of this table does not expose live sessions.
 CREATE TABLE IF NOT EXISTS sessions (

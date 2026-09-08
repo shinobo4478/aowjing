@@ -64,3 +64,15 @@ type Setting struct {
 	Value     string             `json:"value"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
+
+type YoutubeAccount struct {
+	ChannelID        pgtype.UUID        `json:"channel_id"`
+	YoutubeChannelID string             `json:"youtube_channel_id"`
+	YoutubeTitle     string             `json:"youtube_title"`
+	AccessToken      string             `json:"access_token"`
+	RefreshToken     string             `json:"refresh_token"`
+	TokenExpiry      pgtype.Timestamptz `json:"token_expiry"`
+	Scope            string             `json:"scope"`
+	ConnectedAt      pgtype.Timestamptz `json:"connected_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+}
