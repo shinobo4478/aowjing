@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { App, Button, Modal, Table, Typography } from "antd";
+import { App, Button, Empty, Modal, Table, Typography } from "antd";
 import type { TableColumnsType } from "antd";
 import { createProfile, listProfiles } from "@/lib/api";
 import { PROVIDER_OPTIONS, type Profile } from "@/lib/types";
@@ -88,7 +88,18 @@ export default function ProfilesPage() {
         loading={loading}
         pagination={false}
         scroll={{ x: "max-content" }}
-        locale={{ emptyText: "No profiles yet. Create the first one." }}
+        locale={{
+          emptyText: (
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description="No profiles yet — a profile is one channel persona."
+            >
+              <Button type="primary" onClick={() => setCreating(true)}>
+                Create your first profile
+              </Button>
+            </Empty>
+          ),
+        }}
       />
 
       <Modal

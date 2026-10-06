@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { App, Button, Flex, Modal, Popconfirm, Space, Table, Typography } from "antd";
+import { App, Button, Empty, Flex, Modal, Popconfirm, Space, Table } from "antd";
 import type { TableColumnsType } from "antd";
 import {
   createPromptTemplate,
@@ -117,11 +117,8 @@ export default function PromptTemplatesSection({
   ];
 
   return (
-    <section style={{ marginTop: 40 }}>
-      <Flex justify="space-between" align="center" wrap gap={12}>
-        <Typography.Title level={4} style={{ margin: 0 }}>
-          Prompt templates
-        </Typography.Title>
+    <section>
+      <Flex justify="end">
         <Button type="primary" size="small" onClick={() => setCreating(true)}>
           New template
         </Button>
@@ -149,7 +146,18 @@ export default function PromptTemplatesSection({
             </pre>
           ),
         }}
-        locale={{ emptyText: "No prompt templates yet." }}
+        locale={{
+          emptyText: (
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description="No prompt templates yet — write one, then hit Generate."
+            >
+              <Button type="primary" onClick={() => setCreating(true)}>
+                New template
+              </Button>
+            </Empty>
+          ),
+        }}
       />
 
       <Modal
