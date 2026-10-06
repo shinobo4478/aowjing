@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { App, Button, Popconfirm, Table, Tag, Typography } from "antd";
+import { App, Button, Empty, Popconfirm, Space, Table, Tag, Typography } from "antd";
 import type { TableColumnsType } from "antd";
 import {
   deleteGeneration,
@@ -88,6 +88,15 @@ export default function GenerationsSection({
     return () => clearInterval(iv);
   }, [hasPending, profileId]);
 
+  async function copyOutput(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      message.success("Copied.");
+    } catch {
+      message.error("Couldn't copy — your browser blocked clipboard access.");
+    }
+  }
+
   async function handleDelete(id: string) {
     try {
       await deleteGeneration(id);
@@ -148,11 +157,8 @@ export default function GenerationsSection({
   ];
 
   return (
-    <section style={{ marginTop: 40 }}>
-      <Typography.Title level={4} style={{ marginTop: 0 }}>
-        Generations
-      </Typography.Title>
-      <Typography.Paragraph type="secondary" style={{ marginTop: -8 }}>
+    <section>
+      <Typography.Paragraph type="secondary" style={{ marginTop: 0 }}>
         History of running a prompt template through the AI provider.
       </Typography.Paragraph>
 
@@ -171,9 +177,20 @@ export default function GenerationsSection({
                 <pre style={preStyle}>{row.inputPrompt}</pre>
               </div>
               <div>
-                <Typography.Text type="secondary">
-                  {row.status === "failed" ? "Error" : "Output"}
-                </Typography.Text>
+                <Space align="center">
+                  <Typography.Text type="secondary">
+                    {row.status === "failed" ? "Error" : "Output"}
+                  </Typography.Text>
+                  {row.status === "succeeded" && row.outputKind === "text" && (
+                    <Button
+                      size="small"
+                      type="text"
+                      onClick={() => copyOutput(row.output)}
+                    >
+                      Copy
+                    </Button>
+                  )}
+                </Space>
                 {row.status === "succeeded" && row.outputKind === "video" ? (
                   <div style={{ marginTop: 4 }}>
                     <video
@@ -231,7 +248,14 @@ export default function GenerationsSection({
             </div>
           ),
         }}
-        locale={{ emptyText: "Nothing generated yet." }}
+        locale={{
+          emptyText: (
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description="Nothing generated yet — run a prompt template to see it here."
+            />
+          ),
+        }}
       />
 
       <PublishYouTubeModal
