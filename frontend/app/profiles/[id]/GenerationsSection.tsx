@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { App, Button, Empty, Popconfirm, Space, Table, Tag, Typography } from "antd";
+import { App, Button, Empty, Popconfirm, Space, Table, Typography } from "antd";
 import type { TableColumnsType } from "antd";
 import {
   deleteGeneration,
@@ -9,14 +9,10 @@ import {
   listYouTubeAccounts,
   listYouTubeUploads,
 } from "@/lib/api";
+import Tally from "@/components/Tally";
+import { formatDateTime } from "@/lib/format";
 import type { Generation, YouTubeAccount, YouTubeUpload } from "@/lib/types";
 import PublishYouTubeModal from "./PublishYouTubeModal";
-
-const STATUS_COLOR: Record<Generation["status"], string> = {
-  pending: "blue",
-  succeeded: "green",
-  failed: "red",
-};
 
 export default function GenerationsSection({
   profileId,
@@ -125,16 +121,16 @@ export default function GenerationsSection({
     {
       title: "Status",
       dataIndex: "status",
-      width: 110,
+      width: 130,
       render: (v: Generation["status"]) => (
-        <Tag color={STATUS_COLOR[v]}>{v}</Tag>
+        <Tally status={v} />
       ),
     },
     {
       title: "Created",
       dataIndex: "createdAt",
       width: 180,
-      render: (v: string) => new Date(v).toLocaleString(),
+      render: (v: string) => formatDateTime(v),
     },
     {
       title: "",
@@ -252,7 +248,7 @@ export default function GenerationsSection({
           emptyText: (
             <Empty
               image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description="Nothing generated yet — run a prompt template to see it here."
+              description="Nothing generated yet. Run a prompt template and the result will appear here."
             />
           ),
         }}

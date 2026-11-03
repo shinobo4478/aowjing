@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { App, Button, Empty, Flex, Modal, Popconfirm, Space, Table, Tag } from "antd";
+import { App, Button, Empty, Flex, Modal, Popconfirm, Space, Table } from "antd";
 import type { TableColumnsType } from "antd";
 import {
   createChannel,
@@ -13,6 +13,7 @@ import {
   updateChannel,
   youtubeConnectUrl,
 } from "@/lib/api";
+import { STATUS } from "@/lib/tape";
 import type { Channel, YouTubeAccount } from "@/lib/types";
 import { mobileModal } from "@/lib/ui";
 import ChannelForm from "../ChannelForm";
@@ -125,9 +126,14 @@ export default function ChannelsSection({ profileId }: { profileId: string }) {
               if (acct) {
                 return (
                   <Space size="small" wrap>
-                    <Tag color="red" style={{ marginInlineEnd: 0 }}>
-                      ▶ {acct.youtubeTitle || "connected"}
-                    </Tag>
+                    <span className="acmp-tally">
+                      <span
+                        aria-hidden
+                        className="acmp-tally-dot"
+                        style={{ background: STATUS.succeeded }}
+                      />
+                      {acct.youtubeTitle || "Connected"}
+                    </span>
                     <Popconfirm
                       title="Disconnect this YouTube account?"
                       okText="Disconnect"
@@ -182,9 +188,7 @@ export default function ChannelsSection({ profileId }: { profileId: string }) {
   return (
     <section>
       <Flex justify="end">
-        <Button type="primary" size="small" onClick={() => setCreating(true)}>
-          New channel
-        </Button>
+        <Button onClick={() => setCreating(true)}>New channel</Button>
       </Flex>
 
       <Table<Channel>
@@ -199,7 +203,7 @@ export default function ChannelsSection({ profileId }: { profileId: string }) {
           emptyText: (
             <Empty
               image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description="No channels yet — add where this profile's content goes out."
+              description="No channels yet. A channel is where this profile's videos get published."
             >
               <Button type="primary" onClick={() => setCreating(true)}>
                 New channel

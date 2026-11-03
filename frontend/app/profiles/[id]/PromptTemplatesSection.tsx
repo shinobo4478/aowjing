@@ -10,6 +10,7 @@ import {
   runGeneration,
   updatePromptTemplate,
 } from "@/lib/api";
+import { formatDateTime } from "@/lib/format";
 import type { PromptTemplate } from "@/lib/types";
 import { mobileModal } from "@/lib/ui";
 import PromptTemplateForm from "../PromptTemplateForm";
@@ -82,7 +83,7 @@ export default function PromptTemplatesSection({
       title: "Updated",
       dataIndex: "updatedAt",
       width: 190,
-      render: (v: string) => new Date(v).toLocaleString(),
+      render: (v: string) => formatDateTime(v),
     },
     {
       title: "",
@@ -119,9 +120,7 @@ export default function PromptTemplatesSection({
   return (
     <section>
       <Flex justify="end">
-        <Button type="primary" size="small" onClick={() => setCreating(true)}>
-          New template
-        </Button>
+        <Button onClick={() => setCreating(true)}>New template</Button>
       </Flex>
 
       <Table<PromptTemplate>
@@ -150,7 +149,7 @@ export default function PromptTemplatesSection({
           emptyText: (
             <Empty
               image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description="No prompt templates yet — write one, then hit Generate."
+              description="No prompt templates yet. Write one, then press Generate to run it."
             >
               <Button type="primary" onClick={() => setCreating(true)}>
                 New template
