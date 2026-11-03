@@ -135,6 +135,20 @@ CREATE UNIQUE INDEX IF NOT EXISTS products_shopee_ids_idx
     ON products (shopee_shop_id, shopee_item_id)
     WHERE shopee_shop_id IS NOT NULL AND shopee_item_id IS NOT NULL;
 
+-- Products pinned to a clip (a generation) — at most two. `position` (1 or 2)
+-- is the pin order and, with the primary key, is what enforces the cap in the
+-- database: a third product has no free position. A product that is pinned
+-- somewhere can't be deleted (RESTRICT); a deleted clip just drops its pins.
+CREATE TABLE IF NOT EXISTS generation_products (
+    generation_id uuid     NOT NULL REFERENCES generations (id) ON DELETE CASCADE,
+    product_id    uuid     NOT NULL REFERENCES products (id) ON DELETE RESTRICT,
+    position      smallint NOT NULL CHECK (position BETWEEN 1 AND 2),
+    PRIMARY KEY (generation_id, position),
+    UNIQUE (generation_id, product_id)
+);
+
+CREATE INDEX IF NOT EXISTS generation_products_product_id_idx ON generation_products (product_id);
+
 -- Login sessions for the single admin user. We store only a SHA-256 hash of
 -- the session token, so a leak of this table does not expose live sessions.
 CREATE TABLE IF NOT EXISTS sessions (
