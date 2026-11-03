@@ -10,6 +10,7 @@ import { useAuth } from "./AuthGate";
 
 const links = [
   { key: "/profiles", label: "Profiles" },
+  { key: "/products", label: "Products" },
   { key: "/settings", label: "Settings" },
 ];
 

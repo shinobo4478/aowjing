@@ -8,6 +8,8 @@ import type {
   Channel,
   ChannelInput,
   Generation,
+  Product,
+  ProductInput,
   Profile,
   ProfileInput,
   PromptTemplate,
@@ -245,4 +247,32 @@ export function publishToYouTube(input: {
     "/youtube/publish",
     { method: "POST", body: JSON.stringify(input) },
   );
+}
+
+// --- Products (central Shopee catalog) ---
+
+export function listProducts(q = "") {
+  const term = q.trim();
+  const qs = term ? `?q=${encodeURIComponent(term)}` : "";
+  return request<{ products: Product[] }>(`/products${qs}`).then(
+    (r) => r.products,
+  );
+}
+
+export function createProduct(input: ProductInput) {
+  return request<{ product: Product }>("/products", {
+    method: "POST",
+    body: JSON.stringify(input),
+  }).then((r) => r.product);
+}
+
+export function updateProduct(id: string, input: ProductInput) {
+  return request<{ product: Product }>(`/products/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  }).then((r) => r.product);
+}
+
+export function deleteProduct(id: string) {
+  return request<void>(`/products/${id}`, { method: "DELETE" });
 }

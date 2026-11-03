@@ -134,3 +134,28 @@ export interface YouTubeUpload {
   title: string;
   createdAt: string; // ISO 8601
 }
+
+// --- Products (Phase 3: Shopee baskets) ---
+
+/** A Shopee product in the central catalog — shared by every profile. */
+export interface Product {
+  id: string;
+  name: string;
+  /** Canonical Shopee product page (query string stripped). */
+  shopeeUrl: string;
+  /** False for short links: their product id can't be read without a redirect. */
+  idsKnown: boolean;
+  /** The owner's own tracked affiliate link; "" until they have one. */
+  affiliateUrl: string;
+  /** Whole baht; 0 means not set. */
+  priceThb: number;
+  note: string;
+  createdAt: string; // ISO 8601
+  updatedAt: string; // ISO 8601
+}
+
+/** Fields the client sends when creating or editing a Product. */
+export type ProductInput = Pick<
+  Product,
+  "name" | "shopeeUrl" | "affiliateUrl" | "priceThb" | "note"
+>;
