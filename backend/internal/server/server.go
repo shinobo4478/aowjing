@@ -13,6 +13,7 @@ import (
 	"github.com/shinobo4478/aowjing/backend/internal/config"
 	"github.com/shinobo4478/aowjing/backend/internal/database/sqlc"
 	"github.com/shinobo4478/aowjing/backend/internal/generations"
+	"github.com/shinobo4478/aowjing/backend/internal/products"
 	"github.com/shinobo4478/aowjing/backend/internal/profiles"
 	"github.com/shinobo4478/aowjing/backend/internal/prompttemplates"
 	"github.com/shinobo4478/aowjing/backend/internal/queue"
@@ -49,6 +50,7 @@ func New(db *pgxpool.Pool, cfg config.Config, q *queue.Client) http.Handler {
 		r.Mount("/channels", channels.NewHandler(queries).Routes())
 		r.Mount("/prompt-templates", prompttemplates.NewHandler(queries).Routes())
 		r.Mount("/settings", settings.NewHandler(queries).Routes())
+		r.Mount("/products", products.NewHandler(queries).Routes())
 
 		// POST only enqueues; cmd/worker runs the generation.
 		r.Mount("/generations", generations.NewHandler(queries, q).Routes())
