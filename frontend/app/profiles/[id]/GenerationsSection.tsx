@@ -6,12 +6,21 @@ import type { TableColumnsType } from "antd";
 import {
   deleteGeneration,
   listGenerations,
+  listPlacements,
+  listProducts,
   listYouTubeAccounts,
   listYouTubeUploads,
 } from "@/lib/api";
 import Tally from "@/components/Tally";
 import { formatDateTime } from "@/lib/format";
-import type { Generation, YouTubeAccount, YouTubeUpload } from "@/lib/types";
+import type {
+  Generation,
+  Placement,
+  Product,
+  YouTubeAccount,
+  YouTubeUpload,
+} from "@/lib/types";
+import ClipProducts from "./ClipProducts";
 import PublishYouTubeModal from "./PublishYouTubeModal";
 
 export default function GenerationsSection({
@@ -29,6 +38,10 @@ export default function GenerationsSection({
   const [uploads, setUploads] = useState<YouTubeUpload[]>([]);
   const [publishing, setPublishing] = useState<Generation | null>(null);
 
+  // The product catalog and what is pinned to each clip under this profile.
+  const [catalog, setCatalog] = useState<Product[]>([]);
+  const [placements, setPlacements] = useState<Placement[]>([]);
+
   const loadYouTube = useCallback(() => {
     listYouTubeAccounts(profileId)
       .then(({ accounts }) => setYtAccounts(accounts))
@@ -37,6 +50,19 @@ export default function GenerationsSection({
       });
     listYouTubeUploads(profileId)
       .then(setUploads)
+      .catch(() => {
+        /* non-fatal */
+      });
+  }, [profileId]);
+
+  const loadProducts = useCallback(() => {
+    listProducts()
+      .then(setCatalog)
+      .catch(() => {
+        /* non-fatal */
+      });
+    listPlacements(profileId)
+      .then(setPlacements)
       .catch(() => {
         /* non-fatal */
       });
@@ -61,10 +87,11 @@ export default function GenerationsSection({
         if (!cancelled) setLoading(false);
       });
     loadYouTube();
+    loadProducts();
     return () => {
       cancelled = true;
     };
-  }, [profileId, refreshTick, message, loadYouTube]);
+  }, [profileId, refreshTick, message, loadYouTube, loadProducts]);
 
   // While a generation is pending, poll for the worker to finish it. Stops
   // when nothing is pending or after ~1 minute.
@@ -101,6 +128,15 @@ export default function GenerationsSection({
     } catch (err) {
       message.error(err instanceof Error ? err.message : "Failed to delete.");
     }
+  }
+
+  const pinnedFor = (genId: string) =>
+    placements
+      .filter((p) => p.generationId === genId)
+      .sort((a, b) => a.position - b.position);
+
+  function replacePins(genId: string, next: Placement[]) {
+    setPlacements((all) => [...all.filter((p) => p.generationId !== genId), ...next]);
   }
 
   const uploadsFor = (genId: string) =>
@@ -208,6 +244,20 @@ export default function GenerationsSection({
                   </pre>
                 )}
               </div>
+
+              {row.status === "succeeded" && row.outputKind === "video" && (
+                <div style={{ display: "grid", gap: 6 }}>
+                  <Typography.Text type="secondary">
+                    Products on this clip
+                  </Typography.Text>
+                  <ClipProducts
+                    generationId={row.id}
+                    catalog={catalog}
+                    pinned={pinnedFor(row.id)}
+                    onChange={(next) => replacePins(row.id, next)}
+                  />
+                </div>
+              )}
 
               {row.status === "succeeded" && row.outputKind === "video" && (
                 <div style={{ display: "grid", gap: 6 }}>

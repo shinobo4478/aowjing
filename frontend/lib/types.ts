@@ -159,3 +159,13 @@ export type ProductInput = Pick<
   Product,
   "name" | "shopeeUrl" | "affiliateUrl" | "priceThb" | "note"
 >;
+
+/** A catalog product pinned to a clip (generation). `position` is 1 or 2. */
+export interface Placement {
+  generationId: string;
+  position: 1 | 2;
+  product: Product;
+}
+
+/** How many products one clip can carry. Mirrors products.MaxPerClip. */
+export const MAX_PRODUCTS_PER_CLIP = 2;
