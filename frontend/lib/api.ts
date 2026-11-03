@@ -8,6 +8,7 @@ import type {
   Channel,
   ChannelInput,
   Generation,
+  Placement,
   Product,
   ProductInput,
   Profile,
@@ -275,4 +276,28 @@ export function updateProduct(id: string, input: ProductInput) {
 
 export function deleteProduct(id: string) {
   return request<void>(`/products/${id}`, { method: "DELETE" });
+}
+
+// --- Placements (products pinned to a clip) ---
+
+/** Every pin under a profile, so the generations table needs one request. */
+export function listPlacements(profileId: string) {
+  return request<{ placements: Placement[] }>(
+    `/placements?profileId=${encodeURIComponent(profileId)}`,
+  ).then((r) => r.placements);
+}
+
+/** Replaces a clip's pinned products (0–2 ids; order = pin order). */
+export function setPlacements(generationId: string, productIds: string[]) {
+  return request<{ placements: Placement[] }>(`/placements/${generationId}`, {
+    method: "PUT",
+    body: JSON.stringify({ productIds }),
+  }).then((r) => r.placements);
+}
+
+/** The description text for the clip's pinned products ("" when none). */
+export function getProductBlock(generationId: string) {
+  return request<{ block: string; count: number }>(
+    `/youtube/product-block?generationId=${encodeURIComponent(generationId)}`,
+  );
 }

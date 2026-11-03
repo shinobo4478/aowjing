@@ -41,3 +41,36 @@ func toDTOs(ps []sqlc.Product) []productDTO {
 	}
 	return out
 }
+
+// placementDTO is one product pinned to one clip. Position is 1 or 2.
+type placementDTO struct {
+	GenerationID string     `json:"generationId"`
+	Position     int        `json:"position"`
+	Product      productDTO `json:"product"`
+}
+
+func profileRowDTO(r sqlc.ListPlacementsByProfileRow) placementDTO {
+	return placementDTO{
+		GenerationID: pgconv.UUIDString(r.GenerationID),
+		Position:     int(r.Position),
+		Product: toDTO(sqlc.Product{
+			ID: r.ID, Name: r.Name, ShopeeUrl: r.ShopeeUrl,
+			ShopeeShopID: r.ShopeeShopID, ShopeeItemID: r.ShopeeItemID,
+			AffiliateUrl: r.AffiliateUrl, PriceThb: r.PriceThb, Note: r.Note,
+			CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt,
+		}),
+	}
+}
+
+func generationRowDTO(r sqlc.ListPlacementsByGenerationRow) placementDTO {
+	return placementDTO{
+		GenerationID: pgconv.UUIDString(r.GenerationID),
+		Position:     int(r.Position),
+		Product: toDTO(sqlc.Product{
+			ID: r.ID, Name: r.Name, ShopeeUrl: r.ShopeeUrl,
+			ShopeeShopID: r.ShopeeShopID, ShopeeItemID: r.ShopeeItemID,
+			AffiliateUrl: r.AffiliateUrl, PriceThb: r.PriceThb, Note: r.Note,
+			CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt,
+		}),
+	}
+}

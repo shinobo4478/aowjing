@@ -51,6 +51,7 @@ func New(db *pgxpool.Pool, cfg config.Config, q *queue.Client) http.Handler {
 		r.Mount("/prompt-templates", prompttemplates.NewHandler(queries).Routes())
 		r.Mount("/settings", settings.NewHandler(queries).Routes())
 		r.Mount("/products", products.NewHandler(queries).Routes())
+		r.Mount("/placements", products.NewPlacementHandler(db, queries).Routes())
 
 		// POST only enqueues; cmd/worker runs the generation.
 		r.Mount("/generations", generations.NewHandler(queries, q).Routes())

@@ -33,6 +33,12 @@ type Generation struct {
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 }
 
+type GenerationProduct struct {
+	GenerationID pgtype.UUID `json:"generation_id"`
+	ProductID    pgtype.UUID `json:"product_id"`
+	Position     int16       `json:"position"`
+}
+
 type Product struct {
 	ID           pgtype.UUID        `json:"id"`
 	Name         string             `json:"name"`

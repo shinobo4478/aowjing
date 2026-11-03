@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -243,6 +244,16 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 	id, err := pgconv.ParseUUID(chi.URLParam(r, "id"))
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "Invalid product id.")
+		return
+	}
+	// A pinned product can't go: published clips refer to it. (The foreign key
+	// says the same; this gives a readable message first.)
+	if used, err := h.q.CountProductPlacements(r.Context(), id); err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to delete product.")
+		return
+	} else if used > 0 {
+		writeError(w, http.StatusConflict, fmt.Sprintf(
+			"This product is pinned to %d clip(s). Unpin it from them before deleting it.", used))
 		return
 	}
 	n, err := h.q.DeleteProduct(r.Context(), id)

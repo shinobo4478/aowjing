@@ -37,8 +37,35 @@ func (h *Handler) Routes() http.Handler {
 	r.Get("/oauth/callback", h.callback)
 	r.Delete("/accounts/{channelId}", h.disconnect)
 	r.Get("/uploads", h.listUploads)
+	r.Get("/product-block", h.productBlock)
 	r.Post("/publish", h.publish)
 	return r
+}
+
+// productBlock returns the description text for the products pinned to a clip
+// ("" when none), so the publish dialog can show it for editing and the text
+// is built in exactly one place.
+func (h *Handler) productBlock(w http.ResponseWriter, r *http.Request) {
+	genID, err := pgconv.ParseUUID(r.URL.Query().Get("generationId"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "A valid generationId query parameter is required.")
+		return
+	}
+	rows, err := h.q.ListPlacementsByGeneration(r.Context(), genID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to load pinned products.")
+		return
+	}
+	items := make([]blockItem, len(rows))
+	for i, p := range rows {
+		items[i] = blockItem{
+			Name:         p.Name,
+			ShopeeURL:    p.ShopeeUrl,
+			AffiliateURL: p.AffiliateUrl,
+			PriceTHB:     int(p.PriceThb),
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"block": productBlock(items), "count": len(items)})
 }
 
 // listAccounts returns every connected YouTube account under a profile, so the
