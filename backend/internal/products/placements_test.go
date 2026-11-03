@@ -26,7 +26,7 @@ func TestParseProductIDs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseProductIDs(tt.in)
+			got, err := ParseProductIDs(tt.in)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("err = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -40,7 +40,7 @@ func TestParseProductIDs(t *testing.T) {
 func TestParseProductIDsKeepsPinOrder(t *testing.T) {
 	const a = "11111111-1111-1111-1111-111111111111"
 	const b = "22222222-2222-2222-2222-222222222222"
-	got, err := parseProductIDs([]string{b, a})
+	got, err := ParseProductIDs([]string{b, a})
 	if err != nil {
 		t.Fatal(err)
 	}

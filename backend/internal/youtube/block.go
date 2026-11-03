@@ -3,6 +3,8 @@ package youtube
 import (
 	"fmt"
 	"strings"
+
+	"github.com/shinobo4478/aowjing/backend/internal/products"
 )
 
 // The product block is the part of a YouTube description that lists pinned
@@ -45,7 +47,7 @@ func productBlock(items []blockItem) string {
 	for i, it := range items {
 		title := it.Name
 		if it.PriceTHB > 0 {
-			title = fmt.Sprintf("%s (฿%s)", it.Name, withCommas(it.PriceTHB))
+			title = fmt.Sprintf("%s (฿%s)", it.Name, products.Commas(it.PriceTHB))
 		}
 		fmt.Fprintf(&sb, "%d. %s\n%s\n", i+1, title, it.link())
 		if it.AffiliateURL != "" {
@@ -58,13 +60,4 @@ func productBlock(items []blockItem) string {
 		sb.WriteString("\n")
 	}
 	return strings.TrimRight(sb.String(), "\n")
-}
-
-// withCommas formats 1890 as "1,890".
-func withCommas(n int) string {
-	s := fmt.Sprint(n)
-	for i := len(s) - 3; i > 0; i -= 3 {
-		s = s[:i] + "," + s[i:]
-	}
-	return s
 }

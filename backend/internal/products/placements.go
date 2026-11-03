@@ -39,9 +39,9 @@ func (h *PlacementHandler) Routes() http.Handler {
 	return r
 }
 
-// parseProductIDs checks a requested set of product ids: at most MaxPerClip,
+// ParseProductIDs checks a requested set of product ids: at most MaxPerClip,
 // each a valid UUID, no repeats. Order is kept — it becomes the pin order.
-func parseProductIDs(ids []string) ([]pgtype.UUID, error) {
+func ParseProductIDs(ids []string) ([]pgtype.UUID, error) {
 	if len(ids) > MaxPerClip {
 		return nil, errors.New("A clip can have at most 2 products.")
 	}
@@ -103,7 +103,7 @@ func (h *PlacementHandler) set(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "Invalid JSON body.")
 		return
 	}
-	ids, err := parseProductIDs(body.ProductIDs)
+	ids, err := ParseProductIDs(body.ProductIDs)
 	if err != nil {
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
 			"errors": map[string]string{"productIds": err.Error()},
