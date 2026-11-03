@@ -78,11 +78,35 @@ video content across multiple channels/profiles and social platforms. Deployed t
    e. ✅ `provider` field on Profile
 2. ✅ **done** — Background job queue (Redis + asynq). `POST /generations`
    enqueues; `cmd/worker` runs it; the UI polls for the result.
-3. ⬜ Connect ONE platform for posting — start with YouTube (most open API of
-   the three), OAuth account connection + manual publish trigger.
-   *Blocked on: a Google Cloud project + OAuth client credentials.*
+3. ✅ **done** — Connect ONE platform for posting: YouTube OAuth connect
+   (per Channel) + manual publish of a video generation. Uploads from an
+   unverified Google project stay private until verified.
 4. ⬜ Basic statistics pulling from that one platform's analytics API,
    thumbnail only, no full video storage.
+
+## Phase 3 scope — Shopee products ("ปักตะกร้า") — groundwork only
+
+Attach up to **2 Shopee products per clip** so videos can carry affiliate
+baskets. Decisions made with the owner:
+
+- **Central catalog**, not per-profile: a product (link, price, commission)
+  belongs to the product, not to a channel persona. One Products page; any
+  profile's clip can pick from it.
+- Products attach to a **generation** (the clip), max 2, enforced in the DB
+  (position 1–2, unique per clip) and in the API.
+- **Platform-agnostic:** the placement belongs to the clip, not a channel.
+  Each platform renders it its own way — YouTube: a product block in the
+  description + a checklist for tagging in YouTube Studio (no API for
+  tagging has been found; verify); Facebook etc. later: links in the caption.
+- No Shopee account yet, so phase A is manual: paste the product URL and
+  your own affiliate link. Never scrape Shopee.
+- An affiliate disclosure line goes on every description that has products.
+
+Phase A (now): A1 schema, A2 Shopee URL parser, A3 products CRUD API,
+A4 Products page. Next: A5 attach to a clip + publish modal + Studio
+checklist. Phase B (blocked on a Shopee Affiliate account + Open API
+credentials): API client in Settings, auto-fetch product info, affiliate
+short links with the upload id as subId, conversion stats.
 
 ## Explicitly OUT of scope for Phase 2 (do not build yet)
 
