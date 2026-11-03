@@ -133,6 +133,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
               defaultBg: "transparent",
               defaultColor: INK.chalk,
             },
+            // Room for the error message and the helper text to stack without
+            // touching the next field's label.
+            Form: {
+              itemMarginBottom: 28,
+            },
             Breadcrumb: {
               linkColor: INK.ash,
               linkHoverColor: INK.chalk,

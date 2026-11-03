@@ -110,6 +110,31 @@ CREATE TABLE IF NOT EXISTS youtube_uploads (
 
 CREATE INDEX IF NOT EXISTS youtube_uploads_generation_id_idx ON youtube_uploads (generation_id);
 
+-- Shopee products for affiliate baskets (Phase 3). A CENTRAL catalog: a
+-- product belongs to no profile or channel, so one product can ride on clips
+-- from any profile and its link/price is edited in one place. Entered by hand
+-- for now; shopee_shop_id/item_id are parsed from shopee_url (internal/shopee)
+-- so the same product is not added twice and an API client can use them later.
+CREATE TABLE IF NOT EXISTS products (
+    id             uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    name           text        NOT NULL,
+    shopee_url     text        NOT NULL,
+    shopee_shop_id bigint,
+    shopee_item_id bigint,
+    -- The owner's own tracked affiliate link, pasted from Shopee. Empty until
+    -- they have one.
+    affiliate_url  text        NOT NULL DEFAULT '',
+    -- Whole baht, informational only. 0 = not set.
+    price_thb      integer     NOT NULL DEFAULT 0 CHECK (price_thb >= 0),
+    note           text        NOT NULL DEFAULT '',
+    created_at     timestamptz NOT NULL DEFAULT now(),
+    updated_at     timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS products_shopee_ids_idx
+    ON products (shopee_shop_id, shopee_item_id)
+    WHERE shopee_shop_id IS NOT NULL AND shopee_item_id IS NOT NULL;
+
 -- Login sessions for the single admin user. We store only a SHA-256 hash of
 -- the session token, so a leak of this table does not expose live sessions.
 CREATE TABLE IF NOT EXISTS sessions (
