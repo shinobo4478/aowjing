@@ -22,6 +22,7 @@ import type {
 } from "@/lib/types";
 import ClipProducts from "./ClipProducts";
 import PublishYouTubeModal from "./PublishYouTubeModal";
+import StudioChecklist from "./StudioChecklist";
 
 export default function GenerationsSection({
   profileId,
@@ -272,6 +273,14 @@ export default function GenerationsSection({
                       ▶ {u.title} — {u.privacy} ↗
                     </a>
                   ))}
+                  {uploadsFor(row.id).length > 0 &&
+                    pinnedFor(row.id).length > 0 && (
+                      <StudioChecklist
+                        uploads={uploadsFor(row.id)}
+                        pinned={pinnedFor(row.id)}
+                        onCopy={copyOutput}
+                      />
+                    )}
                   <div>
                     <Button
                       size="small"
