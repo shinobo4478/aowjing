@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { App, Button, Popconfirm, Table, Tag, Typography } from "antd";
+import { App, Button, Empty, Popconfirm, Space, Table, Typography } from "antd";
 import type { TableColumnsType } from "antd";
 import {
   deleteGeneration,
@@ -9,14 +9,10 @@ import {
   listYouTubeAccounts,
   listYouTubeUploads,
 } from "@/lib/api";
+import Tally from "@/components/Tally";
+import { formatDateTime } from "@/lib/format";
 import type { Generation, YouTubeAccount, YouTubeUpload } from "@/lib/types";
 import PublishYouTubeModal from "./PublishYouTubeModal";
-
-const STATUS_COLOR: Record<Generation["status"], string> = {
-  pending: "blue",
-  succeeded: "green",
-  failed: "red",
-};
 
 export default function GenerationsSection({
   profileId,
@@ -88,6 +84,15 @@ export default function GenerationsSection({
     return () => clearInterval(iv);
   }, [hasPending, profileId]);
 
+  async function copyOutput(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      message.success("Copied.");
+    } catch {
+      message.error("Couldn't copy — your browser blocked clipboard access.");
+    }
+  }
+
   async function handleDelete(id: string) {
     try {
       await deleteGeneration(id);
@@ -116,16 +121,16 @@ export default function GenerationsSection({
     {
       title: "Status",
       dataIndex: "status",
-      width: 110,
+      width: 130,
       render: (v: Generation["status"]) => (
-        <Tag color={STATUS_COLOR[v]}>{v}</Tag>
+        <Tally status={v} />
       ),
     },
     {
       title: "Created",
       dataIndex: "createdAt",
       width: 180,
-      render: (v: string) => new Date(v).toLocaleString(),
+      render: (v: string) => formatDateTime(v),
     },
     {
       title: "",
@@ -148,11 +153,8 @@ export default function GenerationsSection({
   ];
 
   return (
-    <section style={{ marginTop: 40 }}>
-      <Typography.Title level={4} style={{ marginTop: 0 }}>
-        Generations
-      </Typography.Title>
-      <Typography.Paragraph type="secondary" style={{ marginTop: -8 }}>
+    <section>
+      <Typography.Paragraph type="secondary" style={{ marginTop: 0 }}>
         History of running a prompt template through the AI provider.
       </Typography.Paragraph>
 
@@ -171,9 +173,20 @@ export default function GenerationsSection({
                 <pre style={preStyle}>{row.inputPrompt}</pre>
               </div>
               <div>
-                <Typography.Text type="secondary">
-                  {row.status === "failed" ? "Error" : "Output"}
-                </Typography.Text>
+                <Space align="center">
+                  <Typography.Text type="secondary">
+                    {row.status === "failed" ? "Error" : "Output"}
+                  </Typography.Text>
+                  {row.status === "succeeded" && row.outputKind === "text" && (
+                    <Button
+                      size="small"
+                      type="text"
+                      onClick={() => copyOutput(row.output)}
+                    >
+                      Copy
+                    </Button>
+                  )}
+                </Space>
                 {row.status === "succeeded" && row.outputKind === "video" ? (
                   <div style={{ marginTop: 4 }}>
                     <video
@@ -231,7 +244,14 @@ export default function GenerationsSection({
             </div>
           ),
         }}
-        locale={{ emptyText: "Nothing generated yet." }}
+        locale={{
+          emptyText: (
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description="Nothing generated yet. Run a prompt template and the result will appear here."
+            />
+          ),
+        }}
       />
 
       <PublishYouTubeModal

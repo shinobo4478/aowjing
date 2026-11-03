@@ -2,17 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import {
-  App,
-  Button,
-  Flex,
-  Modal,
-  Popconfirm,
-  Space,
-  Table,
-  Tag,
-  Typography,
-} from "antd";
+import { App, Button, Empty, Flex, Modal, Popconfirm, Space, Table } from "antd";
 import type { TableColumnsType } from "antd";
 import {
   createChannel,
@@ -23,6 +13,7 @@ import {
   updateChannel,
   youtubeConnectUrl,
 } from "@/lib/api";
+import { STATUS } from "@/lib/tape";
 import type { Channel, YouTubeAccount } from "@/lib/types";
 import { mobileModal } from "@/lib/ui";
 import ChannelForm from "../ChannelForm";
@@ -80,7 +71,9 @@ export default function ChannelsSection({ profileId }: { profileId: string }) {
         `YouTube connection failed (${search.get("reason") ?? "unknown"}).`,
       );
     }
-    router.replace(pathname);
+    // Land on the Channels tab so the result (connected tag / tried again) is
+    // actually visible, and drop the one-off yt=/reason= params.
+    router.replace(`${pathname}?tab=channels`);
   }, [search, pathname, router, message, loadYouTube]);
 
   async function reload() {
@@ -133,9 +126,14 @@ export default function ChannelsSection({ profileId }: { profileId: string }) {
               if (acct) {
                 return (
                   <Space size="small" wrap>
-                    <Tag color="red" style={{ marginInlineEnd: 0 }}>
-                      ▶ {acct.youtubeTitle || "connected"}
-                    </Tag>
+                    <span className="acmp-tally">
+                      <span
+                        aria-hidden
+                        className="acmp-tally-dot"
+                        style={{ background: STATUS.succeeded }}
+                      />
+                      {acct.youtubeTitle || "Connected"}
+                    </span>
                     <Popconfirm
                       title="Disconnect this YouTube account?"
                       okText="Disconnect"
@@ -188,14 +186,9 @@ export default function ChannelsSection({ profileId }: { profileId: string }) {
   ];
 
   return (
-    <section style={{ marginTop: 40 }}>
-      <Flex justify="space-between" align="center" wrap gap={12}>
-        <Typography.Title level={4} style={{ margin: 0 }}>
-          Channels
-        </Typography.Title>
-        <Button type="primary" size="small" onClick={() => setCreating(true)}>
-          New channel
-        </Button>
+    <section>
+      <Flex justify="end">
+        <Button onClick={() => setCreating(true)}>New channel</Button>
       </Flex>
 
       <Table<Channel>
@@ -206,7 +199,18 @@ export default function ChannelsSection({ profileId }: { profileId: string }) {
         pagination={false}
         style={{ marginTop: 12 }}
         scroll={{ x: "max-content" }}
-        locale={{ emptyText: "No channels yet." }}
+        locale={{
+          emptyText: (
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description="No channels yet. A channel is where this profile's videos get published."
+            >
+              <Button type="primary" onClick={() => setCreating(true)}>
+                New channel
+              </Button>
+            </Empty>
+          ),
+        }}
       />
 
       <Modal

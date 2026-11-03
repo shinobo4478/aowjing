@@ -1,25 +1,29 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   App,
+  Breadcrumb,
   Button,
-  Card,
-  Descriptions,
+  Modal,
   Popconfirm,
   Result,
   Space,
   Spin,
-  Typography,
+  Tabs,
 } from "antd";
 import { deleteProfile, getProfile, updateProfile } from "@/lib/api";
-import { PROVIDER_OPTIONS, type Profile } from "@/lib/types";
+import type { Profile } from "@/lib/types";
+import { mobileModal } from "@/lib/ui";
 import ProfileForm from "../ProfileForm";
 import ChannelsSection from "./ChannelsSection";
-import PromptTemplatesSection from "./PromptTemplatesSection";
 import GenerationsSection from "./GenerationsSection";
+import ProfileSlate from "./ProfileSlate";
+import PromptTemplatesSection from "./PromptTemplatesSection";
+
+const DEFAULT_TAB = "templates";
 
 export default function ProfileDetailPage({
   params,
@@ -28,6 +32,8 @@ export default function ProfileDetailPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
+  const pathname = usePathname();
+  const search = useSearchParams();
   const { message } = App.useApp();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +48,14 @@ export default function ProfileDetailPage({
         setError(err instanceof Error ? err.message : "Failed to load."),
       );
   }, [id]);
+
+  const activeTab = search.get("tab") ?? DEFAULT_TAB;
+
+  // Switches tab via the URL (the single source of truth for `activeTab`),
+  // dropping any one-off query params like the OAuth callback's ?yt=/&reason=.
+  function setTab(key: string) {
+    router.replace(`${pathname}?tab=${key}`);
+  }
 
   async function handleDelete() {
     setDeleting(true);
@@ -63,7 +77,7 @@ export default function ProfileDetailPage({
         subTitle={error}
         extra={
           <Link href="/profiles">
-            <Button type="primary">All profiles</Button>
+            <Button type="primary">Back to profiles</Button>
           </Link>
         }
       />
@@ -80,92 +94,86 @@ export default function ProfileDetailPage({
 
   return (
     <>
-      <Link href="/profiles">← All profiles</Link>
+      <Breadcrumb
+        style={{ marginBottom: 20 }}
+        items={[
+          { title: <Link href="/profiles">Profiles</Link> },
+          { title: profile.name },
+        ]}
+      />
 
-      {editing ? (
-        <Card title="Edit profile" style={{ marginTop: 16 }}>
-          <ProfileForm
-            initial={{
-              name: profile.name,
-              niche: profile.niche,
-              description: profile.description,
-              provider: profile.provider,
-            }}
-            submitLabel="Save changes"
-            onSubmit={async (input) => {
-              setProfile(await updateProfile(id, input));
-              setEditing(false);
-              message.success("Profile updated.");
-            }}
-          />
-          <Button
-            style={{ marginTop: 12 }}
-            onClick={() => setEditing(false)}
-          >
-            Cancel
-          </Button>
-        </Card>
-      ) : (
-        <>
-          <Typography.Title level={3}>{profile.name}</Typography.Title>
-
-          <Descriptions
-            bordered
-            column={1}
-            style={{ marginTop: 8 }}
-            items={[
-              { key: "niche", label: "Niche", children: profile.niche },
-              {
-                key: "provider",
-                label: "Generator",
-                children:
-                  PROVIDER_OPTIONS.find((o) => o.value === profile.provider)
-                    ?.label ?? profile.provider,
-              },
-              {
-                key: "description",
-                label: "Description",
-                children: (
-                  <span style={{ whiteSpace: "pre-wrap" }}>
-                    {profile.description || (
-                      <Typography.Text type="secondary">
-                        No description.
-                      </Typography.Text>
-                    )}
-                  </span>
-                ),
-              },
-              {
-                key: "updated",
-                label: "Updated",
-                children: new Date(profile.updatedAt).toLocaleString(),
-              },
-            ]}
-          />
-
-          <Space style={{ marginTop: 16 }} wrap>
-            <Button type="primary" onClick={() => setEditing(true)}>
-              Edit
-            </Button>
+      <ProfileSlate
+        profile={profile}
+        actions={
+          <Space wrap>
+            <Button onClick={() => setEditing(true)}>Edit</Button>
             <Popconfirm
               title="Delete this profile?"
-              description="This deletes its channels too. Can't be undone."
-              okText="Delete"
+              description="Its channels, templates and generations are deleted too. This can't be undone."
+              okText="Delete profile"
               okButtonProps={{ danger: true, loading: deleting }}
               onConfirm={handleDelete}
             >
               <Button danger>Delete</Button>
             </Popconfirm>
           </Space>
+        }
+      />
 
-          <ChannelsSection profileId={id} />
-          <PromptTemplatesSection
-            profileId={id}
-            onGenerated={() => setGenTick((t) => t + 1)}
-          />
-          <GenerationsSection profileId={id} refreshTick={genTick} />
-        </>
-      )}
+      <Tabs
+        activeKey={activeTab}
+        onChange={setTab}
+        style={{ marginTop: 32 }}
+        items={[
+          {
+            key: "templates",
+            label: "Prompt templates",
+            children: (
+              <PromptTemplatesSection
+                profileId={id}
+                onGenerated={() => {
+                  setGenTick((t) => t + 1);
+                  setTab("generations");
+                }}
+              />
+            ),
+          },
+          {
+            key: "generations",
+            label: "Generations",
+            children: <GenerationsSection profileId={id} refreshTick={genTick} />,
+          },
+          {
+            key: "channels",
+            label: "Channels",
+            children: <ChannelsSection profileId={id} />,
+          },
+        ]}
+      />
+
+      <Modal
+        title="Edit profile"
+        open={editing}
+        onCancel={() => setEditing(false)}
+        footer={null}
+        destroyOnHidden
+        {...mobileModal}
+      >
+        <ProfileForm
+          initial={{
+            name: profile.name,
+            niche: profile.niche,
+            description: profile.description,
+            provider: profile.provider,
+          }}
+          submitLabel="Save changes"
+          onSubmit={async (input) => {
+            setProfile(await updateProfile(id, input));
+            setEditing(false);
+            message.success("Profile updated.");
+          }}
+        />
+      </Modal>
     </>
   );
 }

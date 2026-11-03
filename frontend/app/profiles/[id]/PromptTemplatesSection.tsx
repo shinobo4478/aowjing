@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { App, Button, Flex, Modal, Popconfirm, Space, Table, Typography } from "antd";
+import { App, Button, Empty, Flex, Modal, Popconfirm, Space, Table } from "antd";
 import type { TableColumnsType } from "antd";
 import {
   createPromptTemplate,
@@ -10,6 +10,7 @@ import {
   runGeneration,
   updatePromptTemplate,
 } from "@/lib/api";
+import { formatDateTime } from "@/lib/format";
 import type { PromptTemplate } from "@/lib/types";
 import { mobileModal } from "@/lib/ui";
 import PromptTemplateForm from "../PromptTemplateForm";
@@ -82,7 +83,7 @@ export default function PromptTemplatesSection({
       title: "Updated",
       dataIndex: "updatedAt",
       width: 190,
-      render: (v: string) => new Date(v).toLocaleString(),
+      render: (v: string) => formatDateTime(v),
     },
     {
       title: "",
@@ -117,14 +118,9 @@ export default function PromptTemplatesSection({
   ];
 
   return (
-    <section style={{ marginTop: 40 }}>
-      <Flex justify="space-between" align="center" wrap gap={12}>
-        <Typography.Title level={4} style={{ margin: 0 }}>
-          Prompt templates
-        </Typography.Title>
-        <Button type="primary" size="small" onClick={() => setCreating(true)}>
-          New template
-        </Button>
+    <section>
+      <Flex justify="end">
+        <Button onClick={() => setCreating(true)}>New template</Button>
       </Flex>
 
       <Table<PromptTemplate>
@@ -149,7 +145,18 @@ export default function PromptTemplatesSection({
             </pre>
           ),
         }}
-        locale={{ emptyText: "No prompt templates yet." }}
+        locale={{
+          emptyText: (
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description="No prompt templates yet. Write one, then press Generate to run it."
+            >
+              <Button type="primary" onClick={() => setCreating(true)}>
+                New template
+              </Button>
+            </Empty>
+          ),
+        }}
       />
 
       <Modal

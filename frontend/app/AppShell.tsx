@@ -1,6 +1,7 @@
 "use client";
 
 import { Layout } from "antd";
+import { SURFACE } from "@/lib/tape";
 import SiteHeader from "./SiteHeader";
 
 /**
@@ -16,17 +17,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           position: "sticky",
           top: 0,
           zIndex: 10,
-          paddingInline: "clamp(12px, 4vw, 24px)",
-          borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
-          boxShadow: "0 1px 0 rgba(255, 255, 255, 0.03), 0 4px 16px rgba(0, 0, 0, 0.6)",
+          paddingInline: "clamp(16px, 4vw, 32px)",
+          borderBottom: `1px solid ${SURFACE.ruleSoft}`,
         }}
       >
         <SiteHeader />
       </Layout.Header>
       <Layout.Content
-        style={{ padding: "clamp(16px, 4vw, 32px) clamp(12px, 4vw, 24px) 64px" }}
+        style={{
+          padding: "clamp(28px, 5vw, 64px) clamp(16px, 4vw, 32px) 112px",
+        }}
       >
-        <div style={{ maxWidth: 900, margin: "0 auto" }}>{children}</div>
+        <div style={{ maxWidth: 1040, margin: "0 auto" }}>{children}</div>
       </Layout.Content>
     </Layout>
   );

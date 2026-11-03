@@ -2,36 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { App, Button, Modal, Table, Typography } from "antd";
-import type { TableColumnsType } from "antd";
+import { App, Button, Modal, Spin, Typography } from "antd";
+import Stripe from "@/components/Stripe";
 import { createProfile, listProfiles } from "@/lib/api";
-import { PROVIDER_OPTIONS, type Profile } from "@/lib/types";
-import { mobileModal } from "@/lib/ui";
+import { formatDate } from "@/lib/format";
+import { tapeColor } from "@/lib/tape";
+import { providerShort, type Profile } from "@/lib/types";
+import { mobileModal, pageLede, pageTitle } from "@/lib/ui";
 import ProfileForm from "./ProfileForm";
-
-const providerLabel = (v: string) =>
-  PROVIDER_OPTIONS.find((o) => o.value === v)?.label ?? v;
-
-const columns: TableColumnsType<Profile> = [
-  {
-    title: "Name",
-    dataIndex: "name",
-    render: (name: string, row) => <Link href={`/profiles/${row.id}`}>{name}</Link>,
-  },
-  { title: "Niche", dataIndex: "niche" },
-  {
-    title: "Generator",
-    dataIndex: "provider",
-    width: 180,
-    render: (v: string) => providerLabel(v),
-  },
-  {
-    title: "Updated",
-    dataIndex: "updatedAt",
-    width: 200,
-    render: (v: string) => new Date(v).toLocaleString(),
-  },
-];
 
 export default function ProfilesPage() {
   const { message } = App.useApp();
@@ -64,32 +42,72 @@ export default function ProfilesPage() {
     }
   }
 
+  const isEmpty = !loading && profiles.length === 0;
+
   return (
     <>
-      <Typography.Title level={3} style={{ marginTop: 0 }}>
+      <Typography.Title level={1} style={pageTitle}>
         Profiles
       </Typography.Title>
-      <Typography.Paragraph type="secondary">
-        Each profile is one channel persona / content niche.
+      <Typography.Paragraph type="secondary" style={pageLede}>
+        One profile per channel persona. Each keeps its own prompt templates,
+        generations and channels.
       </Typography.Paragraph>
 
-      <Button
-        type="primary"
-        onClick={() => setCreating(true)}
-        style={{ marginBottom: 16 }}
-      >
-        New profile
-      </Button>
-
-      <Table<Profile>
-        rowKey="id"
-        columns={columns}
-        dataSource={profiles}
-        loading={loading}
-        pagination={false}
-        scroll={{ x: "max-content" }}
-        locale={{ emptyText: "No profiles yet. Create the first one." }}
-      />
+      <div style={{ marginTop: 44 }}>
+        {loading ? (
+          <div style={{ padding: 48, textAlign: "center" }}>
+            <Spin />
+          </div>
+        ) : (
+          <>
+            {isEmpty && (
+              <Typography.Paragraph
+                type="secondary"
+                style={{ maxWidth: "52ch", marginBottom: 20 }}
+              >
+                A profile is a channel persona, like &ldquo;Retro Arcade
+                Vault&rdquo;. Give it a niche and a generator, then write
+                prompt templates inside it.
+              </Typography.Paragraph>
+            )}
+            <ul className="acmp-roster">
+              {profiles.map((p) => (
+                <li key={p.id}>
+                  <Link href={`/profiles/${p.id}`} className="acmp-roster-row">
+                    <Stripe color={tapeColor(p.id)} size={6} />
+                    <div className="acmp-roster-main">
+                      <div className="acmp-roster-name">{p.name}</div>
+                      <div className="acmp-roster-sub">{p.niche}</div>
+                    </div>
+                    <div className="acmp-roster-meta">
+                      {providerShort(p.provider)}
+                    </div>
+                    <div className="acmp-roster-meta is-quiet">
+                      {formatDate(p.updatedAt)}
+                    </div>
+                  </Link>
+                </li>
+              ))}
+              <li>
+                <Button
+                  type="dashed"
+                  block
+                  onClick={() => setCreating(true)}
+                  style={{
+                    height: 72,
+                    justifyContent: "flex-start",
+                    paddingInline: 24,
+                    fontSize: 16,
+                  }}
+                >
+                  {isEmpty ? "Create your first profile" : "New profile"}
+                </Button>
+              </li>
+            </ul>
+          </>
+        )}
+      </div>
 
       <Modal
         title="New profile"
@@ -100,7 +118,7 @@ export default function ProfilesPage() {
         {...mobileModal}
       >
         <ProfileForm
-          submitLabel="Create"
+          submitLabel="Create profile"
           onSubmit={async (input) => {
             await createProfile(input);
             setCreating(false);
