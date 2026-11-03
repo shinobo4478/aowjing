@@ -179,10 +179,12 @@ export function getGeneration(id: string) {
   );
 }
 
-export function runGeneration(promptTemplateId: string) {
+/** `productIds` (0–2, in pin order) fill the template's {{product.*}}
+ *  variables and are pinned to the new clip. */
+export function runGeneration(promptTemplateId: string, productIds: string[] = []) {
   return request<{ generation: Generation }>("/generations", {
     method: "POST",
-    body: JSON.stringify({ promptTemplateId }),
+    body: JSON.stringify({ promptTemplateId, productIds }),
   }).then((r) => r.generation);
 }
 
