@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Alert, Button, Card, Divider, Form, Input, Typography, theme } from "antd";
+import { Alert, Button, Divider, Form, Input, Typography } from "antd";
+import Stripe from "@/components/Stripe";
 import { ApiError } from "@/lib/api";
 import { login } from "@/lib/auth";
 import {
@@ -10,10 +11,10 @@ import {
   DEV_LOGIN_PASSWORD,
   DEV_LOGIN_USERNAME,
 } from "@/lib/devLogin";
+import { INK } from "@/lib/tape";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { token } = theme.useToken();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -34,89 +35,96 @@ export default function LoginPage() {
   }
 
   return (
-    <div
-      style={{
-        display: "grid",
-        placeItems: "center",
-        minHeight: "100vh",
-        padding: 16,
-        background:
-          "radial-gradient(1100px 600px at 50% -12%, #14141f 0%, #000000 58%)",
-      }}
-    >
-      <div style={{ width: "100%", maxWidth: 360 }}>
-        <div style={{ textAlign: "center", marginBottom: 20 }}>
-          <Typography.Title
-            level={3}
-            style={{ margin: 0, color: token.colorPrimary, letterSpacing: 0.5 }}
-          >
-            ACMP
-          </Typography.Title>
-          <Typography.Text type="secondary">
-            AI Content Management Platform
-          </Typography.Text>
-        </div>
+    <div style={{ position: "relative" }}>
+      <Stripe
+        color={INK.chalk}
+        size={14}
+        style={{ position: "absolute", top: 0, left: 0, right: 0, height: 20 }}
+      />
 
-        <Card
+      <div className="acmp-login">
+        <div
           style={{
-            boxShadow: "0 12px 40px rgba(0, 0, 0, 0.6)",
-            border: "1px solid rgba(255, 255, 255, 0.08)",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "flex-end",
+            gap: 20,
+            padding: "clamp(56px, 8vw, 96px) clamp(20px, 5vw, 64px) clamp(24px, 5vw, 64px)",
           }}
         >
-          <Typography.Title level={5} style={{ marginTop: 0 }}>
-            Sign in
-          </Typography.Title>
+          <Typography.Paragraph
+            type="secondary"
+            style={{ margin: 0, maxWidth: "34ch", fontSize: 17 }}
+          >
+            Make AI video, then publish it to your channels, from one place.
+          </Typography.Paragraph>
+          <h1 className="acmp-login-mark">ACMP</h1>
+        </div>
 
-          <Form layout="vertical" onFinish={signIn} requiredMark={false}>
-            {error && (
-              <Form.Item>
-                <Alert type="error" showIcon title={error} />
-              </Form.Item>
-            )}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            padding: "clamp(24px, 5vw, 64px)",
+            borderLeft: "1px solid #1c1c20",
+          }}
+        >
+          <div style={{ width: "100%", maxWidth: 380 }}>
+            <Typography.Title level={3} style={{ marginTop: 0, marginBottom: 24 }}>
+              Sign in
+            </Typography.Title>
 
-            <Form.Item
-              label="Username"
-              name="username"
-              rules={[{ required: true, message: "Enter your username." }]}
-            >
-              <Input autoFocus autoComplete="username" />
-            </Form.Item>
+            <Form layout="vertical" onFinish={signIn} requiredMark={false}>
+              {error && (
+                <Form.Item>
+                  <Alert type="error" showIcon title={error} />
+                </Form.Item>
+              )}
 
-            <Form.Item
-              label="Password"
-              name="password"
-              rules={[{ required: true, message: "Enter your password." }]}
-            >
-              <Input.Password autoComplete="current-password" />
-            </Form.Item>
-
-            <Form.Item style={{ marginBottom: 0 }}>
-              <Button type="primary" htmlType="submit" block loading={busy}>
-                Sign in
-              </Button>
-            </Form.Item>
-          </Form>
-
-          {DEV_LOGIN_ENABLED && (
-            <>
-              <Divider plain style={{ marginBlock: 16, fontSize: 12 }}>
-                dev only
-              </Divider>
-              <Button
-                block
-                loading={busy}
-                onClick={() =>
-                  signIn({
-                    username: DEV_LOGIN_USERNAME,
-                    password: DEV_LOGIN_PASSWORD,
-                  })
-                }
+              <Form.Item
+                label="Username"
+                name="username"
+                rules={[{ required: true, message: "Enter your username." }]}
               >
-                Log in as admin
-              </Button>
-            </>
-          )}
-        </Card>
+                <Input autoFocus autoComplete="username" />
+              </Form.Item>
+
+              <Form.Item
+                label="Password"
+                name="password"
+                rules={[{ required: true, message: "Enter your password." }]}
+              >
+                <Input.Password autoComplete="current-password" />
+              </Form.Item>
+
+              <Form.Item style={{ marginBottom: 0 }}>
+                <Button type="primary" htmlType="submit" block loading={busy}>
+                  Sign in
+                </Button>
+              </Form.Item>
+            </Form>
+
+            {DEV_LOGIN_ENABLED && (
+              <>
+                <Divider plain style={{ marginBlock: 20, fontSize: 12 }}>
+                  dev only
+                </Divider>
+                <Button
+                  block
+                  loading={busy}
+                  onClick={() =>
+                    signIn({
+                      username: DEV_LOGIN_USERNAME,
+                      password: DEV_LOGIN_PASSWORD,
+                    })
+                  }
+                >
+                  Log in as admin
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
