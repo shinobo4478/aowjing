@@ -33,6 +33,19 @@ type Generation struct {
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 }
 
+type Product struct {
+	ID           pgtype.UUID        `json:"id"`
+	Name         string             `json:"name"`
+	ShopeeUrl    string             `json:"shopee_url"`
+	ShopeeShopID *int64             `json:"shopee_shop_id"`
+	ShopeeItemID *int64             `json:"shopee_item_id"`
+	AffiliateUrl string             `json:"affiliate_url"`
+	PriceThb     int32              `json:"price_thb"`
+	Note         string             `json:"note"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Profile struct {
 	ID          pgtype.UUID        `json:"id"`
 	Name        string             `json:"name"`
