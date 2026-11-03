@@ -1,68 +1,285 @@
-/* Minimal reset + OLED dark-mode base. All component styling comes from
-   Ant Design (see app/providers.tsx); this file only sets the canvas the
-   antd theme sits on and a few things antd can't reach (scrollbars, native
-   overscroll, media assets). */
+/* The canvas antd sits on, plus the few visual elements antd has no component
+   for: the clapper stripe, the tally light, the roster row, the profile slate,
+   the home-page steps and the split login. Everything else — buttons, forms,
+   tables, tabs, modals — is antd, themed in app/providers.tsx.
+
+   Colour values mirror lib/tape.ts. Classes are prefixed acmp- and only ever
+   used on elements we render ourselves (never on antd internals), so antd's
+   own selectors can't out-rank them. */
+
 html,
 body {
   margin: 0;
   padding: 0;
 }
 
-/* Tell the engine every default surface is dark — native form controls,
-   scrollbars and the overscroll gutter follow. */
 :root {
   color-scheme: dark;
 }
 
-/* Primary UI font: Sukhumvit Set, self-hosted via next/font/local (app/fonts.ts).
-   --font-sukhumvit already expands to the font + its size-adjusted fallback +
-   the platform Thai fallback stack. Background is true black to match the antd
-   colorBgLayout token, so there's no flash of a lighter colour on overscroll.
-   Default ink is a soft off-white — never pure #fff — for lower eye strain. */
+/* Sukhumvit Set via next/font (app/fonts.ts). True-black canvas for OLED; ink
+   is a warm chalk, never pure white. */
 body {
   font-family: var(--font-sukhumvit);
   background: #000000;
-  color: rgba(255, 255, 255, 0.88);
+  color: #ece9e4;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Ease surface and border colour changes so hover / selection / expand feel
-   like a gentle shift in depth rather than a flash. Kept to colour only —
-   layout and opacity are left to antd's own motion tokens. */
-.ant-card,
-.ant-table-cell,
-.ant-btn,
-.ant-menu-item,
-.ant-input,
-.ant-input-affix-wrapper,
-.ant-select-selector {
-  transition:
-    background-color 0.18s ease,
-    border-color 0.18s ease,
-    color 0.18s ease,
-    box-shadow 0.18s ease;
+::selection {
+  background: rgba(255, 201, 51, 0.28);
 }
 
-/* Whisper-subtle lift when the pointer is over a card. */
-.ant-card {
-  border-color: rgba(255, 255, 255, 0.08);
-}
-.ant-card:hover {
-  border-color: rgba(255, 255, 255, 0.14);
+/* Keyboard focus: one consistent tungsten ring, on everything focusable. */
+:focus-visible {
+  outline: 2px solid #ffc933;
+  outline-offset: 2px;
 }
 
-/* Media assets: a faint frame + matching backdrop so a bright first frame or
-   a transparent PNG doesn't slam against true black. */
+/* --- Clapper stripe --------------------------------------------------- */
+/* --tape = the colour, --band = width of one band. Height is set by the
+   caller. */
+.acmp-stripe {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--tape) 0 var(--band),
+    #000 var(--band) calc(var(--band) * 2)
+  );
+}
+
+/* --- Tally light ------------------------------------------------------ */
+.acmp-tally {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.acmp-tally-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+.acmp-tally-dot.is-live {
+  animation: acmp-pulse 1.6s ease-in-out infinite;
+}
+@keyframes acmp-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(255, 201, 51, 0.5);
+  }
+  50% {
+    opacity: 0.6;
+    box-shadow: 0 0 0 5px rgba(255, 201, 51, 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .acmp-tally-dot.is-live {
+    animation: none;
+  }
+}
+
+/* --- Roster (profiles list) ------------------------------------------ */
+.acmp-roster {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.acmp-roster-row {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) 11rem 7.5rem;
+  align-items: center;
+  column-gap: 28px;
+  padding-right: 24px;
+  min-height: 84px;
+  background: #0d0d0f;
+  border-radius: 2px;
+  color: inherit;
+  text-decoration: none;
+  overflow: hidden;
+  transition: background-color 0.18s ease;
+}
+.acmp-roster-row:hover {
+  background: #151518;
+}
+.acmp-roster-row > .acmp-stripe {
+  align-self: stretch;
+}
+.acmp-roster-main {
+  padding: 16px 0;
+  min-width: 0;
+}
+.acmp-roster-name {
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: #ece9e4;
+  overflow-wrap: anywhere;
+}
+.acmp-roster-sub {
+  font-size: 15px;
+  color: #9b988f;
+  overflow-wrap: anywhere;
+}
+.acmp-roster-meta {
+  font-size: 15px;
+  color: #ece9e4;
+}
+.acmp-roster-meta.is-quiet {
+  color: #9b988f;
+}
+@media (max-width: 720px) {
+  .acmp-roster-row {
+    grid-template-columns: 10px minmax(0, 1fr);
+    column-gap: 18px;
+    padding-right: 16px;
+  }
+  .acmp-roster-row > .acmp-stripe {
+    grid-row: 1 / span 3;
+  }
+  .acmp-roster-name {
+    font-size: 22px;
+  }
+  .acmp-roster-meta {
+    grid-column: 2;
+    padding-bottom: 4px;
+  }
+  .acmp-roster-meta:last-child {
+    padding-bottom: 16px;
+  }
+}
+
+/* --- Profile slate ---------------------------------------------------- */
+/* The one place ruled cells are used, because it really is a grid of
+   label/value fields. */
+.acmp-slate {
+  border: 1px solid #2a2a2f;
+  border-radius: 2px;
+  background: #0a0a0b;
+  overflow: hidden;
+}
+.acmp-slate-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 22px 24px 22px;
+}
+.acmp-slate-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid #2a2a2f;
+}
+.acmp-slate-field {
+  padding: 14px 24px 16px;
+  min-width: 0;
+}
+.acmp-slate-field:nth-child(3n + 2),
+.acmp-slate-field:nth-child(3n + 3) {
+  border-left: 1px solid #2a2a2f;
+}
+.acmp-slate-field.is-wide {
+  grid-column: 1 / -1;
+  border-top: 1px solid #2a2a2f;
+}
+@media (max-width: 720px) {
+  .acmp-slate-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .acmp-slate-fields > .acmp-slate-field:nth-child(n) {
+    border-left: 0;
+    border-top: 1px solid #2a2a2f;
+  }
+  .acmp-slate-fields > .acmp-slate-field:first-child {
+    border-top: 0;
+  }
+}
+.acmp-field-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #9b988f;
+}
+.acmp-field-value {
+  margin-top: 2px;
+  font-size: 17px;
+  font-weight: 600;
+  color: #ece9e4;
+  overflow-wrap: anywhere;
+}
+.acmp-field-value.is-note {
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.7;
+  color: #c9c6bf;
+  white-space: pre-wrap;
+}
+
+/* --- Home steps ------------------------------------------------------- */
+.acmp-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.acmp-step {
+  display: grid;
+  grid-template-columns: minmax(72px, 128px) minmax(0, 1fr);
+  column-gap: 24px;
+  align-items: start;
+  padding: 28px 0 30px;
+  border-top: 1px solid #1c1c20;
+}
+.acmp-step-num {
+  font-size: clamp(64px, 10vw, 104px);
+  font-weight: 100;
+  line-height: 0.85;
+  letter-spacing: -0.03em;
+  color: #ece9e4;
+}
+.acmp-step.is-done .acmp-step-num {
+  color: #4a4843;
+}
+.acmp-step.is-next .acmp-step-num {
+  color: #ffc933;
+}
+
+/* --- Login ------------------------------------------------------------ */
+.acmp-login {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(340px, 0.85fr);
+}
+.acmp-login-mark {
+  font-size: clamp(84px, 17vw, 232px);
+  font-weight: 100;
+  letter-spacing: -0.045em;
+  line-height: 0.85;
+  color: #ece9e4;
+  margin: 0;
+}
+@media (max-width: 860px) {
+  .acmp-login {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* --- Media ------------------------------------------------------------ */
+/* A faint frame so a bright first frame doesn't slam against true black. */
 img,
 video {
-  border-radius: 8px;
+  border-radius: 2px;
 }
 video {
   background: #0d0d0f;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid #2a2a2f;
 }
 
-/* Scrollbars styled to read as intentional in the dark — used by the
-   horizontally-scrolling tables on small screens. */
+/* --- Scrollbars ------------------------------------------------------- */
 * {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
@@ -83,9 +300,4 @@ video {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.24);
   background-clip: content-box;
-}
-
-/* Selection uses the accent at low opacity — visible, not harsh. */
-::selection {
-  background: rgba(129, 140, 248, 0.3);
 }

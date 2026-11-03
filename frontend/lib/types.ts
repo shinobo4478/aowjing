@@ -11,6 +11,10 @@ export const PROVIDER_OPTIONS: { value: ProviderKey; label: string }[] = [
   { value: "fal", label: "fal.ai video — Kling 3.0" },
 ];
 
+/** Short form of a generator for tight places (roster rows, slate fields). */
+export const providerShort = (v: string) =>
+  v === "fal" ? "Kling 3.0 video" : v === "text" ? "Text only" : v;
+
 export interface Profile {
   id: string;
   /** Display name of the channel persona. */
