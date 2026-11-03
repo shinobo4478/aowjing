@@ -169,3 +169,20 @@ export interface Placement {
 
 /** How many products one clip can carry. Mirrors products.MaxPerClip. */
 export const MAX_PRODUCTS_PER_CLIP = 2;
+
+/** A product as listed in the catalog, with how many clips it is pinned to. */
+export interface ProductWithUse extends Product {
+  usedCount: number;
+}
+
+/** One clip a product is pinned to. */
+export interface ProductUsage {
+  generationId: string;
+  profileId: string;
+  profileName: string;
+  /** "" if the template was deleted. */
+  templateName: string;
+  /** 1 or 2: which pin the product is on that clip. */
+  position: 1 | 2;
+  createdAt: string; // ISO 8601
+}

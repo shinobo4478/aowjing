@@ -11,6 +11,8 @@ import type {
   Placement,
   Product,
   ProductInput,
+  ProductUsage,
+  ProductWithUse,
   Profile,
   ProfileInput,
   PromptTemplate,
@@ -257,7 +259,7 @@ export function publishToYouTube(input: {
 export function listProducts(q = "") {
   const term = q.trim();
   const qs = term ? `?q=${encodeURIComponent(term)}` : "";
-  return request<{ products: Product[] }>(`/products${qs}`).then(
+  return request<{ products: ProductWithUse[] }>(`/products${qs}`).then(
     (r) => r.products,
   );
 }
@@ -274,6 +276,13 @@ export function updateProduct(id: string, input: ProductInput) {
     method: "PATCH",
     body: JSON.stringify(input),
   }).then((r) => r.product);
+}
+
+/** The clips a product is pinned to, newest first. */
+export function getProductUsage(id: string) {
+  return request<{ clips: ProductUsage[] }>(`/products/${id}/usage`).then(
+    (r) => r.clips,
+  );
 }
 
 export function deleteProduct(id: string) {

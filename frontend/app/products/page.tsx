@@ -22,17 +22,19 @@ import {
 } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { INK, STATUS } from "@/lib/tape";
-import type { Product } from "@/lib/types";
+import type { ProductWithUse } from "@/lib/types";
 import { mobileModal, pageLede, pageTitle } from "@/lib/ui";
 import ProductForm from "./ProductForm";
+import ProductUsageModal from "./ProductUsageModal";
 
 export default function ProductsPage() {
   const { message } = App.useApp();
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ProductWithUse[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
-  const [editing, setEditing] = useState<Product | null>(null);
+  const [usageFor, setUsageFor] = useState<ProductWithUse | null>(null);
+  const [editing, setEditing] = useState<ProductWithUse | null>(null);
 
   const load = useCallback(
     (q: string) =>
@@ -63,7 +65,7 @@ export default function ProductsPage() {
     }
   }
 
-  const columns: TableColumnsType<Product> = [
+  const columns: TableColumnsType<ProductWithUse> = [
     {
       title: "Product",
       dataIndex: "name",
@@ -111,6 +113,19 @@ export default function ProductsPage() {
           {v ? "Added" : "Not added"}
         </span>
       ),
+    },
+    {
+      title: "Pinned to",
+      dataIndex: "usedCount",
+      width: 120,
+      render: (n: number, row) =>
+        n > 0 ? (
+          <Button type="link" size="small" onClick={() => setUsageFor(row)}>
+            {n} {n === 1 ? "clip" : "clips"}
+          </Button>
+        ) : (
+          <Typography.Text type="secondary">No clips</Typography.Text>
+        ),
     },
     {
       title: "Updated",
@@ -172,7 +187,7 @@ export default function ProductsPage() {
         <Button onClick={() => setCreating(true)}>New product</Button>
       </Flex>
 
-      <Table<Product>
+      <Table<ProductWithUse>
         rowKey="id"
         columns={columns}
         dataSource={products}
@@ -200,6 +215,8 @@ export default function ProductsPage() {
           ),
         }}
       />
+
+      <ProductUsageModal product={usageFor} onClose={() => setUsageFor(null)} />
 
       <Modal
         title="New product"
