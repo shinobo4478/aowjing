@@ -35,6 +35,7 @@ func (h *Handler) Routes() http.Handler {
 	r.Get("/", h.list)
 	r.Post("/", h.create)
 	r.Get("/{id}", h.get)
+	r.Get("/{id}/usage", h.usage)
 	r.Patch("/{id}", h.update)
 	r.Delete("/{id}", h.delete)
 	return r
@@ -128,7 +129,7 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "Failed to list products.")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"products": toDTOs(rows)})
+	writeJSON(w, http.StatusOK, map[string]any{"products": listRowDTOs(rows)})
 }
 
 func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
@@ -187,6 +188,22 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"product": toDTO(row)})
+}
+
+// usage lists the clips a product is pinned to, so you can see where it is
+// used (and what is blocking its deletion).
+func (h *Handler) usage(w http.ResponseWriter, r *http.Request) {
+	id, err := pgconv.ParseUUID(chi.URLParam(r, "id"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid product id.")
+		return
+	}
+	rows, err := h.q.ListProductUsage(r.Context(), id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to load usage.")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"clips": usageDTOs(rows)})
 }
 
 func (h *Handler) update(w http.ResponseWriter, r *http.Request) {

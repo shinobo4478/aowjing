@@ -15,6 +15,7 @@ import (
 
 	"github.com/shinobo4478/aowjing/backend/internal/database/sqlc"
 	"github.com/shinobo4478/aowjing/backend/internal/pgconv"
+	"github.com/shinobo4478/aowjing/backend/internal/products"
 )
 
 // Enqueuer hands a generation off to the worker. *queue.Client satisfies it.
@@ -68,6 +69,9 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) run(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		PromptTemplateID string `json:"promptTemplateId"`
+		// Products chosen for this clip (0–2, in pin order). They fill the
+		// template's {{product.*}} variables and are pinned to the new clip.
+		ProductIDs []string `json:"productIds"`
 	}
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
@@ -99,16 +103,59 @@ func (h *Handler) run(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	productIDs, err := products.ParseProductIDs(body.ProductIDs)
+	if err != nil {
+		writeFieldError(w, "productIds", err.Error())
+		return
+	}
+	items := make([]products.Item, 0, len(productIDs))
+	for _, id := range productIDs {
+		p, err := h.q.GetProduct(r.Context(), id)
+		if errors.Is(err, pgx.ErrNoRows) {
+			writeFieldError(w, "productIds", "Product not found.")
+			return
+		}
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Failed to load product.")
+			return
+		}
+		items = append(items, products.Item{Name: p.Name, PriceTHB: int(p.PriceThb), Note: p.Note})
+	}
+	prompt, err := products.RenderTemplate(tmpl.Body, items)
+	if err != nil {
+		writeFieldError(w, "productIds", err.Error())
+		return
+	}
+
 	row, err := h.q.CreateGeneration(r.Context(), sqlc.CreateGenerationParams{
 		ProfileID:        tmpl.ProfileID,
 		PromptTemplateID: templateID,
-		InputPrompt:      tmpl.Body,
+		InputPrompt:      prompt,
 		Status:           "pending",
 		Provider:         profile.Provider,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to save generation.")
 		return
+	}
+
+	// Pin the chosen products to the new clip before it is queued, so they are
+	// there by the time the result appears.
+	for i, id := range productIDs {
+		if err := h.q.AddPlacement(r.Context(), sqlc.AddPlacementParams{
+			GenerationID: row.ID,
+			ProductID:    id,
+			Position:     int16(i + 1),
+		}); err != nil {
+			_ = h.q.FinishGeneration(r.Context(), sqlc.FinishGenerationParams{
+				ID:       row.ID,
+				Status:   "failed",
+				Error:    "could not pin the chosen products",
+				Provider: row.Provider,
+			})
+			writeError(w, http.StatusInternalServerError, "Could not pin the chosen products.")
+			return
+		}
 	}
 
 	genID := pgconv.UUIDString(row.ID)
@@ -170,6 +217,14 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+// writeFieldError sends a 422 with a message for one input field, the shape
+// the other handlers use for validation problems.
+func writeFieldError(w http.ResponseWriter, field, msg string) {
+	writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
+		"errors": map[string]string{field: msg},
+	})
 }
 
 func writeError(w http.ResponseWriter, code int, msg string) {

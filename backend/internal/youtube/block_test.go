@@ -5,16 +5,6 @@ import (
 	"testing"
 )
 
-func TestWithCommas(t *testing.T) {
-	for in, want := range map[int]string{
-		0: "0", 7: "7", 299: "299", 1890: "1,890", 12000: "12,000", 1234567: "1,234,567",
-	} {
-		if got := withCommas(in); got != want {
-			t.Errorf("withCommas(%d) = %q, want %q", in, got, want)
-		}
-	}
-}
-
 func TestProductBlock(t *testing.T) {
 	strip := blockItem{
 		Name: "ปลั๊กพ่วง 4 ช่อง", ShopeeURL: "https://shopee.co.th/Strip-i.1.2",

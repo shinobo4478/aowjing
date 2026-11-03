@@ -84,7 +84,7 @@ video content across multiple channels/profiles and social platforms. Deployed t
 4. ⬜ Basic statistics pulling from that one platform's analytics API,
    thumbnail only, no full video storage.
 
-## Phase 3 scope — Shopee products ("ปักตะกร้า") — groundwork only
+## Phase 3 scope — Shopee products ("ปักตะกร้า") — Phase A done, B blocked
 
 Attach up to **2 Shopee products per clip** so videos can carry affiliate
 baskets. Decisions made with the owner:
@@ -102,11 +102,23 @@ baskets. Decisions made with the owner:
   your own affiliate link. Never scrape Shopee.
 - An affiliate disclosure line goes on every description that has products.
 
-Phase A (now): A1 schema, A2 Shopee URL parser, A3 products CRUD API,
-A4 Products page. Next: A5 attach to a clip + publish modal + Studio
-checklist. Phase B (blocked on a Shopee Affiliate account + Open API
-credentials): API client in Settings, auto-fetch product info, affiliate
-short links with the upload id as subId, conversion stats.
+Phase A — ✅ **done**, verified live against Postgres:
+- catalog (table, Shopee link parser, CRUD API, Products page with search
+  and "where is it pinned")
+- pin up to 2 products to a clip (`generation_products`, cap enforced by the
+  primary key), from the Generations row or when pressing Generate
+- prompt templates can use `{{product.name}}` / `.price` / `.note` (and
+  `{{product2.…}}`); the products are chosen at Generate time
+- publish dialog: editable product block (Thai, with an affiliate disclosure
+  when any link is an affiliate link) + a "Tag in YouTube Studio" checklist
+
+Phase B — ⬜ blocked on a Shopee Affiliate account + Open API credentials
+(and the Thai docs, which have not been read yet — don't code the client
+from third-party descriptions): API client with credentials in Settings,
+auto-fetch product info, affiliate short links with the upload id as subId,
+conversion stats. Also not built because nothing consumes it yet: a Facebook
+caption renderer (sits beside `internal/youtube/block.go` when Facebook is
+connected).
 
 ## Explicitly OUT of scope for Phase 2 (do not build yet)
 

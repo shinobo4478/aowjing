@@ -80,6 +80,7 @@ export default function PromptTemplateForm({
           { required: true, message: "Template body is required." },
           { max: 5000, message: "Template body must be 5000 characters or fewer." },
         ]}
+        extra="To mention a product, write {{product.name}}, {{product.price}} or {{product.note}}; {{product2.name}} is the second one. You choose the products when you press Generate."
       >
         <Input.TextArea
           rows={8}

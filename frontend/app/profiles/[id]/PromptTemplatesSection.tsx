@@ -11,9 +11,11 @@ import {
   updatePromptTemplate,
 } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
+import { productSlotsNeeded } from "@/lib/template";
 import type { PromptTemplate } from "@/lib/types";
 import { mobileModal } from "@/lib/ui";
 import PromptTemplateForm from "../PromptTemplateForm";
+import GenerateWithProductsModal from "./GenerateWithProductsModal";
 
 export default function PromptTemplatesSection({
   profileId,
@@ -29,6 +31,7 @@ export default function PromptTemplatesSection({
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<PromptTemplate | null>(null);
   const [running, setRunning] = useState<string | null>(null);
+  const [picking, setPicking] = useState<PromptTemplate | null>(null);
 
   useEffect(() => {
     listPromptTemplates(profileId)
@@ -64,10 +67,17 @@ export default function PromptTemplatesSection({
     }
   }
 
-  async function handleGenerate(id: string) {
+  // A template that mentions products asks which ones first; any other runs
+  // straight away.
+  function handleGenerate(tpl: PromptTemplate) {
+    if (productSlotsNeeded(tpl.body) > 0) setPicking(tpl);
+    else run(tpl.id);
+  }
+
+  async function run(id: string, productIds: string[] = []) {
     setRunning(id);
     try {
-      await runGeneration(id);
+      await runGeneration(id, productIds);
       message.success("Generation queued.");
       onGenerated(); // the Generations list picks it up and polls for the result
     } catch (err) {
@@ -95,7 +105,7 @@ export default function PromptTemplatesSection({
             size="small"
             type="primary"
             loading={running === row.id}
-            onClick={() => handleGenerate(row.id)}
+            onClick={() => handleGenerate(row)}
           >
             Generate
           </Button>
@@ -156,6 +166,16 @@ export default function PromptTemplatesSection({
               </Button>
             </Empty>
           ),
+        }}
+      />
+
+      <GenerateWithProductsModal
+        template={picking}
+        onClose={() => setPicking(null)}
+        onGenerate={async (productIds) => {
+          const id = picking!.id;
+          setPicking(null);
+          await run(id, productIds);
         }}
       />
 

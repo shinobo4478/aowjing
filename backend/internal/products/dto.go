@@ -34,10 +34,54 @@ func toDTO(p sqlc.Product) productDTO {
 	}
 }
 
-func toDTOs(ps []sqlc.Product) []productDTO {
-	out := make([]productDTO, len(ps))
-	for i, p := range ps {
-		out[i] = toDTO(p)
+// listItemDTO is a product as it appears in the catalog list, with how many
+// clips it is pinned to.
+type listItemDTO struct {
+	productDTO
+	UsedCount int `json:"usedCount"`
+}
+
+func listRowDTOs(rows []sqlc.ListProductsRow) []listItemDTO {
+	out := make([]listItemDTO, len(rows))
+	for i, r := range rows {
+		out[i] = listItemDTO{
+			productDTO: toDTO(sqlc.Product{
+				ID: r.ID, Name: r.Name, ShopeeUrl: r.ShopeeUrl,
+				ShopeeShopID: r.ShopeeShopID, ShopeeItemID: r.ShopeeItemID,
+				AffiliateUrl: r.AffiliateUrl, PriceThb: r.PriceThb, Note: r.Note,
+				CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt,
+			}),
+			UsedCount: int(r.UsedCount),
+		}
+	}
+	return out
+}
+
+// usageDTO is one clip a product is pinned to.
+type usageDTO struct {
+	GenerationID string `json:"generationId"`
+	ProfileID    string `json:"profileId"`
+	ProfileName  string `json:"profileName"`
+	TemplateName string `json:"templateName"` // "" if the template was deleted
+	Position     int    `json:"position"`
+	CreatedAt    string `json:"createdAt"`
+}
+
+func usageDTOs(rows []sqlc.ListProductUsageRow) []usageDTO {
+	out := make([]usageDTO, len(rows))
+	for i, r := range rows {
+		name := ""
+		if r.TemplateName != nil {
+			name = *r.TemplateName
+		}
+		out[i] = usageDTO{
+			GenerationID: pgconv.UUIDString(r.GenerationID),
+			ProfileID:    pgconv.UUIDString(r.ProfileID),
+			ProfileName:  r.ProfileName,
+			TemplateName: name,
+			Position:     int(r.Position),
+			CreatedAt:    pgconv.TimeString(r.CreatedAt),
+		}
 	}
 	return out
 }

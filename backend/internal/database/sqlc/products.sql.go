@@ -117,22 +117,86 @@ func (q *Queries) GetProduct(ctx context.Context, id pgtype.UUID) (Product, erro
 	return i, err
 }
 
-const listProducts = `-- name: ListProducts :many
-SELECT id, name, shopee_url, shopee_shop_id, shopee_item_id, affiliate_url, price_thb, note, created_at, updated_at FROM products
-WHERE $1::text = '' OR name ILIKE '%' || $1::text || '%'
-ORDER BY created_at DESC
+const listProductUsage = `-- name: ListProductUsage :many
+SELECT g.id AS generation_id, g.profile_id, pr.name AS profile_name,
+       pt.name AS template_name, gp.position, g.created_at
+FROM generation_products gp
+JOIN generations g ON g.id = gp.generation_id
+JOIN profiles pr ON pr.id = g.profile_id
+LEFT JOIN prompt_templates pt ON pt.id = g.prompt_template_id
+WHERE gp.product_id = $1
+ORDER BY g.created_at DESC
 `
 
+type ListProductUsageRow struct {
+	GenerationID pgtype.UUID        `json:"generation_id"`
+	ProfileID    pgtype.UUID        `json:"profile_id"`
+	ProfileName  string             `json:"profile_name"`
+	TemplateName *string            `json:"template_name"`
+	Position     int16              `json:"position"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+}
+
+// The clips a product is pinned to, newest first.
+func (q *Queries) ListProductUsage(ctx context.Context, productID pgtype.UUID) ([]ListProductUsageRow, error) {
+	rows, err := q.db.Query(ctx, listProductUsage, productID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListProductUsageRow
+	for rows.Next() {
+		var i ListProductUsageRow
+		if err := rows.Scan(
+			&i.GenerationID,
+			&i.ProfileID,
+			&i.ProfileName,
+			&i.TemplateName,
+			&i.Position,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProducts = `-- name: ListProducts :many
+SELECT p.id, p.name, p.shopee_url, p.shopee_shop_id, p.shopee_item_id, p.affiliate_url, p.price_thb, p.note, p.created_at, p.updated_at,
+       (SELECT count(*) FROM generation_products gp WHERE gp.product_id = p.id) AS used_count
+FROM products p
+WHERE $1::text = '' OR p.name ILIKE '%' || $1::text || '%'
+ORDER BY p.created_at DESC
+`
+
+type ListProductsRow struct {
+	ID           pgtype.UUID        `json:"id"`
+	Name         string             `json:"name"`
+	ShopeeUrl    string             `json:"shopee_url"`
+	ShopeeShopID *int64             `json:"shopee_shop_id"`
+	ShopeeItemID *int64             `json:"shopee_item_id"`
+	AffiliateUrl string             `json:"affiliate_url"`
+	PriceThb     int32              `json:"price_thb"`
+	Note         string             `json:"note"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	UsedCount    int64              `json:"used_count"`
+}
+
 // Optional name search: pass ” for everything.
-func (q *Queries) ListProducts(ctx context.Context, dollar_1 string) ([]Product, error) {
+func (q *Queries) ListProducts(ctx context.Context, dollar_1 string) ([]ListProductsRow, error) {
 	rows, err := q.db.Query(ctx, listProducts, dollar_1)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Product
+	var items []ListProductsRow
 	for rows.Next() {
-		var i Product
+		var i ListProductsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
@@ -144,6 +208,7 @@ func (q *Queries) ListProducts(ctx context.Context, dollar_1 string) ([]Product,
 			&i.Note,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.UsedCount,
 		); err != nil {
 			return nil, err
 		}
