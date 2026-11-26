@@ -182,18 +182,40 @@ export function getGeneration(id: string) {
 }
 
 /** `productIds` (0–2, in pin order) fill the template's {{product.*}}
- *  variables and are pinned to the new clip. `imageUrl` ("" for none) makes it
- *  an image-to-video clip; only profiles that use fal accept one. */
+ *  variables and are pinned to the new clip. `imageUrl` (a pasted link) or
+ *  `imageId` (from uploadImage) — not both, "" for none — makes it an
+ *  image-to-video clip; only profiles that use fal accept one. */
 export function runGeneration(
   promptTemplateId: string,
-  productIds: string[] = [],
-  imageUrl = "",
+  opts: { productIds?: string[]; imageUrl?: string; imageId?: string } = {},
 ) {
+  const { productIds = [], imageUrl = "", imageId = "" } = opts;
   return request<{ generation: Generation }>("/generations", {
     method: "POST",
-    body: JSON.stringify({ promptTemplateId, productIds, imageUrl }),
+    body: JSON.stringify({ promptTemplateId, productIds, imageUrl, imageId }),
   }).then((r) => r.generation);
 }
+
+// --- Images (a starting picture uploaded from this computer) ---
+
+/** Uploads a JPG/PNG; the id goes to runGeneration as `imageId`. Sent as
+ *  multipart, so no JSON Content-Type: the browser adds one with the boundary. */
+export function uploadImage(file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  return request<{ image: { id: string; contentType: string; sizeBytes: number } }>(
+    "/images",
+    { method: "POST", body: form, headers: {} },
+  ).then((r) => r.image);
+}
+
+/** URL to show an uploaded picture in an <img>. The session cookie authorises it. */
+export function imageSrc(imageId: string) {
+  return `${API_BASE}/images/${imageId}`;
+}
+
+/** Mirrors images.MaxBytes on the backend. */
+export const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
 export function deleteGeneration(id: string) {
   return request<void>(`/generations/${id}`, { method: "DELETE" });

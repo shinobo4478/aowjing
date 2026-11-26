@@ -79,10 +79,13 @@ export default function PromptTemplatesSection({
     else run(tpl.id);
   }
 
-  async function run(id: string, productIds: string[] = [], imageUrl = "") {
+  async function run(
+    id: string,
+    opts: { productIds?: string[]; imageUrl?: string; imageId?: string } = {},
+  ) {
     setRunning(id);
     try {
-      await runGeneration(id, productIds, imageUrl);
+      await runGeneration(id, opts);
       message.success("Generation queued.");
       onGenerated(); // the Generations list picks it up and polls for the result
     } catch (err) {
@@ -185,10 +188,10 @@ export default function PromptTemplatesSection({
         template={picking}
         askImage={provider === "fal"}
         onClose={() => setPicking(null)}
-        onGenerate={async ({ productIds, imageUrl }) => {
+        onGenerate={async (choices) => {
           const id = picking!.id;
           setPicking(null);
-          await run(id, productIds, imageUrl);
+          await run(id, choices);
         }}
       />
 
