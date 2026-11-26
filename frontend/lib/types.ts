@@ -155,6 +155,9 @@ export interface Shot {
   /** 1-based position in the video. */
   position: number;
   prompt: string;
+  /** What the starting picture should show (Make with AI uses it). Not sent to
+   *  the clip model, so editing it does not clear the shot's OK. */
+  picturePrompt: string;
   seconds: number;
   /** A public link the shot starts from, or "" . */
   imageUrl: string;
@@ -182,6 +185,7 @@ export interface Shot {
  *  of imageUrl and imageId is set; neither means no picture yet. */
 export interface ShotInput {
   prompt: string;
+  picturePrompt: string;
   seconds: number;
   imageUrl: string;
   imageId: string;
@@ -238,6 +242,9 @@ export interface Settings {
   /** Optional second fal key on the BILLING preset, used only to show the
    *  credit balance in the menu bar. */
   falBillingKey: string;
+  /** Optional model id the script helper writes drafts with (e.g.
+   *  "anthropic/claude-sonnet-5"); empty means the built-in default. */
+  scriptModel: string;
 }
 
 /** What the clips cost, from GET /studio/pricing. */

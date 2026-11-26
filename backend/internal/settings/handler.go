@@ -19,7 +19,10 @@ import (
 //   - falBillingKey: optional, a separate key on fal's BILLING preset, used only
 //     to read the credit balance for the menu bar. Kept apart so the key that
 //     makes clips does not need billing access.
-var knownKeys = []string{"falApiKey", "falBillingKey"}
+//   - scriptModel: optional, the model id the script helper writes drafts with
+//     (OpenRouter style, e.g. "anthropic/claude-sonnet-5"); empty means the
+//     built-in default.
+var knownKeys = []string{"falApiKey", "falBillingKey", "scriptModel"}
 
 type Handler struct {
 	q *sqlc.Queries

@@ -169,6 +169,7 @@ export default function VideoEditor({
     else if (end) endImageId = end;
     return updateShot(videoId, shot.id, {
       prompt: draft.prompt,
+      picturePrompt: draft.picturePrompt,
       seconds: draft.seconds,
       imageUrl,
       imageId,
@@ -180,9 +181,12 @@ export default function VideoEditor({
     await run(async () => replaceShot(await plan(shot, draft)), "Failed to save.");
   }
 
-  async function pickPicture(choice: PictureChoice) {
+  async function pickPicture(choice: PictureChoice, picturePrompt?: string) {
     if (!choosing) return;
-    const { shot, draft, end } = choosing;
+    const { shot, end } = choosing;
+    // What was typed in the dialog replaces the card's picture prompt, so it is
+    // kept with the shot (never for an end picture).
+    const draft = picturePrompt === undefined ? choosing.draft : { ...choosing.draft, picturePrompt };
     const change = end
       ? { end: "imageId" in choice ? choice.imageId : "none" } // an end picture is never a link
       : { start: choice };
@@ -472,6 +476,7 @@ export default function VideoEditor({
         open={choosing !== null}
         profileId={profileId}
         end={choosing?.end ?? false}
+        initialPicturePrompt={choosing && !choosing.end ? choosing.draft.picturePrompt : ""}
         // A starting picture can match the other shots' scene; an END picture is
         // made from the shot's own starting picture (same camera, only the pose
         // changes), since the clip morphs whatever differs between the two.

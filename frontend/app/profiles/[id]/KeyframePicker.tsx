@@ -36,6 +36,8 @@ export default function KeyframePicker({
   onChange,
   scenePictures = [],
   sameCamera = false,
+  initialPrompt = "",
+  onPromptChange,
 }: {
   profileId: string;
   value: string;
@@ -47,11 +49,15 @@ export default function KeyframePicker({
    *  one, so the camera, room and light must stay exactly as they are and only
    *  the pose may change. */
   sameCamera?: boolean;
+  /** The picture prompt to start from (a shot's saved one). */
+  initialPrompt?: string;
+  /** Called as the prompt is typed, so the caller can keep it with the shot. */
+  onPromptChange?: (prompt: string) => void;
 }) {
   const { message, modal } = App.useApp();
   const [info, setInfo] = useState<KeyframeModels | null>(null);
   const [refCount, setRefCount] = useState(0);
-  const [prompt, setPrompt] = useState("");
+  const [prompt, setPrompt] = useState(initialPrompt);
   const [model, setModel] = useState("");
   const [count, setCount] = useState(2);
   const [useRefs, setUseRefs] = useState(true);
@@ -195,7 +201,10 @@ export default function KeyframePicker({
     <div style={{ marginTop: 8 }}>
       <Input.TextArea
         value={prompt}
-        onChange={(e) => setPrompt(e.target.value)}
+        onChange={(e) => {
+          setPrompt(e.target.value);
+          onPromptChange?.(e.target.value);
+        }}
         autoSize={{ minRows: 5, maxRows: 14 }}
         maxLength={1500}
         showCount

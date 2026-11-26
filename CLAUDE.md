@@ -384,12 +384,42 @@ Order of work (each a small PR):
      an `API`-preset key is not documented to have, so it uses its own optional
      setting `falBillingKey`. Cached 30 s. **Not yet tried with a real key.**
 5. Thai voice-over (TTS provider chosen after the owner listens to Thai
-   samples from each candidate).
+   samples from each candidate). **Put on hold by the owner (2026-11-27);**
+   it becomes more important again when the 2D educational style (item 7)
+   is made, since such clips lean on narration.
 6. Join clips + audio. **Conflicts with a rule above:** joining makes a full
    video file, and this project never stores full videos. Until the owner
    decides (allow it, or keep joining manual in CapCut), this stays manual and
    needs ffmpeg (a new dependency — ask first).
-7. `2d` and `realistic` recipes.
+7. `2d` and `realistic` recipes. **The owner's 2D is flat vector cartoon for
+   educational clips** (decided 2026-11-27). Expect: AI pictures with text in
+   them are unreliable, so keep pictures free of text and add captions in the
+   editor; Kling may add 3D-looking shading, so the wording needs "flat 2D
+   vector, no shading, no 3D" and a real test (about $1–3); keep motion simple.
+   `realistic` is for later and, for Shopee products, should start from the real
+   product photo rather than an AI redraw.
+8. **Script helper (built, owner-approved 2026-11-27; the Phase 2 "AI prompt
+   suggestions" ban is lifted for this):** "Draft with AI" in the Videos tab.
+   The owner gives a topic (Thai or English), how many shots (1–12) and how long
+   each is; `POST /videos/draft` asks an LLM for a scene + per-shot picture
+   prompt and motion prompt (JSON in the prompt, parsed and checked: wrong
+   shape or too few shots is retried once, told what was wrong) and creates a
+   Video with them filled in. It makes no pictures and no clips. The LLM runs
+   through fal's `openrouter/router` with the SAME fal key (billed per token;
+   the reply carries `usage.cost`, shown afterwards; no per-token rate is listed
+   on fal's pages, so the price before the call is only "a few cents at most",
+   which is an estimate). The model is `scriptModel` in Settings, default
+   `anthropic/claude-sonnet-5` (an id fal's page lists as an example; **not yet
+   run against real fal**: the first real draft will show whether the id works).
+   The system prompt (`internal/scriptwriter/prompt.go`) carries the studio's
+   rules (motion-only clip prompts, one shared scene line, no text in pictures,
+   nothing harmful to imitate, hook / payoff / loop) and the owner's cat-and-bag
+   example. The scene line is put in front of every picture prompt. Shots now
+   keep a `picture_prompt` (`video_shots.picture_prompt`; Make with AI starts
+   from it and what is typed there is saved back); it is not sent to the clip
+   model, so editing it does not clear the shot's OK. Existing DBs need
+   `ALTER TABLE video_shots ADD COLUMN picture_prompt text NOT NULL DEFAULT '';`.
+9. ~~Video templates~~ **cut by the owner (2026-11-27):** not needed now.
 
 ## Explicitly OUT of scope for Phase 2 (do not build yet)
 

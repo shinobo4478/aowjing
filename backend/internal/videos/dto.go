@@ -32,9 +32,11 @@ type shotDTO struct {
 	VideoID  string `json:"videoId"`
 	Position int    `json:"position"`
 	Prompt   string `json:"prompt"`
-	Seconds  int    `json:"seconds"`
-	ImageURL string `json:"imageUrl"`
-	ImageID  string `json:"imageId"`
+	// PicturePrompt is what the starting picture should show (for Make with AI).
+	PicturePrompt string `json:"picturePrompt"`
+	Seconds       int    `json:"seconds"`
+	ImageURL      string `json:"imageUrl"`
+	ImageID       string `json:"imageId"`
 	// EndImageID is the picture the clip should end on, "" if none.
 	EndImageID string `json:"endImageId"`
 	// Approved: the owner OKed this plan on the storyboard, so it may be made in
@@ -64,15 +66,16 @@ func toVideoDTO(v sqlc.Video, shotCount, totalSeconds int) videoDTO {
 
 func toShotDTO(s sqlc.VideoShot, latest *sqlc.ListShotLatestGenerationsRow, take *sqlc.ListShotTakesRow) shotDTO {
 	d := shotDTO{
-		ID:         pgconv.UUIDString(s.ID),
-		VideoID:    pgconv.UUIDString(s.VideoID),
-		Position:   int(s.Position),
-		Prompt:     s.Prompt,
-		Seconds:    int(s.Seconds),
-		ImageURL:   s.ImageUrl,
-		ImageID:    pgconv.UUIDString(s.ImageID),
-		EndImageID: pgconv.UUIDString(s.EndImageID),
-		Approved:   s.Approved,
+		ID:            pgconv.UUIDString(s.ID),
+		VideoID:       pgconv.UUIDString(s.VideoID),
+		Position:      int(s.Position),
+		Prompt:        s.Prompt,
+		PicturePrompt: s.PicturePrompt,
+		Seconds:       int(s.Seconds),
+		ImageURL:      s.ImageUrl,
+		ImageID:       pgconv.UUIDString(s.ImageID),
+		EndImageID:    pgconv.UUIDString(s.EndImageID),
+		Approved:      s.Approved,
 	}
 	if latest != nil {
 		d.Attempts = int(latest.Attempts)

@@ -25,6 +25,7 @@ export default function PictureModal({
   profileId,
   scenePictures,
   end = false,
+  initialPicturePrompt = "",
   onClose,
   onPick,
 }: {
@@ -37,8 +38,12 @@ export default function PictureModal({
    *  picture to this one, so a picture made here keeps the camera, room and
    *  light exactly and changes only the pose; a link is not accepted. */
   end?: boolean;
+  /** The shot's saved picture prompt: Make with AI starts from it, and what is
+   *  typed there is handed back with the chosen picture to be saved. (Not used
+   *  for an end picture, whose prompt only says what changes.) */
+  initialPicturePrompt?: string;
   onClose: () => void;
-  onPick: (choice: PictureChoice) => Promise<void>;
+  onPick: (choice: PictureChoice, picturePrompt?: string) => Promise<void>;
 }) {
   return (
     <Modal
@@ -55,6 +60,7 @@ export default function PictureModal({
           profileId={profileId}
           scenePictures={scenePictures}
           end={end}
+          initialPicturePrompt={initialPicturePrompt}
           onPick={onPick}
         />
       )}
@@ -66,16 +72,20 @@ function Chooser({
   profileId,
   scenePictures,
   end,
+  initialPicturePrompt,
   onPick,
 }: {
   profileId: string;
   end: boolean;
+  initialPicturePrompt: string;
   scenePictures: { imageId: string; label: string }[];
-  onPick: (choice: PictureChoice) => Promise<void>;
+  onPick: (choice: PictureChoice, picturePrompt?: string) => Promise<void>;
 }) {
   const { message } = App.useApp();
   const [source, setSource] = useState<Source>("ai");
   const [madeId, setMadeId] = useState("");
+  // The picture prompt as it stands in the box, kept to save with the shot.
+  const [madePrompt, setMadePrompt] = useState(initialPicturePrompt);
   const [pastId, setPastId] = useState("");
   const [link, setLink] = useState("");
   const [picked, setPicked] = useState<{ file: File; preview: string } | null>(null);
@@ -107,7 +117,7 @@ function Chooser({
   async function use() {
     setBusy(true);
     try {
-      if (source === "ai") await onPick({ imageId: madeId });
+      if (source === "ai") await onPick({ imageId: madeId }, end ? undefined : madePrompt);
       else if (source === "past") await onPick({ imageId: pastId });
       else if (source === "link") await onPick({ imageUrl: link.trim() });
       else {
@@ -155,6 +165,8 @@ function Chooser({
           onChange={setMadeId}
           scenePictures={scenePictures}
           sameCamera={end}
+          initialPrompt={end ? "" : initialPicturePrompt}
+          onPromptChange={setMadePrompt}
         />
       )}
       {source === "past" && (

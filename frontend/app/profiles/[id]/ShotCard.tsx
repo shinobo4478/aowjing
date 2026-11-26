@@ -11,6 +11,8 @@ import type { Shot } from "@/lib/types";
  *  own dialog and saved at once. */
 export interface ShotDraft {
   prompt: string;
+  /** What the starting picture should show (Make with AI starts from it). */
+  picturePrompt: string;
   seconds: number;
 }
 
@@ -68,9 +70,23 @@ export default function ShotCard({
   onDelete: () => void;
 }) {
   const [prompt, setPrompt] = useState(shot.prompt);
+  // The picture prompt can also change outside this card (the picture dialog saves
+  // what was typed there), so an edit made here only counts while the saved
+  // value is still the one it was started from; otherwise the saved value shows.
+  const [typedPicturePrompt, setTypedPicturePrompt] = useState<{
+    text: string;
+    base: string;
+  } | null>(null);
+  const picturePrompt =
+    typedPicturePrompt && typedPicturePrompt.base === shot.picturePrompt
+      ? typedPicturePrompt.text
+      : shot.picturePrompt;
   const [seconds, setSeconds] = useState(shot.seconds);
-  const draft: ShotDraft = { prompt, seconds };
-  const dirty = prompt.trim() !== shot.prompt || seconds !== shot.seconds;
+  const draft: ShotDraft = { prompt, picturePrompt, seconds };
+  const dirty =
+    prompt.trim() !== shot.prompt ||
+    picturePrompt.trim() !== shot.picturePrompt ||
+    seconds !== shot.seconds;
 
   const hasPicture = shot.imageId !== "" || shot.imageUrl !== "";
   const pending = shot.latest?.status === "pending";
@@ -230,6 +246,18 @@ export default function ShotCard({
             autoSize={{ minRows: 4, maxRows: 12 }}
             maxLength={2000}
             placeholder="What moves in this shot, and how the camera moves, in English. The picture already sets how it looks."
+          />
+          <Typography.Text type="secondary" style={{ display: "block", fontSize: 12, margin: "8px 0 2px" }}>
+            Picture prompt: what the starting picture shows (Make with AI starts from this)
+          </Typography.Text>
+          <Input.TextArea
+            value={picturePrompt}
+            onChange={(e) =>
+              setTypedPicturePrompt({ text: e.target.value, base: shot.picturePrompt })
+            }
+            autoSize={{ minRows: 2, maxRows: 8 }}
+            maxLength={2000}
+            placeholder="Who is in the picture, what they are doing, the framing, the mood, in English."
           />
           <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginTop: 8 }}>
             <Typography.Text type="secondary">Length</Typography.Text>

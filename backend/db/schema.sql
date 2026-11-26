@@ -131,6 +131,11 @@ CREATE TABLE IF NOT EXISTS video_shots (
     video_id   uuid        NOT NULL REFERENCES videos (id) ON DELETE CASCADE,
     position   smallint    NOT NULL CHECK (position BETWEEN 1 AND 12),
     prompt     text        NOT NULL DEFAULT '',
+    -- What the starting PICTURE should show (for Make with AI), kept with the plan
+    -- so a drafted shot arrives with it filled in and it is not lost when the
+    -- dialog closes. Not sent to the clip model, so changing it does not clear
+    -- the approval.
+    picture_prompt text    NOT NULL DEFAULT '',
     seconds    smallint    NOT NULL DEFAULT 5 CHECK (seconds BETWEEN 3 AND 15),
     -- The picture the shot starts from: a link, or an uploaded/made one (at
     -- most one of the two is set). Both empty = text-to-video.
