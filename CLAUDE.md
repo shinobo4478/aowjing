@@ -159,12 +159,15 @@ use the `status_url`/`response_url` the submit reply returns — a hand-built UR
 with the full model path gives 405); `start_image_url` is required; the image
 may be a public URL or a base64 data URI (we only accept public https URLs);
 limits 50 MB, min 300×300 px, aspect ratio 0.4–2.5; `duration` defaults "5" and
-`generate_audio` defaults true. **Still unverified against a real key:** the
-real request has not been run (only the request body is unit-tested).
-**Price discrepancy:** fal's pricing page lists the Standard image-to-video
-at $0.14/s (no audio on/off split stated), higher than the $0.084/s used for
-the budget above — re-check on the fal dashboard before trusting the estimate
-(a 5 s shot would be ≈ $0.70, not $0.42).
+`generate_audio` defaults true. **Verified with a real key (2026-11-26):** one
+5 s image-to-video clip from an uploaded picture (sent as a base64 data URI)
+succeeded on `fal-ai/kling-video/v3/standard/image-to-video` with
+`generate_audio:false`; the owner judged the clip OK. It cost **$0.42**
+(= $0.084/s), so the budget above holds — the $0.14/s on fal's pricing page is
+presumably the audio-on rate. The clip took ~8 minutes from Generate to done
+(the UI polls for 20 minutes). **Still unverified:** how long fal keeps the
+video link alive (download it right away), and the 3D wording on a
+text-to-video clip (the image clip adds no wording).
 
 Order of work (each a small PR):
 1. `image_url` on a generation + `FalVideoGenerator` uses the image-to-video

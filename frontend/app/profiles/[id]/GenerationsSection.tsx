@@ -25,6 +25,11 @@ import ClipProducts from "./ClipProducts";
 import PublishYouTubeModal from "./PublishYouTubeModal";
 import StudioChecklist from "./StudioChecklist";
 
+// How often to re-check a pending clip, and how many checks before giving up
+// (240 × 5 s = 20 minutes).
+const POLL_EVERY_MS = 5000;
+const POLL_MAX_TRIES = 240;
+
 export default function GenerationsSection({
   profileId,
   refreshTick,
@@ -95,8 +100,9 @@ export default function GenerationsSection({
     };
   }, [profileId, refreshTick, message, loadYouTube, loadProducts]);
 
-  // While a generation is pending, poll for the worker to finish it. Stops
-  // when nothing is pending or after ~1 minute.
+  // While a generation is pending, poll for the worker to finish it. A text
+  // prompt is done in a second, but a real fal video takes several minutes
+  // (the first real Kling clip took ~8), so keep going for 20 minutes.
   const hasPending = generations.some((g) => g.status === "pending");
   useEffect(() => {
     if (!hasPending) return;
@@ -106,10 +112,10 @@ export default function GenerationsSection({
       listGenerations(profileId)
         .then((fresh) => {
           setGenerations(fresh);
-          if (tries >= 30) clearInterval(iv);
+          if (tries >= POLL_MAX_TRIES) clearInterval(iv);
         })
         .catch(() => clearInterval(iv));
-    }, 2000);
+    }, POLL_EVERY_MS);
     return () => clearInterval(iv);
   }, [hasPending, profileId]);
 
