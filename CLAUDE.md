@@ -168,7 +168,7 @@ the budget above — re-check on the fal dashboard before trusting the estimate
 
 Order of work (each a small PR):
 1. `image_url` on a generation + `FalVideoGenerator` uses the image-to-video
-   model when it is present (`generate_audio:false`). **Backend done** (`FAL_IMAGE_MODEL`,
+   model when it is present (`generate_audio:false`). **Backend done** (model now from the recipe, item 2;
    `generate.Request`, `POST /generations` takes `imageUrl`, fal profiles only;
    existing DBs need `ALTER TABLE generations ADD COLUMN image_url text NOT NULL DEFAULT '';`).
    **UI done:** Generate on a fal profile asks for an optional starting-image link
@@ -186,7 +186,18 @@ Order of work (each a small PR):
    REFERENCES images (id) ON DELETE SET NULL;` (see `db/schema.sql`). The
    dialog has a "Link / From this computer" switch (`GenerateModal`); the file is
    uploaded when Generate is pressed, and the clip row shows its thumbnail.
-2. `video_style` on Profile + the recipe registry (`3d` only).
+2. `video_style` on Profile + the recipe registry (`3d` only). **Done.**
+   `internal/studio` holds the recipes (fal model ids + prompt wording); the
+   Profile stores only the style name. The worker takes its fal models from the
+   recipe, so the `FAL_MODEL` / `FAL_IMAGE_MODEL` env vars are gone. The style's
+   wording is added to the prompt when the clip is created (so the stored prompt
+   is exactly what fal receives): a text-to-video clip gets `TextSuffix`; a clip
+   that starts from a picture gets `ImageSuffix` (empty for `3d`, so a real
+   product photo is never restyled). The 3D wording is a starting guess, not yet
+   tried on real clips. Existing DBs need
+   `ALTER TABLE profiles ADD COLUMN video_style text NOT NULL DEFAULT '3d';`.
+   Adding a style = a constant + a recipe entry in `studio.go` + an option in
+   `frontend/lib/types.ts`. The audio route joins the recipe with item 5.
 3. Shots: a generation that is a set of ordered clips.
 4. Keyframe generation (image model on fal) instead of pasting URLs.
 5. Thai voice-over (TTS provider chosen after the owner listens to Thai

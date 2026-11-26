@@ -18,6 +18,7 @@ import (
 	"github.com/shinobo4478/aowjing/backend/internal/database/sqlc"
 	"github.com/shinobo4478/aowjing/backend/internal/pgconv"
 	"github.com/shinobo4478/aowjing/backend/internal/products"
+	"github.com/shinobo4478/aowjing/backend/internal/studio"
 )
 
 // Enqueuer hands a generation off to the worker. *queue.Client satisfies it.
@@ -162,6 +163,12 @@ func (h *Handler) run(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeFieldError(w, "productIds", err.Error())
 		return
+	}
+
+	// A video clip gets its style's wording added to the prompt. Done here, not
+	// in the worker, so the stored prompt is exactly what fal receives.
+	if profile.Provider == "fal" {
+		prompt = studio.For(profile.VideoStyle).Compose(prompt, imageURL != "" || imageID.Valid)
 	}
 
 	row, err := h.q.CreateGeneration(r.Context(), sqlc.CreateGenerationParams{

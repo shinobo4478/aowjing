@@ -166,6 +166,7 @@ export default function ProfileDetailPage({
             niche: profile.niche,
             description: profile.description,
             provider: profile.provider,
+            videoStyle: profile.videoStyle,
           }}
           submitLabel="Save changes"
           onSubmit={async (input) => {

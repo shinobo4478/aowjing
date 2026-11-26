@@ -7,8 +7,8 @@ SELECT * FROM profiles
 WHERE id = $1;
 
 -- name: CreateProfile :one
-INSERT INTO profiles (name, niche, description, provider)
-VALUES ($1, $2, $3, $4)
+INSERT INTO profiles (name, niche, description, provider, video_style)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
 -- name: UpdateProfile :one
@@ -17,6 +17,7 @@ SET name = $2,
     niche = $3,
     description = $4,
     provider = $5,
+    video_style = $6,
     updated_at = now()
 WHERE id = $1
 RETURNING *;

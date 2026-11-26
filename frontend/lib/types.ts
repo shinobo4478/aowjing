@@ -15,6 +15,20 @@ export const PROVIDER_OPTIONS: { value: ProviderKey; label: string }[] = [
 export const providerShort = (v: string) =>
   v === "fal" ? "Kling 3.0 video" : v === "text" ? "Text only" : v;
 
+/** How a profile's video clips look. Keep in sync with the recipes in
+ *  backend/internal/studio — a new style is added there and here. Only used by
+ *  profiles whose generator is fal. */
+export type VideoStyle = "3d";
+
+export const VIDEO_STYLE_OPTIONS: { value: VideoStyle; label: string }[] = [
+  { value: "3d", label: "3D (Pixar-like)" },
+];
+
+export const DEFAULT_VIDEO_STYLE: VideoStyle = "3d";
+
+export const videoStyleLabel = (v: string) =>
+  VIDEO_STYLE_OPTIONS.find((o) => o.value === v)?.label ?? v;
+
 export interface Profile {
   id: string;
   /** Display name of the channel persona. */
@@ -25,6 +39,8 @@ export interface Profile {
   description: string;
   /** Which generator this profile defaults to. */
   provider: ProviderKey;
+  /** Which video style its clips use (fal profiles). */
+  videoStyle: VideoStyle;
   createdAt: string; // ISO 8601
   updatedAt: string; // ISO 8601
 }
@@ -32,7 +48,7 @@ export interface Profile {
 /** Fields the client sends when creating or editing a Profile. */
 export type ProfileInput = Pick<
   Profile,
-  "name" | "niche" | "description" | "provider"
+  "name" | "niche" | "description" | "provider" | "videoStyle"
 >;
 
 export interface Channel {

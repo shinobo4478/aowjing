@@ -10,26 +10,25 @@ import (
 	"github.com/shinobo4478/aowjing/backend/internal/database/sqlc"
 	"github.com/shinobo4478/aowjing/backend/internal/generate"
 	"github.com/shinobo4478/aowjing/backend/internal/pgconv"
+	"github.com/shinobo4478/aowjing/backend/internal/studio"
 )
 
 // Runner executes a queued generation: load it, pick the generator for its
 // provider, run it over the stored prompt, and record the outcome. Called by
 // cmd/worker.
 type Runner struct {
-	q        *sqlc.Queries
-	falModel string // text-to-video model id
-	// falImageModel is the image-to-video model id, used when a clip has an image.
-	falImageModel string
-	fakeFal       bool
+	q       *sqlc.Queries
+	fakeFal bool
 }
 
-func NewRunner(q *sqlc.Queries, falModel, falImageModel string, fakeFal bool) *Runner {
-	return &Runner{q: q, falModel: falModel, falImageModel: falImageModel, fakeFal: fakeFal}
+func NewRunner(q *sqlc.Queries, fakeFal bool) *Runner {
+	return &Runner{q: q, fakeFal: fakeFal}
 }
 
 // generatorFor maps a profile's provider key to a Generator. "fal" reads the
-// API key from the settings store each time (it may have just been set).
-func (rn *Runner) generatorFor(ctx context.Context, provider string) (generate.Generator, error) {
+// API key from the settings store each time (it may have just been set); which
+// fal models it uses comes from the profile's video style (the recipe).
+func (rn *Runner) generatorFor(ctx context.Context, provider string, recipe studio.Recipe) (generate.Generator, error) {
 	if provider == "fal" {
 		if rn.fakeFal {
 			return generate.FakeFalGenerator{}, nil
@@ -40,7 +39,7 @@ func (rn *Runner) generatorFor(ctx context.Context, provider string) (generate.G
 		} else if err != nil {
 			return nil, err
 		}
-		return generate.NewFalVideoGenerator(key, rn.falModel, rn.falImageModel), nil
+		return generate.NewFalVideoGenerator(key, recipe.TextModel, recipe.ImageModel), nil
 	}
 	return generate.TextGenerator{}, nil
 }
@@ -76,7 +75,11 @@ func (rn *Runner) Run(ctx context.Context, generationID string) error {
 		return err
 	}
 
-	gen, err := rn.generatorFor(ctx, row.Provider)
+	profile, err := rn.q.GetProfile(ctx, row.ProfileID)
+	if err != nil {
+		return err
+	}
+	gen, err := rn.generatorFor(ctx, row.Provider, studio.For(profile.VideoStyle))
 	if err != nil {
 		return err
 	}
