@@ -9,9 +9,11 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/shinobo4478/aowjing/backend/internal/database/sqlc"
 	"github.com/shinobo4478/aowjing/backend/internal/pgconv"
@@ -75,6 +77,9 @@ func (h *Handler) run(w http.ResponseWriter, r *http.Request) {
 		// ImageURL makes this an image-to-video clip: a public image the video
 		// starts from (a real product photo, for Shopee clips). Optional.
 		ImageURL string `json:"imageUrl"`
+		// ImageID is the same, for a picture uploaded through POST /images.
+		// Give this or imageUrl, not both.
+		ImageID string `json:"imageId"`
 	}
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
@@ -111,7 +116,26 @@ func (h *Handler) run(w http.ResponseWriter, r *http.Request) {
 		writeFieldError(w, "imageUrl", err.Error())
 		return
 	}
-	if imageURL != "" && profile.Provider != "fal" {
+	var imageID pgtype.UUID // invalid (NULL) unless an uploaded image is given
+	if strings.TrimSpace(body.ImageID) != "" {
+		if imageURL != "" {
+			writeFieldError(w, "imageId", "Give an image link or an uploaded image, not both.")
+			return
+		}
+		imageID, err = pgconv.ParseUUID(strings.TrimSpace(body.ImageID))
+		if err != nil {
+			writeFieldError(w, "imageId", "Invalid image id.")
+			return
+		}
+		if ok, err := h.q.ImageExists(r.Context(), imageID); err != nil {
+			writeError(w, http.StatusInternalServerError, "Failed to check the image.")
+			return
+		} else if !ok {
+			writeFieldError(w, "imageId", "That uploaded image no longer exists. Upload it again.")
+			return
+		}
+	}
+	if (imageURL != "" || imageID.Valid) && profile.Provider != "fal" {
 		writeFieldError(w, "imageUrl", "An image only works with the fal.ai video provider; this profile uses "+profile.Provider+".")
 		return
 	}
@@ -145,6 +169,7 @@ func (h *Handler) run(w http.ResponseWriter, r *http.Request) {
 		PromptTemplateID: templateID,
 		InputPrompt:      prompt,
 		ImageUrl:         imageURL,
+		ImageID:          imageID,
 		Status:           "pending",
 		Provider:         profile.Provider,
 	})
@@ -215,6 +240,16 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "Invalid generation id.")
 		return
 	}
+	// Look first: we need to know which uploaded image (if any) it used.
+	row, err := h.q.GetGeneration(r.Context(), id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		writeError(w, http.StatusNotFound, "Generation not found.")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to delete generation.")
+		return
+	}
 	n, err := h.q.DeleteGeneration(r.Context(), id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to delete generation.")
@@ -223,6 +258,11 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 	if n == 0 {
 		writeError(w, http.StatusNotFound, "Generation not found.")
 		return
+	}
+	// Drop the uploaded picture once no clip uses it. A failure here only
+	// leaves a stray image behind, so it does not fail the delete.
+	if row.ImageID.Valid {
+		_ = h.q.DeleteImageIfUnused(r.Context(), row.ImageID)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

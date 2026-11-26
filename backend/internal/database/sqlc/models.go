@@ -25,6 +25,7 @@ type Generation struct {
 	PromptTemplateID pgtype.UUID        `json:"prompt_template_id"`
 	InputPrompt      string             `json:"input_prompt"`
 	ImageUrl         string             `json:"image_url"`
+	ImageID          pgtype.UUID        `json:"image_id"`
 	Output           string             `json:"output"`
 	OutputKind       string             `json:"output_kind"`
 	Status           string             `json:"status"`
@@ -38,6 +39,14 @@ type GenerationProduct struct {
 	GenerationID pgtype.UUID `json:"generation_id"`
 	ProductID    pgtype.UUID `json:"product_id"`
 	Position     int16       `json:"position"`
+}
+
+type Image struct {
+	ID          pgtype.UUID        `json:"id"`
+	ContentType string             `json:"content_type"`
+	SizeBytes   int32              `json:"size_bytes"`
+	Data        []byte             `json:"data"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
 
 type Product struct {

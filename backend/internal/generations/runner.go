@@ -2,6 +2,7 @@ package generations
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 
 	"github.com/jackc/pgx/v5"
@@ -44,6 +45,24 @@ func (rn *Runner) generatorFor(ctx context.Context, provider string) (generate.G
 	return generate.TextGenerator{}, nil
 }
 
+// imageFor returns the starting image to hand the generator: the pasted link,
+// or — for an uploaded picture — a data URI ("data:image/png;base64,…"), which
+// fal accepts in place of a public URL. "" means no image.
+func (rn *Runner) imageFor(ctx context.Context, row sqlc.GetGenerationRow) (string, error) {
+	if !row.ImageID.Valid {
+		return row.ImageUrl, nil
+	}
+	img, err := rn.q.GetImage(ctx, row.ImageID)
+	if err != nil {
+		return "", err
+	}
+	return dataURI(img.ContentType, img.Data), nil
+}
+
+func dataURI(contentType string, data []byte) string {
+	return "data:" + contentType + ";base64," + base64.StdEncoding.EncodeToString(data)
+}
+
 // Run processes one generation by id. A provider failure is stored on the row
 // (status "failed") and is not returned — the job is done. A real error (bad
 // id, DB down) is returned so asynq retries.
@@ -62,8 +81,13 @@ func (rn *Runner) Run(ctx context.Context, generationID string) error {
 		return err
 	}
 
+	imageURL, err := rn.imageFor(ctx, row)
+	if err != nil {
+		return err
+	}
+
 	finish := sqlc.FinishGenerationParams{ID: id, Provider: row.Provider, OutputKind: "text"}
-	if res, genErr := gen.Generate(ctx, generate.Request{Prompt: row.InputPrompt, ImageURL: row.ImageUrl}); genErr != nil {
+	if res, genErr := gen.Generate(ctx, generate.Request{Prompt: row.InputPrompt, ImageURL: imageURL}); genErr != nil {
 		finish.Status = "failed"
 		finish.Error = genErr.Error()
 	} else {

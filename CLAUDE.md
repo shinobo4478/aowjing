@@ -172,6 +172,16 @@ Order of work (each a small PR):
    `generate.Request`, `POST /generations` takes `imageUrl`, fal profiles only;
    existing DBs need `ALTER TABLE generations ADD COLUMN image_url text NOT NULL DEFAULT '';`).
    UI field for the image link and the first real fal run are still to do.
+   **Upload from the owner's computer** (decided with the owner: keep in Postgres
+   for now, move to R2 when it exists): `POST /images` (multipart `file`, JPG/PNG,
+   ≤ 8 MB, ≥ 300×300 px, ratio 0.4–2.5), `GET /images/{id}`, and `POST /generations`
+   takes `imageId` instead of `imageUrl`. The worker sends the picture to fal as a
+   base64 data URI (fal's docs say data URIs are accepted; **unverified with a real
+   key**, fal states no size cap for them). Deleting a clip deletes its picture if
+   nothing else uses it; uploads never used by a clip, and pictures of clips removed
+   with their profile, stay until cleaned by hand. Existing DBs need
+   `CREATE TABLE images (…)` and `ALTER TABLE generations ADD COLUMN image_id uuid
+   REFERENCES images (id) ON DELETE SET NULL;` (see `db/schema.sql`).
 2. `video_style` on Profile + the recipe registry (`3d` only).
 3. Shots: a generation that is a set of ordered clips.
 4. Keyframe generation (image model on fal) instead of pasting URLs.
