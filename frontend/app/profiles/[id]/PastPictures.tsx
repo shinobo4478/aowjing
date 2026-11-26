@@ -75,7 +75,7 @@ export default function PastPictures({
         return (
           <Tooltip
             key={g.imageId}
-            title={`${g.templateName || "Deleted template"} · ${formatDateTime(g.createdAt)}`}
+            title={`${g.templateName || (g.shotId ? "Video shot" : "Deleted template")} · ${formatDateTime(g.createdAt)}`}
           >
             <button
               type="button"

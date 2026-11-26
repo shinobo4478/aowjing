@@ -164,7 +164,12 @@ export default function GenerationsSection({
     {
       title: "Template",
       dataIndex: "templateName",
-      render: (v: string) => v || <Typography.Text type="secondary">—</Typography.Text>,
+      render: (v: string, row) =>
+        v || (
+          <Typography.Text type="secondary">
+            {row.shotId ? "Video shot" : "—"}
+          </Typography.Text>
+        ),
     },
     {
       title: "Provider",

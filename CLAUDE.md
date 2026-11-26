@@ -248,6 +248,17 @@ Order of work (each a small PR):
      CHECK (seconds BETWEEN 3 AND 15), ADD COLUMN shot_id uuid REFERENCES
      video_shots (id) ON DELETE SET NULL;` (see `db/schema.sql`; create
      `video_shots` first).
+   - **(2) is built** (the Videos tab, verified with the fake worker, nothing
+     spent): list + "New video" (fal profiles only), the open video lives in the
+     URL (`?tab=videos&video=<id>`). Each shot card has its prompt, a length
+     (3–15 s, with the price), a starting picture (the same four sources as the
+     Generate dialog, in `PictureModal`), Save, Generate (confirm with the price;
+     it saves what is typed first, so the attempt matches the screen), the newest
+     attempt with a video player, and move up/down/delete. Add a shot (max 12).
+     The page polls every 5 s (20 min) while a shot is being made and refreshes
+     the credit balance when it finishes. Clips made from a shot show as "Video
+     shot" in the Generations tab. **Still to do in (3):** "generate all
+     unfinished shots", continuity references between shots, a download list.
 4. Keyframe generation (image model on fal) instead of pasting URLs.
    **Built (done before item 3, decided with the owner), verified end to end
    with the fake generator; not yet run against real fal:**

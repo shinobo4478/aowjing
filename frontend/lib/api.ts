@@ -22,7 +22,11 @@ import type {
   PromptTemplateInput,
   ReferencePicture,
   Settings,
+  Shot,
+  ShotAttempt,
+  ShotInput,
   StudioPricing,
+  Video,
   YouTubeAccount,
   YouTubePrivacy,
   YouTubeStatus,
@@ -283,6 +287,73 @@ export function deleteKeyframe(id: string) {
 
 export function deleteGeneration(id: string) {
   return request<void>(`/generations/${id}`, { method: "DELETE" });
+}
+
+// --- Videos and shots ---
+
+export function listVideos(profileId: string) {
+  return request<{ videos: Video[] }>(
+    `/videos?profileId=${encodeURIComponent(profileId)}`,
+  ).then((r) => r.videos);
+}
+
+export function createVideo(profileId: string, title: string) {
+  return request<{ video: Video }>("/videos", {
+    method: "POST",
+    body: JSON.stringify({ profileId, title }),
+  }).then((r) => r.video);
+}
+
+export function getVideo(id: string) {
+  return request<{ video: Video; shots: Shot[] }>(`/videos/${id}`);
+}
+
+export function renameVideo(id: string, title: string) {
+  return request<{ video: Video }>(`/videos/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ title }),
+  }).then((r) => r.video);
+}
+
+/** Deletes the video and its shots; the clips already made stay as ordinary
+ *  clips of the profile. */
+export function deleteVideo(id: string) {
+  return request<void>(`/videos/${id}`, { method: "DELETE" });
+}
+
+/** Adds a shot at the end (a new one defaults to 5 seconds). */
+export function addShot(videoId: string, input: Partial<ShotInput> = {}) {
+  return request<{ shot: Shot }>(`/videos/${videoId}/shots`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  }).then((r) => r.shot);
+}
+
+export function updateShot(videoId: string, shotId: string, input: ShotInput) {
+  return request<{ shot: Shot }>(`/videos/${videoId}/shots/${shotId}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  }).then((r) => r.shot);
+}
+
+export function deleteShot(videoId: string, shotId: string) {
+  return request<void>(`/videos/${videoId}/shots/${shotId}`, { method: "DELETE" });
+}
+
+/** Sets the order; `shotIds` must name every shot of the video once. */
+export function reorderShots(videoId: string, shotIds: string[]) {
+  return request<void>(`/videos/${videoId}/shots/order`, {
+    method: "PUT",
+    body: JSON.stringify({ shotIds }),
+  });
+}
+
+/** Makes one attempt at a shot. This spends fal credits: ask first. */
+export function generateShot(videoId: string, shotId: string) {
+  return request<{ attempt: ShotAttempt }>(
+    `/videos/${videoId}/shots/${shotId}/generate`,
+    { method: "POST" },
+  ).then((r) => r.attempt);
 }
 
 // --- Prices and credits ---
