@@ -47,6 +47,17 @@ CREATE TABLE IF NOT EXISTS prompt_templates (
 
 CREATE INDEX IF NOT EXISTS prompt_templates_profile_id_idx ON prompt_templates (profile_id);
 
+-- A picture the owner uploaded from their computer, used as the starting image
+-- of an image-to-video clip. Kept in Postgres for now (small JPG/PNG, capped
+-- by the API); move to object storage when R2 exists. Never video.
+CREATE TABLE IF NOT EXISTS images (
+    id           uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    content_type text        NOT NULL,
+    size_bytes   integer     NOT NULL,
+    data         bytea       NOT NULL,
+    created_at   timestamptz NOT NULL DEFAULT now()
+);
+
 -- One run of a prompt template through the AI provider. An immutable record:
 -- the exact prompt that was sent, what came back, and which provider/model
 -- produced it. Kept even if the source template is later deleted (the link is
@@ -58,6 +69,8 @@ CREATE TABLE IF NOT EXISTS generations (
     input_prompt       text        NOT NULL,
     -- Public image an image-to-video clip starts from ('' = text-to-video).
     image_url          text        NOT NULL DEFAULT '',
+    -- ...or an uploaded one (at most one of image_url / image_id is set).
+    image_id           uuid            REFERENCES images (id) ON DELETE SET NULL,
     output             text        NOT NULL DEFAULT '',
     -- 'text' -> `output` is the generated text; 'video' -> `output` is a URL.
     output_kind        text        NOT NULL DEFAULT 'text',

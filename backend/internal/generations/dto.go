@@ -13,6 +13,7 @@ type generationDTO struct {
 	TemplateName     string `json:"templateName"`     // "" if the template was deleted
 	InputPrompt      string `json:"inputPrompt"`
 	ImageURL         string `json:"imageUrl"` // "" for text-to-video
+	ImageID          string `json:"imageId"`  // uploaded picture, "" if none
 	Output           string `json:"output"`
 	OutputKind       string `json:"outputKind"` // "text" | "video"
 	Status           string `json:"status"`
@@ -30,6 +31,7 @@ func modelDTO(g sqlc.Generation, templateName string) generationDTO {
 		TemplateName:     templateName,
 		InputPrompt:      g.InputPrompt,
 		ImageURL:         g.ImageUrl,
+		ImageID:          pgconv.UUIDString(g.ImageID),
 		Output:           g.Output,
 		OutputKind:       g.OutputKind,
 		Status:           g.Status,
@@ -47,6 +49,7 @@ func listRowDTO(r sqlc.ListGenerationsByProfileRow) generationDTO {
 		PromptTemplateID: r.PromptTemplateID,
 		InputPrompt:      r.InputPrompt,
 		ImageUrl:         r.ImageUrl,
+		ImageID:          r.ImageID,
 		Output:           r.Output,
 		OutputKind:       r.OutputKind,
 		Status:           r.Status,
@@ -64,6 +67,7 @@ func getRowDTO(r sqlc.GetGenerationRow) generationDTO {
 		PromptTemplateID: r.PromptTemplateID,
 		InputPrompt:      r.InputPrompt,
 		ImageUrl:         r.ImageUrl,
+		ImageID:          r.ImageID,
 		Output:           r.Output,
 		OutputKind:       r.OutputKind,
 		Status:           r.Status,
