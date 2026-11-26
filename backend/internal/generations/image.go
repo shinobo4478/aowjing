@@ -8,11 +8,11 @@ import (
 
 const maxImageURLLen = 1000
 
-// validateImageURL trims s and checks it can be handed to fal as a starting
+// ValidateImageURL trims s and checks it can be handed to fal as a starting
 // image: an absolute http(s) URL. An empty string is fine (no image) and comes
 // back empty. fal fetches the image itself, so it must be publicly reachable;
 // that is not checked here.
-func validateImageURL(s string) (string, error) {
+func ValidateImageURL(s string) (string, error) {
 	s = strings.TrimSpace(s)
 	if s == "" {
 		return "", nil

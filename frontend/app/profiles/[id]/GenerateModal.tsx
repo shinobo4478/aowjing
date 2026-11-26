@@ -237,8 +237,9 @@ function Choices({
       void go();
       return;
     }
-    const price = pricing?.imageClipUsd[videoStyle];
-    const seconds = pricing?.clipSeconds ?? 5;
+    const seconds = pricing?.defaultSeconds ?? 5;
+    const perSecond = pricing?.imageUsdPerSecond[videoStyle];
+    const price = perSecond === undefined ? undefined : perSecond * seconds;
     modal.confirm({
       title: "Generate this clip?",
       content: hasImage ? (

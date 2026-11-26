@@ -86,7 +86,7 @@ func (rn *Runner) Run(ctx context.Context, generationID string) error {
 	}
 
 	finish := sqlc.FinishGenerationParams{ID: id, Provider: row.Provider, OutputKind: "text"}
-	if res, genErr := gen.Generate(ctx, generate.Request{Prompt: row.InputPrompt, ImageURL: imageURL, Seconds: studio.ClipSeconds}); genErr != nil {
+	if res, genErr := gen.Generate(ctx, generate.Request{Prompt: row.InputPrompt, ImageURL: imageURL, Seconds: int(row.Seconds)}); genErr != nil {
 		finish.Status = "failed"
 		finish.Error = genErr.Error()
 	} else {

@@ -104,6 +104,39 @@ CREATE TABLE IF NOT EXISTS keyframe_images (
 
 CREATE INDEX IF NOT EXISTS keyframe_images_image_id_idx ON keyframe_images (image_id);
 
+-- A video: an ordered list of shots under a profile (Phase 4 item 3). The
+-- owner chooses how many shots and how long each is. Removed with its profile.
+CREATE TABLE IF NOT EXISTS videos (
+    id         uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    profile_id uuid        NOT NULL REFERENCES profiles (id) ON DELETE CASCADE,
+    title      text        NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS videos_profile_id_idx ON videos (profile_id);
+
+-- One shot of a video: the editable PLAN (prompt, length, starting picture).
+-- Every press of Generate on it makes a normal row in `generations` (see
+-- generations.shot_id), so retakes keep their history and cost. At most 12 per
+-- video and 3-15 seconds each (fal's range). The position is unique per video;
+-- the constraint is deferred so a reorder can swap positions inside one
+-- transaction.
+CREATE TABLE IF NOT EXISTS video_shots (
+    id         uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    video_id   uuid        NOT NULL REFERENCES videos (id) ON DELETE CASCADE,
+    position   smallint    NOT NULL CHECK (position BETWEEN 1 AND 12),
+    prompt     text        NOT NULL DEFAULT '',
+    seconds    smallint    NOT NULL DEFAULT 5 CHECK (seconds BETWEEN 3 AND 15),
+    -- The picture the shot starts from: a link, or an uploaded/made one (at
+    -- most one of the two is set). Both empty = text-to-video.
+    image_url  text        NOT NULL DEFAULT '',
+    image_id   uuid            REFERENCES images (id) ON DELETE SET NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    UNIQUE (video_id, position) DEFERRABLE INITIALLY DEFERRED
+);
+
 -- One run of a prompt template through the AI provider. An immutable record:
 -- the exact prompt that was sent, what came back, and which provider/model
 -- produced it. Kept even if the source template is later deleted (the link is
@@ -117,6 +150,11 @@ CREATE TABLE IF NOT EXISTS generations (
     image_url          text        NOT NULL DEFAULT '',
     -- ...or an uploaded one (at most one of image_url / image_id is set).
     image_id           uuid            REFERENCES images (id) ON DELETE SET NULL,
+    -- Clip length asked for (3-15 s; fal's range).
+    seconds            smallint    NOT NULL DEFAULT 5 CHECK (seconds BETWEEN 3 AND 15),
+    -- The shot this is an attempt at, if any. A deleted shot leaves its clips
+    -- behind as ordinary clips of the profile (they were paid for).
+    shot_id            uuid            REFERENCES video_shots (id) ON DELETE SET NULL,
     output             text        NOT NULL DEFAULT '',
     -- 'text' -> `output` is the generated text; 'video' -> `output` is a URL.
     output_kind        text        NOT NULL DEFAULT 'text',

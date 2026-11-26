@@ -26,6 +26,8 @@ type Generation struct {
 	InputPrompt      string             `json:"input_prompt"`
 	ImageUrl         string             `json:"image_url"`
 	ImageID          pgtype.UUID        `json:"image_id"`
+	Seconds          int16              `json:"seconds"`
+	ShotID           pgtype.UUID        `json:"shot_id"`
 	Output           string             `json:"output"`
 	OutputKind       string             `json:"output_kind"`
 	Status           string             `json:"status"`
@@ -116,6 +118,26 @@ type Session struct {
 type Setting struct {
 	Key       string             `json:"key"`
 	Value     string             `json:"value"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+type Video struct {
+	ID        pgtype.UUID        `json:"id"`
+	ProfileID pgtype.UUID        `json:"profile_id"`
+	Title     string             `json:"title"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+type VideoShot struct {
+	ID        pgtype.UUID        `json:"id"`
+	VideoID   pgtype.UUID        `json:"video_id"`
+	Position  int16              `json:"position"`
+	Prompt    string             `json:"prompt"`
+	Seconds   int16              `json:"seconds"`
+	ImageUrl  string             `json:"image_url"`
+	ImageID   pgtype.UUID        `json:"image_id"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
