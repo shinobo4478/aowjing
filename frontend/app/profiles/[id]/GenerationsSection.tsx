@@ -209,6 +209,16 @@ export default function GenerationsSection({
                 <Typography.Text type="secondary">Prompt sent</Typography.Text>
                 <pre style={preStyle}>{row.inputPrompt}</pre>
               </div>
+              {row.imageUrl && (
+                <div>
+                  <Typography.Text type="secondary">Starting image</Typography.Text>
+                  <div style={{ wordBreak: "break-all" }}>
+                    <a href={row.imageUrl} target="_blank" rel="noreferrer">
+                      {row.imageUrl} ↗
+                    </a>
+                  </div>
+                </div>
+              )}
               <div>
                 <Space align="center">
                   <Typography.Text type="secondary">
