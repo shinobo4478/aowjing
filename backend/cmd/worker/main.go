@@ -42,7 +42,7 @@ func run() error {
 	defer db.Close()
 	log.Println("connected to database")
 
-	runner := generations.NewRunner(sqlc.New(db), cfg.FalModel, cfg.FakeFal)
+	runner := generations.NewRunner(sqlc.New(db), cfg.FalModel, cfg.FalImageModel, cfg.FakeFal)
 
 	mux := asynq.NewServeMux()
 	mux.HandleFunc(queue.TaskGenerationRun, func(ctx context.Context, t *asynq.Task) error {

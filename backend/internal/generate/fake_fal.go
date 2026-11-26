@@ -15,7 +15,7 @@ func (FakeFalGenerator) Name() string { return "fal" }
 
 const sampleVideoURL = "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
 
-func (FakeFalGenerator) Generate(ctx context.Context, _ string) (Result, error) {
+func (FakeFalGenerator) Generate(ctx context.Context, _ Request) (Result, error) {
 	select {
 	case <-ctx.Done():
 		return Result{}, ctx.Err()

@@ -21,12 +21,22 @@ type Result struct {
 	Model    string
 }
 
-// Generator turns a prompt into a generation.
+// Request is what a generator is asked to make. It is a struct, not loose
+// arguments, so a new input (a shot list, a voice) is a new field rather than a
+// new signature on every implementation.
+type Request struct {
+	Prompt string
+	// ImageURL, when set, is a public image the video starts from
+	// (image-to-video). Generators that cannot use one ignore it.
+	ImageURL string
+}
+
+// Generator turns a request into a generation.
 type Generator interface {
 	// Name identifies the provider, recorded on every generation (including
 	// failures).
 	Name() string
-	Generate(ctx context.Context, prompt string) (Result, error)
+	Generate(ctx context.Context, req Request) (Result, error)
 }
 
 // Providers lists the provider keys a Profile may select. "fal" is accepted as

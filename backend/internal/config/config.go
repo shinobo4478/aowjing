@@ -47,8 +47,10 @@ type Config struct {
 	// worker (process).
 	RedisAddr string
 
-	// FalModel is the fal.ai model id FalVideoGenerator submits to.
-	FalModel string
+	// FalModel is the fal.ai model id FalVideoGenerator submits to when a clip
+	// has no image; FalImageModel is the one it uses when it does.
+	FalModel      string
+	FalImageModel string
 	// FakeFal makes the worker use a stub instead of calling fal.ai — for
 	// local dev without an API key.
 	FakeFal bool
@@ -97,6 +99,7 @@ func Load() (Config, error) {
 		CookieSecure:  getenvBool("COOKIE_SECURE", false),
 		CORSOrigin:    getenv("CORS_ORIGIN", "http://localhost:3000"),
 		FalModel:      getenv("FAL_MODEL", "fal-ai/kling-video/v3/standard/text-to-video"),
+		FalImageModel: getenv("FAL_IMAGE_MODEL", "fal-ai/kling-video/v3/standard/image-to-video"),
 		FakeFal:       getenvBool("AI_FAKE_FAL", false),
 
 		YouTubeClientID:     os.Getenv("YOUTUBE_CLIENT_ID"),

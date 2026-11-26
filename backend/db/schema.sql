@@ -56,6 +56,8 @@ CREATE TABLE IF NOT EXISTS generations (
     profile_id         uuid        NOT NULL REFERENCES profiles (id) ON DELETE CASCADE,
     prompt_template_id uuid            REFERENCES prompt_templates (id) ON DELETE SET NULL,
     input_prompt       text        NOT NULL,
+    -- Public image an image-to-video clip starts from ('' = text-to-video).
+    image_url          text        NOT NULL DEFAULT '',
     output             text        NOT NULL DEFAULT '',
     -- 'text' -> `output` is the generated text; 'video' -> `output` is a URL.
     output_kind        text        NOT NULL DEFAULT 'text',
