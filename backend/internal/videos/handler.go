@@ -50,6 +50,8 @@ func (h *Handler) Routes() http.Handler {
 	r.Patch("/{id}/shots/{shotId}", h.updateShot)
 	r.Delete("/{id}/shots/{shotId}", h.deleteShot)
 	r.Post("/{id}/shots/{shotId}/generate", h.generateShot)
+	r.Put("/{id}/shots/{shotId}/approved", h.setApproved)
+	r.Post("/{id}/generate", h.generateShots)
 	return r
 }
 
@@ -396,32 +398,56 @@ func (h *Handler) generateShot(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "Failed to load profile.")
 		return
 	}
-	if profile.Provider != "fal" {
-		writeFieldError(w, "shot", "This profile does not make video; switch its generator to fal.ai video.")
-		return
-	}
-	if shot.Prompt == "" {
-		writeFieldError(w, "prompt", "Write the shot's prompt first.")
-		return
-	}
-	// A shot starts from a picture. That is the path whose length and price are
-	// known; a text-only clip has neither a length setting nor a checked price.
-	if shot.ImageUrl == "" && !shot.ImageID.Valid {
-		writeFieldError(w, "imageId", "Give the shot a starting picture first: make one, reuse one or upload one.")
-		return
-	}
-
 	latest, err := h.latestByShot(r.Context(), v.ID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to check the shot.")
 		return
 	}
-	if l := latest[pgconv.UUIDString(shot.ID)]; l != nil && l.Status == "pending" {
-		writeJSON(w, http.StatusConflict, map[string]string{"error": "This shot is already being made."})
+	attempt, qe := h.queueShot(r.Context(), v, profile, shot, latest[pgconv.UUIDString(shot.ID)])
+	if qe != nil {
+		qe.write(w)
 		return
 	}
+	writeJSON(w, http.StatusAccepted, map[string]any{"attempt": attempt})
+}
 
-	row, err := h.q.CreateGeneration(r.Context(), sqlc.CreateGenerationParams{
+// queueError says why a shot could not be queued, in the shape the handlers
+// answer with: a message on one field (422), or a plain error with its status.
+type queueError struct {
+	code  int
+	field string
+	msg   string
+}
+
+func (e *queueError) write(w http.ResponseWriter) {
+	if e.field != "" {
+		writeFieldError(w, e.field, e.msg)
+		return
+	}
+	writeError(w, e.code, e.msg)
+}
+
+// queueShot is the one place a shot becomes a paid attempt: it checks the shot
+// has what it needs and is not already being made (a double click must not pay
+// twice), saves a pending generation from the shot's current plan, and hands it
+// to the worker. `latest` is the shot's newest attempt, or nil.
+func (h *Handler) queueShot(ctx context.Context, v sqlc.Video, profile sqlc.Profile, shot sqlc.VideoShot, latest *sqlc.ListShotLatestGenerationsRow) (attemptDTO, *queueError) {
+	if profile.Provider != "fal" {
+		return attemptDTO{}, &queueError{field: "shot", msg: "This profile does not make video; switch its generator to fal.ai video."}
+	}
+	if shot.Prompt == "" {
+		return attemptDTO{}, &queueError{field: "prompt", msg: "Write the shot's prompt first."}
+	}
+	// A shot starts from a picture. That is the path whose length and price are
+	// known; a text-only clip has neither a length setting nor a checked price.
+	if shot.ImageUrl == "" && !shot.ImageID.Valid {
+		return attemptDTO{}, &queueError{field: "imageId", msg: "Give the shot a starting picture first: make one, reuse one or upload one."}
+	}
+	if latest != nil && latest.Status == "pending" {
+		return attemptDTO{}, &queueError{code: http.StatusConflict, msg: "This shot is already being made."}
+	}
+
+	row, err := h.q.CreateGeneration(ctx, sqlc.CreateGenerationParams{
 		ProfileID: v.ProfileID,
 		// The style's wording is added here, so the stored prompt is exactly what
 		// fal receives (as for a clip made from a template).
@@ -434,23 +460,124 @@ func (h *Handler) generateShot(w http.ResponseWriter, r *http.Request) {
 		ShotID:      shot.ID,
 	})
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to save the attempt.")
-		return
+		return attemptDTO{}, &queueError{code: http.StatusInternalServerError, msg: "Failed to save the attempt."}
 	}
-	if err := h.enq.EnqueueGenerationRun(r.Context(), pgconv.UUIDString(row.ID)); err != nil {
+	if err := h.enq.EnqueueGenerationRun(ctx, pgconv.UUIDString(row.ID)); err != nil {
 		// Nothing will process the row: mark it failed so the screen says why.
-		_ = h.q.FinishGeneration(r.Context(), sqlc.FinishGenerationParams{
+		_ = h.q.FinishGeneration(ctx, sqlc.FinishGenerationParams{
 			ID: row.ID, Status: "failed", Error: "could not queue the job", Provider: row.Provider,
 		})
-		writeError(w, http.StatusInternalServerError, "Could not queue the shot.")
-		return
+		return attemptDTO{}, &queueError{code: http.StatusInternalServerError, msg: "Could not queue the shot."}
 	}
-	writeJSON(w, http.StatusAccepted, map[string]any{"attempt": attemptDTO{
+	return attemptDTO{
 		ID:        pgconv.UUIDString(row.ID),
 		Status:    row.Status,
 		Seconds:   int(row.Seconds),
 		CreatedAt: pgconv.TimeString(row.CreatedAt),
-	}})
+	}, nil
+}
+
+// setApproved marks a shot's plan as looked at and OK. Only a shot that could be
+// generated can be approved (it has a prompt and a picture).
+func (h *Handler) setApproved(w http.ResponseWriter, r *http.Request) {
+	v, ok := h.loadVideo(w, r)
+	if !ok {
+		return
+	}
+	shot, ok := h.loadShot(w, r, v)
+	if !ok {
+		return
+	}
+	var body struct {
+		Approved bool `json:"approved"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	if body.Approved && (shot.Prompt == "" || (shot.ImageUrl == "" && !shot.ImageID.Valid)) {
+		writeFieldError(w, "approved", "Give the shot a prompt and a starting picture before approving it.")
+		return
+	}
+	updated, err := h.q.SetShotApproved(r.Context(), sqlc.SetShotApprovedParams{ID: shot.ID, Approved: body.Approved})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to approve the shot.")
+		return
+	}
+	latest, _ := h.latestByShot(r.Context(), v.ID)
+	writeJSON(w, http.StatusOK, map[string]any{"shot": toShotDTO(updated, latest[pgconv.UUIDString(updated.ID)])})
+}
+
+// generateShots makes an attempt at each of the listed shots in one go (the
+// screen showed the total price and asked once). Only approved shots of this
+// video are made; any other is reported as skipped with the reason, so a stale
+// list on screen can never make something the owner did not look at.
+func (h *Handler) generateShots(w http.ResponseWriter, r *http.Request) {
+	v, ok := h.loadVideo(w, r)
+	if !ok {
+		return
+	}
+	var body struct {
+		ShotIDs []string `json:"shotIds"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	if len(body.ShotIDs) == 0 || len(body.ShotIDs) > MaxShots {
+		writeFieldError(w, "shotIds", "Choose between 1 and 12 shots.")
+		return
+	}
+
+	profile, err := h.q.GetProfile(r.Context(), v.ProfileID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to load profile.")
+		return
+	}
+	shots, err := h.q.ListShots(r.Context(), v.ID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to load the shots.")
+		return
+	}
+	byID := make(map[string]sqlc.VideoShot, len(shots))
+	for _, s := range shots {
+		byID[pgconv.UUIDString(s.ID)] = s
+	}
+	latest, err := h.latestByShot(r.Context(), v.ID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to check the shots.")
+		return
+	}
+
+	type queued struct {
+		ShotID string `json:"shotId"`
+		attemptDTO
+	}
+	type skipped struct {
+		ShotID string `json:"shotId"`
+		Reason string `json:"reason"`
+	}
+	queuedOut, skippedOut := []queued{}, []skipped{}
+	seen := map[string]bool{}
+	for _, id := range body.ShotIDs {
+		shot, found := byID[id]
+		switch {
+		case seen[id]:
+			continue
+		case !found:
+			skippedOut = append(skippedOut, skipped{id, "Not a shot of this video."})
+			continue
+		case !shot.Approved:
+			skippedOut = append(skippedOut, skipped{id, "Not approved."})
+			continue
+		}
+		seen[id] = true
+		attempt, qe := h.queueShot(r.Context(), v, profile, shot, latest[id])
+		if qe != nil {
+			skippedOut = append(skippedOut, skipped{id, qe.msg})
+			continue
+		}
+		queuedOut = append(queuedOut, queued{id, attempt})
+	}
+	writeJSON(w, http.StatusAccepted, map[string]any{"queued": queuedOut, "skipped": skippedOut})
 }
 
 // --- helpers ----------------------------------------------------------------

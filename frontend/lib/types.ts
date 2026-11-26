@@ -112,7 +112,68 @@ export interface Generation {
   error: string;
   provider: string;
   model: string;
+  /** Clip length asked for, in seconds. */
+  seconds: number;
+  /** The video shot this is an attempt at; "" for a clip made from a template. */
+  shotId: string;
   createdAt: string; // ISO 8601
+}
+
+// --- Videos (Phase 4 item 3): an ordered list of shots ---
+
+/** The most shots one video may have. Mirrors videos.MaxShots. */
+export const MAX_SHOTS = 12;
+
+/** A video as listed, with its totals. */
+export interface Video {
+  id: string;
+  profileId: string;
+  title: string;
+  shotCount: number;
+  totalSeconds: number;
+  createdAt: string; // ISO 8601
+  updatedAt: string; // ISO 8601
+}
+
+/** The newest attempt at a shot (a generation). */
+export interface ShotAttempt {
+  id: string;
+  status: "pending" | "succeeded" | "failed";
+  /** The clip's URL once succeeded. */
+  output: string;
+  error: string;
+  seconds: number;
+  createdAt: string; // ISO 8601
+}
+
+/** One shot of a video: the editable plan plus its newest attempt. */
+export interface Shot {
+  id: string;
+  videoId: string;
+  /** 1-based position in the video. */
+  position: number;
+  prompt: string;
+  seconds: number;
+  /** A public link the shot starts from, or "" . */
+  imageUrl: string;
+  /** A stored picture the shot starts from (GET /images/{id}), or "". */
+  imageId: string;
+  /** The owner OKed this plan on the storyboard, so it may be made in bulk.
+   *  Changing the plan clears it. */
+  approved: boolean;
+  /** null if the shot has never been generated. */
+  latest: ShotAttempt | null;
+  /** How many attempts there have been; each was paid for. */
+  attempts: number;
+}
+
+/** What the screen sends to change a shot: its whole plan at once. At most one
+ *  of imageUrl and imageId is set; neither means no picture yet. */
+export interface ShotInput {
+  prompt: string;
+  seconds: number;
+  imageUrl: string;
+  imageId: string;
 }
 
 /** A picture that gives a profile its own look (character, mascot, style). It

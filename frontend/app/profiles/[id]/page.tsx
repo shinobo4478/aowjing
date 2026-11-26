@@ -23,6 +23,7 @@ import GenerationsSection from "./GenerationsSection";
 import ProfileSlate from "./ProfileSlate";
 import PromptTemplatesSection from "./PromptTemplatesSection";
 import ReferencesSection from "./ReferencesSection";
+import VideosSection from "./VideosSection";
 
 const DEFAULT_TAB = "templates";
 
@@ -145,6 +146,17 @@ export default function ProfileDetailPage({
             key: "generations",
             label: "Generations",
             children: <GenerationsSection profileId={id} refreshTick={genTick} />,
+          },
+          {
+            key: "videos",
+            label: "Videos",
+            children: (
+              <VideosSection
+                profileId={id}
+                provider={profile.provider}
+                videoStyle={profile.videoStyle}
+              />
+            ),
           },
           {
             key: "look",

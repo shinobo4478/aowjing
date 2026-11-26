@@ -2,6 +2,7 @@ package studio
 
 import (
 	"math"
+	"strings"
 	"testing"
 )
 
@@ -43,16 +44,16 @@ func TestKeyframeModelIDAndCost(t *testing.T) {
 
 func TestKeyframePrompt(t *testing.T) {
 	r := For("3d")
-	plain := r.KeyframePrompt("a cat on a sofa", false)
+	plain := r.KeyframePrompt("a cat on a sofa", 0, 0)
 	if plain == "a cat on a sofa" || len(plain) <= len("a cat on a sofa") {
 		t.Errorf("3d should add its wording, got %q", plain)
 	}
-	withRefs := r.KeyframePrompt("a cat on a sofa", true)
+	withRefs := r.KeyframePrompt("a cat on a sofa", 2, 0)
 	if withRefs == plain || withRefs[:len(keepLookInstruction)] != keepLookInstruction {
 		t.Errorf("references should add the keep-the-look instruction first, got %q", withRefs)
 	}
 	bare := Recipe{}
-	if got := bare.KeyframePrompt("x", false); got != "x" {
+	if got := bare.KeyframePrompt("x", 0, 0); got != "x" {
 		t.Errorf("no suffix, no refs: want unchanged, got %q", got)
 	}
 }
@@ -76,5 +77,21 @@ func TestClipSeconds(t *testing.T) {
 	// Price scales with the length (assumed linear, see ImageClipUSD).
 	if got := For("3d").ImageClipUSD(10); got != 0.84 {
 		t.Errorf("10 s = %v, want 0.84", got)
+	}
+}
+
+func TestKeyframePromptScene(t *testing.T) {
+	r := For("3d")
+	scene := r.KeyframePrompt("same room, camera from the left", 2, 1)
+	if scene[:len(keepSceneInstruction)] != keepSceneInstruction {
+		t.Errorf("scene pictures should add the keep-the-scene instruction first, got %q", scene)
+	}
+	// With scene pictures the look instruction is not added on top of it.
+	if strings.Contains(scene, keepLookInstruction) {
+		t.Errorf("scene instruction should replace the look one, got %q", scene)
+	}
+	look := r.KeyframePrompt("x", 2, 0)
+	if !strings.HasPrefix(look, keepLookInstruction) {
+		t.Errorf("profile references alone use the look instruction, got %q", look)
 	}
 }

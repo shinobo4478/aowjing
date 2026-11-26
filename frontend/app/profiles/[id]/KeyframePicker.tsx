@@ -18,6 +18,9 @@ import { refreshCredits } from "../../CreditsBadge";
 const POLL_EVERY_MS = 3000;
 const POLL_MAX_TRIES = 120; // 6 minutes; an image takes seconds to a minute
 
+/** Most same-scene pictures one request may carry. Mirrors studio.MaxSceneReferences. */
+const MAX_SCENE_PICTURES = 2;
+
 /**
  * Makes the starting picture of a clip: describe the scene, choose the image
  * model and how many candidates, then pick one. The profile's reference
@@ -31,10 +34,14 @@ export default function KeyframePicker({
   profileId,
   value,
   onChange,
+  scenePictures = [],
 }: {
   profileId: string;
   value: string;
   onChange: (imageId: string) => void;
+  /** Pictures of the same scene this one should match: the other shots of a
+   *  video, in order. The first is chosen at the start (it is the "master"). */
+  scenePictures?: { imageId: string; label: string }[];
 }) {
   const { message, modal } = App.useApp();
   const [info, setInfo] = useState<KeyframeModels | null>(null);
@@ -43,6 +50,10 @@ export default function KeyframePicker({
   const [model, setModel] = useState("");
   const [count, setCount] = useState(2);
   const [useRefs, setUseRefs] = useState(true);
+  // The same-scene pictures to send along. Starts with the first (the master).
+  const [sceneIds, setSceneIds] = useState<string[]>(() =>
+    scenePictures.slice(0, 1).map((p) => p.imageId),
+  );
   const [keyframe, setKeyframe] = useState<Keyframe | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -103,8 +114,14 @@ export default function KeyframePicker({
   }, [pendingId]);
 
   const chosenModel = info?.models.find((m) => m.key === model);
-  const effectiveRefs = useRefs ? refCount : 0;
+  const effectiveRefs = (useRefs ? refCount : 0) + sceneIds.length;
   const promptTooShort = prompt.trim().length < 3;
+
+  function toggleScene(imageId: string, on: boolean) {
+    setSceneIds((cur) =>
+      on ? [...cur, imageId].slice(0, MAX_SCENE_PICTURES) : cur.filter((id) => id !== imageId),
+    );
+  }
 
   // Making pictures spends fal.ai credits, so ask first, with the price.
   function confirmMake() {
@@ -119,8 +136,11 @@ export default function KeyframePicker({
             <strong>{formatUsd(total)}</strong>, charged to your fal.ai credits.
           </p>
           <p style={{ margin: 0 }}>
+            {sceneIds.length > 0
+              ? `The scene of ${sceneIds.length} other shot${sceneIds.length === 1 ? "" : "s"} will be kept. `
+              : ""}
             {effectiveRefs > 0
-              ? `Your ${effectiveRefs} reference picture${effectiveRefs === 1 ? "" : "s"} will be sent along. `
+              ? `${effectiveRefs} reference picture${effectiveRefs === 1 ? "" : "s"} in all will be sent along. `
               : "No reference pictures will be sent. "}
             {keyframe ? "The pictures below will be replaced." : ""}
           </p>
@@ -146,6 +166,7 @@ export default function KeyframePicker({
           model,
           count,
           useReferences: useRefs,
+          sceneImageIds: sceneIds,
         }),
       );
     } catch (err) {
@@ -195,6 +216,41 @@ export default function KeyframePicker({
           }))}
         />
       </div>
+
+      {scenePictures.length > 0 && (
+        <div style={{ marginTop: 12 }}>
+          <Typography.Text>
+            Keep the same scene as (the room, light and character stay, the
+            camera angle or moment changes):
+          </Typography.Text>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 6 }}>
+            {scenePictures.map((p) => {
+              const on = sceneIds.includes(p.imageId);
+              const full = !on && sceneIds.length >= MAX_SCENE_PICTURES;
+              return (
+                <Checkbox
+                  key={p.imageId}
+                  checked={on}
+                  disabled={full}
+                  onChange={(e) => toggleScene(p.imageId, e.target.checked)}
+                >
+                  {/* Served by the API with the session cookie, so next/image cannot optimize it. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={imageSrc(p.imageId)}
+                    alt={p.label}
+                    style={{ width: 48, height: 85, objectFit: "cover", borderRadius: 3, verticalAlign: "middle", marginRight: 6 }}
+                  />
+                  {p.label}
+                </Checkbox>
+              );
+            })}
+          </div>
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            Up to {MAX_SCENE_PICTURES}. Describe only what is different in this shot.
+          </Typography.Text>
+        </div>
+      )}
 
       {refCount > 0 ? (
         <Checkbox

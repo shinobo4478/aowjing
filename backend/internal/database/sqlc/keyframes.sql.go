@@ -28,17 +28,18 @@ func (q *Queries) AddKeyframeImage(ctx context.Context, arg AddKeyframeImagePara
 }
 
 const createKeyframe = `-- name: CreateKeyframe :one
-INSERT INTO keyframes (profile_id, prompt, model, count, reference_count, status)
-VALUES ($1, $2, $3, $4, $5, 'pending')
-RETURNING id, profile_id, prompt, model, count, reference_count, status, error, created_at
+INSERT INTO keyframes (profile_id, prompt, model, count, reference_count, extra_image_ids, status)
+VALUES ($1, $2, $3, $4, $5, $6, 'pending')
+RETURNING id, profile_id, prompt, model, count, reference_count, extra_image_ids, status, error, created_at
 `
 
 type CreateKeyframeParams struct {
-	ProfileID      pgtype.UUID `json:"profile_id"`
-	Prompt         string      `json:"prompt"`
-	Model          string      `json:"model"`
-	Count          int16       `json:"count"`
-	ReferenceCount int16       `json:"reference_count"`
+	ProfileID      pgtype.UUID   `json:"profile_id"`
+	Prompt         string        `json:"prompt"`
+	Model          string        `json:"model"`
+	Count          int16         `json:"count"`
+	ReferenceCount int16         `json:"reference_count"`
+	ExtraImageIds  []pgtype.UUID `json:"extra_image_ids"`
 }
 
 func (q *Queries) CreateKeyframe(ctx context.Context, arg CreateKeyframeParams) (Keyframe, error) {
@@ -48,6 +49,7 @@ func (q *Queries) CreateKeyframe(ctx context.Context, arg CreateKeyframeParams) 
 		arg.Model,
 		arg.Count,
 		arg.ReferenceCount,
+		arg.ExtraImageIds,
 	)
 	var i Keyframe
 	err := row.Scan(
@@ -57,6 +59,7 @@ func (q *Queries) CreateKeyframe(ctx context.Context, arg CreateKeyframeParams) 
 		&i.Model,
 		&i.Count,
 		&i.ReferenceCount,
+		&i.ExtraImageIds,
 		&i.Status,
 		&i.Error,
 		&i.CreatedAt,
@@ -95,7 +98,7 @@ func (q *Queries) FinishKeyframe(ctx context.Context, arg FinishKeyframeParams) 
 }
 
 const getKeyframe = `-- name: GetKeyframe :one
-SELECT id, profile_id, prompt, model, count, reference_count, status, error, created_at FROM keyframes
+SELECT id, profile_id, prompt, model, count, reference_count, extra_image_ids, status, error, created_at FROM keyframes
 WHERE id = $1
 `
 
@@ -109,11 +112,46 @@ func (q *Queries) GetKeyframe(ctx context.Context, id pgtype.UUID) (Keyframe, er
 		&i.Model,
 		&i.Count,
 		&i.ReferenceCount,
+		&i.ExtraImageIds,
 		&i.Status,
 		&i.Error,
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const listImagesByIDs = `-- name: ListImagesByIDs :many
+SELECT id, content_type, data
+FROM images
+WHERE id = ANY($1::uuid[])
+`
+
+type ListImagesByIDsRow struct {
+	ID          pgtype.UUID `json:"id"`
+	ContentType string      `json:"content_type"`
+	Data        []byte      `json:"data"`
+}
+
+// Pictures by id, for the worker to send as references. Order is the caller's
+// business (it sorts by the ids it asked for).
+func (q *Queries) ListImagesByIDs(ctx context.Context, dollar_1 []pgtype.UUID) ([]ListImagesByIDsRow, error) {
+	rows, err := q.db.Query(ctx, listImagesByIDs, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListImagesByIDsRow
+	for rows.Next() {
+		var i ListImagesByIDsRow
+		if err := rows.Scan(&i.ID, &i.ContentType, &i.Data); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listKeyframeImages = `-- name: ListKeyframeImages :many

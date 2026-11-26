@@ -15,7 +15,7 @@ type keyframeDTO struct {
 	Prompt         string   `json:"prompt"` // exactly what was sent
 	Model          string   `json:"model"`
 	Count          int      `json:"count"`
-	ReferenceCount int      `json:"referenceCount"`
+	ReferenceCount int      `json:"referenceCount"` // includes the same-scene pictures
 	Status         string   `json:"status"` // pending | succeeded | failed
 	Error          string   `json:"error"`
 	ImageIDs       []string `json:"imageIds"`
