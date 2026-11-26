@@ -58,6 +58,7 @@ type Keyframe struct {
 	Model          string             `json:"model"`
 	Count          int16              `json:"count"`
 	ReferenceCount int16              `json:"reference_count"`
+	ExtraImageIds  []pgtype.UUID      `json:"extra_image_ids"`
 	Status         string             `json:"status"`
 	Error          string             `json:"error"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
@@ -137,6 +138,7 @@ type VideoShot struct {
 	Seconds   int16              `json:"seconds"`
 	ImageUrl  string             `json:"image_url"`
 	ImageID   pgtype.UUID        `json:"image_id"`
+	Approved  bool               `json:"approved"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }

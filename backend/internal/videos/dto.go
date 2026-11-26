@@ -35,6 +35,9 @@ type shotDTO struct {
 	Seconds  int    `json:"seconds"`
 	ImageURL string `json:"imageUrl"`
 	ImageID  string `json:"imageId"`
+	// Approved: the owner OKed this plan on the storyboard, so it may be made in
+	// bulk. Changing the plan clears it.
+	Approved bool `json:"approved"`
 	// Latest is the newest attempt, nil if the shot has never been generated;
 	// Attempts counts all of them (each was paid for).
 	Latest   *attemptDTO `json:"latest"`
@@ -62,6 +65,7 @@ func toShotDTO(s sqlc.VideoShot, latest *sqlc.ListShotLatestGenerationsRow) shot
 		Seconds:  int(s.Seconds),
 		ImageURL: s.ImageUrl,
 		ImageID:  pgconv.UUIDString(s.ImageID),
+		Approved: s.Approved,
 	}
 	if latest != nil {
 		d.Attempts = int(latest.Attempts)

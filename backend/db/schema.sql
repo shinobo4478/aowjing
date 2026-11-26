@@ -88,6 +88,10 @@ CREATE TABLE IF NOT EXISTS keyframes (
     -- with the request (0 = made from the text alone).
     count      smallint    NOT NULL,
     reference_count smallint NOT NULL DEFAULT 0,
+    -- Pictures of the SAME scene to keep (the other shots of a video), sent
+    -- before the profile's reference pictures; reference_count includes them.
+    -- Not a foreign key: a picture deleted meanwhile is just skipped.
+    extra_image_ids uuid[] NOT NULL DEFAULT '{}',
     status     text        NOT NULL,
     error      text        NOT NULL DEFAULT '',
     created_at timestamptz NOT NULL DEFAULT now()
@@ -132,6 +136,9 @@ CREATE TABLE IF NOT EXISTS video_shots (
     -- most one of the two is set). Both empty = text-to-video.
     image_url  text        NOT NULL DEFAULT '',
     image_id   uuid            REFERENCES images (id) ON DELETE SET NULL,
+    -- The owner looked at the storyboard and OKed this plan, so it may be made
+    -- in bulk. Changing the prompt, length or picture clears it (UpdateShot).
+    approved   boolean     NOT NULL DEFAULT false,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
     UNIQUE (video_id, position) DEFERRABLE INITIALLY DEFERRED

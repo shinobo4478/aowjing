@@ -8,10 +8,12 @@ import {
   deleteShot,
   deleteVideo,
   generateShot,
+  generateShots,
   getStudioPricing,
   getVideo,
   renameVideo,
   reorderShots,
+  setShotApproved,
   updateShot,
 } from "@/lib/api";
 import { formatUsd } from "@/lib/format";
@@ -19,6 +21,7 @@ import { MAX_SHOTS, type Shot, type StudioPricing, type Video } from "@/lib/type
 import { refreshCredits } from "../../CreditsBadge";
 import PictureModal, { type PictureChoice } from "./PictureModal";
 import ShotCard, { type ShotDraft } from "./ShotCard";
+import Storyboard, { isReadyToMake } from "./Storyboard";
 
 const POLL_EVERY_MS = 5000;
 const POLL_MAX_TRIES = 240; // 20 minutes; a real clip took about 8
@@ -206,6 +209,55 @@ export default function VideoEditor({
     });
   }
 
+  async function approve(shot: Shot, approved: boolean) {
+    await run(async () => replaceShot(await setShotApproved(videoId, shot.id, approved)), "Failed to approve.");
+  }
+
+  // Making the approved shots in one go spends credits, so ask once, with the
+  // total and the list.
+  function confirmMakeApproved() {
+    const list = shots.filter(isReadyToMake);
+    if (list.length === 0) return;
+    const seconds = list.reduce((n, s) => n + s.seconds, 0);
+    const price = perSecond === undefined ? undefined : perSecond * seconds;
+    modal.confirm({
+      title: `Generate ${list.length} shot${list.length === 1 ? "" : "s"}?`,
+      content: (
+        <>
+          <p style={{ margin: "0 0 8px" }}>
+            Shots {list.map((s) => s.position).join(", ")}: {seconds} seconds of
+            silent clips
+            {price !== undefined ? (
+              <>
+                , <strong>≈ {formatUsd(price)}</strong> in all
+              </>
+            ) : (
+              " (the price could not be loaded)"
+            )}
+            , charged to your fal.ai credits. They are made at the same time.
+          </p>
+          <p style={{ margin: 0 }}>
+            Shots already made are not included; a retake costs again.
+          </p>
+        </>
+      ),
+      okText: price !== undefined ? `Generate (≈ ${formatUsd(price)})` : "Generate",
+      cancelText: "Cancel",
+      onOk: async () => {
+        await run(async () => {
+          const r = await generateShots(videoId, list.map((s) => s.id));
+          if (r.queued.length > 0) {
+            message.success(`${r.queued.length} shot${r.queued.length === 1 ? "" : "s"} queued.`);
+          }
+          if (r.skipped.length > 0) {
+            message.warning(`${r.skipped.length} skipped: ${r.skipped[0].reason}`);
+          }
+          await load();
+        }, "Failed to generate.");
+      },
+    });
+  }
+
   async function move(shot: Shot, direction: -1 | 1) {
     const ids = shots.map((s) => s.id);
     const i = ids.indexOf(shot.id);
@@ -303,6 +355,14 @@ export default function VideoEditor({
         in your editor afterwards.
       </Typography.Paragraph>
 
+      <Storyboard
+        shots={shots}
+        perSecond={perSecond}
+        busy={busy}
+        onApprove={(s, a) => void approve(s, a)}
+        onMakeApproved={confirmMakeApproved}
+      />
+
       <Space orientation="vertical" size={16} style={{ width: "100%" }}>
         {shots.map((shot) => (
           <ShotCard
@@ -334,6 +394,10 @@ export default function VideoEditor({
       <PictureModal
         open={choosing !== null}
         profileId={profileId}
+        // The other shots' stored pictures, so a new picture can match their scene.
+        scenePictures={shots
+          .filter((s) => s.imageId !== "" && s.id !== choosing?.shot.id)
+          .map((s) => ({ imageId: s.imageId, label: `Shot ${s.position}` }))}
         onClose={() => setChoosing(null)}
         onPick={pickPicture}
       />

@@ -158,6 +158,9 @@ export interface Shot {
   imageUrl: string;
   /** A stored picture the shot starts from (GET /images/{id}), or "". */
   imageId: string;
+  /** The owner OKed this plan on the storyboard, so it may be made in bulk.
+   *  Changing the plan clears it. */
+  approved: boolean;
   /** null if the shot has never been generated. */
   latest: ShotAttempt | null;
   /** How many attempts there have been; each was paid for. */

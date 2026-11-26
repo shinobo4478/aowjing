@@ -23,11 +23,14 @@ type Source = "ai" | "past" | "file" | "link";
 export default function PictureModal({
   open,
   profileId,
+  scenePictures,
   onClose,
   onPick,
 }: {
   open: boolean;
   profileId: string;
+  /** Pictures of the video's other shots, to make this one match their scene. */
+  scenePictures: { imageId: string; label: string }[];
   onClose: () => void;
   onPick: (choice: PictureChoice) => Promise<void>;
 }) {
@@ -41,16 +44,20 @@ export default function PictureModal({
       destroyOnHidden
       {...mobileModal}
     >
-      {open && <Chooser profileId={profileId} onPick={onPick} />}
+      {open && (
+        <Chooser profileId={profileId} scenePictures={scenePictures} onPick={onPick} />
+      )}
     </Modal>
   );
 }
 
 function Chooser({
   profileId,
+  scenePictures,
   onPick,
 }: {
   profileId: string;
+  scenePictures: { imageId: string; label: string }[];
   onPick: (choice: PictureChoice) => Promise<void>;
 }) {
   const { message } = App.useApp();
@@ -128,7 +135,12 @@ function Chooser({
       />
 
       {source === "ai" && (
-        <KeyframePicker profileId={profileId} value={madeId} onChange={setMadeId} />
+        <KeyframePicker
+          profileId={profileId}
+          value={madeId}
+          onChange={setMadeId}
+          scenePictures={scenePictures}
+        />
       )}
       {source === "past" && (
         <PastPictures profileId={profileId} value={pastId} onChange={setPastId} />

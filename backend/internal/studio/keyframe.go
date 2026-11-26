@@ -90,12 +90,27 @@ func (m KeyframeModel) CostUSD(count int) float64 {
 // pictures. A starting guess, not tested on real output yet.
 const keepLookInstruction = "Keep the same character and overall look as in the reference pictures."
 
+// MaxSceneReferences is how many pictures of the same scene (other shots of a
+// video) one request may carry, on top of the profile's reference pictures.
+const MaxSceneReferences = 2
+
+// keepSceneInstruction is for a picture that must show the SAME scene as other
+// shots from another angle or moment: reuse the room, lighting and character,
+// change only what the description says. A starting guess, not tested yet.
+const keepSceneInstruction = "Keep the same scene as in the first reference picture(s): the same room, furniture, props, lighting, colors and character. Change only what is described below, such as the camera angle or what the character is doing."
+
 // KeyframePrompt is the prompt to send for a keyframe: the owner's scene
 // description, an instruction to reuse the references when there are any, and
-// this style's wording (so the picture already has the look the clip should keep).
-func (r Recipe) KeyframePrompt(prompt string, hasReferences bool) string {
+// this style's wording (so the picture already has the look the clip should
+// keep). sceneRefs pictures of the same scene come first among the references,
+// then lookRefs of the profile's own; with scene pictures the "keep the scene"
+// instruction is used, with only the profile's the "keep the look" one.
+func (r Recipe) KeyframePrompt(prompt string, lookRefs, sceneRefs int) string {
 	out := prompt
-	if hasReferences {
+	switch {
+	case sceneRefs > 0:
+		out = keepSceneInstruction + " " + out
+	case lookRefs > 0:
 		out = keepLookInstruction + " " + out
 	}
 	if r.KeyframeSuffix != "" {

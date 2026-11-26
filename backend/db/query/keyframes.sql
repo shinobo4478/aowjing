@@ -1,7 +1,14 @@
 -- name: CreateKeyframe :one
-INSERT INTO keyframes (profile_id, prompt, model, count, reference_count, status)
-VALUES ($1, $2, $3, $4, $5, 'pending')
+INSERT INTO keyframes (profile_id, prompt, model, count, reference_count, extra_image_ids, status)
+VALUES ($1, $2, $3, $4, $5, $6, 'pending')
 RETURNING *;
+
+-- Pictures by id, for the worker to send as references. Order is the caller's
+-- business (it sorts by the ids it asked for).
+-- name: ListImagesByIDs :many
+SELECT id, content_type, data
+FROM images
+WHERE id = ANY($1::uuid[]);
 
 -- name: GetKeyframe :one
 SELECT * FROM keyframes

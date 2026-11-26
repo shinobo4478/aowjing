@@ -257,8 +257,50 @@ Order of work (each a small PR):
      attempt with a video player, and move up/down/delete. Add a shot (max 12).
      The page polls every 5 s (20 min) while a shot is being made and refreshes
      the credit balance when it finishes. Clips made from a shot show as "Video
-     shot" in the Generations tab. **Still to do in (3):** "generate all
-     unfinished shots", continuity references between shots, a download list.
+     shot" in the Generations tab.
+   - **Why shots did not match, and the answer (owner's first real video,
+     2026-11-26):** every shot is an independent clip from its own picture, and
+     the pictures were made independently, so room, light and pose differed.
+     Chaining the last frame of each clip into the next was considered and not
+     chosen as the main method: quality drifts with every hop, the motion
+     restarts from rest at each cut, it forces one-at-a-time generation, and
+     grabbing frames needs ffmpeg (a new dependency: ask first). Short-form video
+     does not need pixel continuity anyway: it is cut from short shots (3–4 s)
+     that share a character, room and style. So:
+     (a) **Same scene, other angle:** when making a shot's picture, up to 2
+     pictures of the video's other shots can be sent first among the references
+     (`sceneImageIds` on `POST /keyframes`, column `keyframes.extra_image_ids`),
+     with an instruction to keep the room, props, lighting and character and
+     change only what is described. The first other shot is ticked by default.
+     The wording is a first guess; unverified how well either model holds a scene.
+     (b) **Storyboard first:** the pictures of all shots side by side; each shot
+     has an OK tick (`video_shots.approved`; changing the prompt, length or picture
+     clears it; needs a prompt and a picture), and "Generate N approved shots"
+     asks once with the total (`POST /videos/{id}/generate`, only approved shots
+     are made, the rest come back as skipped with a reason; shots already made
+     are left out by the screen). Pictures cost cents, clips ten times that, so
+     the sequence is judged on pictures before paying for video.
+     Existing DBs need `ALTER TABLE keyframes ADD COLUMN extra_image_ids uuid[]
+     NOT NULL DEFAULT '{}';` and `ALTER TABLE video_shots ADD COLUMN approved
+     boolean NOT NULL DEFAULT false;`.
+   - **Still to do in (3):** a download list; trying fal's start+end picture
+     mode (`end_image_url`) once on one clip to see whether it joins two shots
+     smoothly (price and effect unverified); the owner's read on the first real
+     video.
+   - **Other video models on fal (read from fal's pages 2026-11-26, prices as
+     listed):** Kling v3 Standard (ours) $0.084/s silent ($0.126/s with audio),
+     3–15 s, has `end_image_url` and `elements` (1–3 reference pictures per
+     element, `@Element1` in the prompt, a way to keep a character inside the
+     clip), output shape follows the start picture (no aspect field); Kling v3
+     Pro $0.112/s silent, "strong subject and text consistency"; Veo 3.1
+     $0.20/s silent at 720p/1080p (Fast $0.10/s), 4/6/8 s, has 9:16, a
+     first+last-frame endpoint and a reference-images endpoint (fixed 8 s);
+     Seedance 2.5 about $0.47/s at 720p, 4–30 s, end image, no 9:16 field (follows
+     the picture); Wan 3.0 Prime $0.14/s at 720p, 2–30 s, 9:16 and end image;
+     MiniMax H3 and Seedance 2.0 Fast: price not stated. Kling Standard stays the
+     best value at this size; Kling `elements` is the thing to try next for
+     character consistency inside a clip. Not read: Luma Ray, Hailuo-branded
+     endpoints, Kling v4.
 4. Keyframe generation (image model on fal) instead of pasting URLs.
    **Built (done before item 3, decided with the owner), verified end to end
    with the fake generator; not yet run against real fal:**

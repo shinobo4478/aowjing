@@ -59,12 +59,25 @@ VALUES (
 )
 RETURNING *;
 
+-- Changing the plan clears the approval: it applied to the plan that was
+-- looked at, not to whatever the shot becomes.
 -- name: UpdateShot :one
 UPDATE video_shots
-SET prompt = $2,
+SET approved = CASE
+        WHEN prompt = $2 AND seconds = $3 AND image_url = $4
+             AND image_id IS NOT DISTINCT FROM sqlc.narg('image_id')::uuid
+        THEN approved ELSE false END,
+    prompt = $2,
     seconds = $3,
     image_url = $4,
-    image_id = $5,
+    image_id = sqlc.narg('image_id')::uuid,
+    updated_at = now()
+WHERE id = $1
+RETURNING *;
+
+-- name: SetShotApproved :one
+UPDATE video_shots
+SET approved = $2,
     updated_at = now()
 WHERE id = $1
 RETURNING *;

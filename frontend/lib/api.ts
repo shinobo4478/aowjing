@@ -267,6 +267,9 @@ export function createKeyframe(input: {
   model: string;
   count: number;
   useReferences: boolean;
+  /** Stored pictures of the SAME scene to keep (other shots of a video), at most
+   *  2, so the new picture shows that scene from another angle or moment. */
+  sceneImageIds?: string[];
 }) {
   return request<{ keyframe: Keyframe }>("/keyframes", {
     method: "POST",
@@ -344,6 +347,28 @@ export function deleteShot(videoId: string, shotId: string) {
 export function reorderShots(videoId: string, shotIds: string[]) {
   return request<void>(`/videos/${videoId}/shots/order`, {
     method: "PUT",
+    body: JSON.stringify({ shotIds }),
+  });
+}
+
+/** Marks a shot's plan as looked at and OK (or not). Changing the shot's prompt,
+ *  length or picture clears it again. */
+export function setShotApproved(videoId: string, shotId: string, approved: boolean) {
+  return request<{ shot: Shot }>(`/videos/${videoId}/shots/${shotId}/approved`, {
+    method: "PUT",
+    body: JSON.stringify({ approved }),
+  }).then((r) => r.shot);
+}
+
+/** Makes one attempt at each listed shot. Only approved shots are made; the
+ *  others come back in `skipped` with the reason. This spends fal credits: ask
+ *  first, with the total. */
+export function generateShots(videoId: string, shotIds: string[]) {
+  return request<{
+    queued: { shotId: string; id: string }[];
+    skipped: { shotId: string; reason: string }[];
+  }>(`/videos/${videoId}/generate`, {
+    method: "POST",
     body: JSON.stringify({ shotIds }),
   });
 }

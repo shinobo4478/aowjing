@@ -61,8 +61,10 @@ export default function ShotCard({
 
   return (
     <Card
+      id={`shot-${shot.id}`}
       size="small"
-      title={`Shot ${shot.position}`}
+      style={{ scrollMarginTop: 72 }}
+      title={`Shot ${shot.position}${shot.approved ? " · OK ✓" : ""}`}
       extra={
         <Space size={4}>
           <Button

@@ -85,6 +85,10 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		// UseReferences: send the profile's reference pictures with the request.
 		// Left out means yes; false makes the picture from the text alone.
 		UseReferences *bool `json:"useReferences"`
+		// SceneImageIDs are stored pictures of the SAME scene to keep (the other
+		// shots of a video), so a new shot shows it from another angle. At most
+		// 2; they are sent before the profile's reference pictures.
+		SceneImageIDs []string `json:"sceneImageIds"`
 	}
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
@@ -130,24 +134,29 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	refCount := 0
+	lookRefs := 0
 	if body.UseReferences == nil || *body.UseReferences {
 		refs, err := h.q.ListProfileReferences(r.Context(), profileID)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "Failed to load the reference pictures.")
 			return
 		}
-		refCount = len(refs)
+		lookRefs = len(refs)
+	}
+	sceneIDs, ok := h.parseSceneImages(w, r, body.SceneImageIDs)
+	if !ok {
+		return
 	}
 
 	row, err := h.q.CreateKeyframe(r.Context(), sqlc.CreateKeyframeParams{
 		ProfileID: profileID,
 		// The style's wording is added here, not in the worker, so the stored
 		// prompt is exactly what the image model receives.
-		Prompt:         studio.For(profile.VideoStyle).KeyframePrompt(prompt, refCount > 0),
+		Prompt:         studio.For(profile.VideoStyle).KeyframePrompt(prompt, lookRefs, len(sceneIDs)),
 		Model:          model.Key,
 		Count:          int16(body.Count),
-		ReferenceCount: int16(refCount),
+		ReferenceCount: int16(lookRefs + len(sceneIDs)),
+		ExtraImageIds:  sceneIDs,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to save the request.")
@@ -164,6 +173,42 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusAccepted, map[string]any{"keyframe": toDTO(row, nil)})
+}
+
+// parseSceneImages checks the same-scene pictures: at most MaxSceneReferences,
+// each a valid id that exists, no repeats. Order is kept (the first is the main
+// one). It writes the error response itself.
+func (h *Handler) parseSceneImages(w http.ResponseWriter, r *http.Request, raw []string) ([]pgtype.UUID, bool) {
+	if len(raw) > studio.MaxSceneReferences {
+		writeFieldError(w, "sceneImageIds", "Keep the scene of at most 2 pictures.")
+		return nil, false
+	}
+	ids := make([]pgtype.UUID, 0, len(raw))
+	seen := map[string]bool{}
+	for _, s := range raw {
+		id, err := pgconv.ParseUUID(s)
+		if err != nil {
+			writeFieldError(w, "sceneImageIds", "Invalid picture id.")
+			return nil, false
+		}
+		key := pgconv.UUIDString(id)
+		if seen[key] {
+			writeFieldError(w, "sceneImageIds", "The same picture is listed twice.")
+			return nil, false
+		}
+		seen[key] = true
+		ok, err := h.q.ImageExists(r.Context(), id)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Failed to check the pictures.")
+			return nil, false
+		}
+		if !ok {
+			writeFieldError(w, "sceneImageIds", "One of those pictures no longer exists.")
+			return nil, false
+		}
+		ids = append(ids, id)
+	}
+	return ids, true
 }
 
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
