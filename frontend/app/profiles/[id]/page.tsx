@@ -131,6 +131,7 @@ export default function ProfileDetailPage({
             children: (
               <PromptTemplatesSection
                 profileId={id}
+                provider={profile.provider}
                 onGenerated={() => {
                   setGenTick((t) => t + 1);
                   setTab("generations");

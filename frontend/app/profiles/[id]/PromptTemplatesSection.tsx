@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { App, Button, Empty, Flex, Modal, Popconfirm, Space, Table } from "antd";
 import type { TableColumnsType } from "antd";
 import {
+  ApiError,
   createPromptTemplate,
   deletePromptTemplate,
   listPromptTemplates,
@@ -12,16 +13,19 @@ import {
 } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
 import { productSlotsNeeded } from "@/lib/template";
-import type { PromptTemplate } from "@/lib/types";
+import type { ProviderKey, PromptTemplate } from "@/lib/types";
 import { mobileModal } from "@/lib/ui";
 import PromptTemplateForm from "../PromptTemplateForm";
-import GenerateWithProductsModal from "./GenerateWithProductsModal";
+import GenerateModal from "./GenerateModal";
 
 export default function PromptTemplatesSection({
   profileId,
+  provider,
   onGenerated,
 }: {
   profileId: string;
+  /** The profile's generator; "fal" lets Generate take a starting image. */
+  provider: ProviderKey;
   /** Called after a template is run, so the Generations list can refresh. */
   onGenerated: () => void;
 }) {
@@ -67,21 +71,29 @@ export default function PromptTemplatesSection({
     }
   }
 
-  // A template that mentions products asks which ones first; any other runs
-  // straight away.
+  // Ask first when there is something to choose: a template that mentions
+  // products, or a fal profile (which can start from an image). Anything else
+  // runs straight away.
   function handleGenerate(tpl: PromptTemplate) {
-    if (productSlotsNeeded(tpl.body) > 0) setPicking(tpl);
+    if (productSlotsNeeded(tpl.body) > 0 || provider === "fal") setPicking(tpl);
     else run(tpl.id);
   }
 
-  async function run(id: string, productIds: string[] = []) {
+  async function run(id: string, productIds: string[] = [], imageUrl = "") {
     setRunning(id);
     try {
-      await runGeneration(id, productIds);
+      await runGeneration(id, productIds, imageUrl);
       message.success("Generation queued.");
       onGenerated(); // the Generations list picks it up and polls for the result
     } catch (err) {
-      message.error(err instanceof Error ? err.message : "Failed to generate.");
+      // A 422 carries a message per field; show the first one.
+      const field =
+        err instanceof ApiError && err.fieldErrors
+          ? Object.values(err.fieldErrors)[0]
+          : undefined;
+      message.error(
+        field ?? (err instanceof Error ? err.message : "Failed to generate."),
+      );
     } finally {
       setRunning(null);
     }
@@ -169,13 +181,14 @@ export default function PromptTemplatesSection({
         }}
       />
 
-      <GenerateWithProductsModal
+      <GenerateModal
         template={picking}
+        askImage={provider === "fal"}
         onClose={() => setPicking(null)}
-        onGenerate={async (productIds) => {
+        onGenerate={async ({ productIds, imageUrl }) => {
           const id = picking!.id;
           setPicking(null);
-          await run(id, productIds);
+          await run(id, productIds, imageUrl);
         }}
       />
 

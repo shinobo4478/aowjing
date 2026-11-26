@@ -171,7 +171,9 @@ Order of work (each a small PR):
    model when it is present (`generate_audio:false`). **Backend done** (`FAL_IMAGE_MODEL`,
    `generate.Request`, `POST /generations` takes `imageUrl`, fal profiles only;
    existing DBs need `ALTER TABLE generations ADD COLUMN image_url text NOT NULL DEFAULT '';`).
-   UI field for the image link and the first real fal run are still to do.
+   **UI done:** Generate on a fal profile asks for an optional starting-image link
+   (`GenerateModal`); the clip row shows it. Still to do: the first real fal run
+   (needs a key) and re-checking the price.
 2. `video_style` on Profile + the recipe registry (`3d` only).
 3. Shots: a generation that is a set of ordered clips.
 4. Keyframe generation (image model on fal) instead of pasting URLs.
