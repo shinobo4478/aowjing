@@ -84,6 +84,8 @@ export interface Generation {
   templateName: string;
   /** The exact prompt sent to the provider. */
   inputPrompt: string;
+  /** Image the clip starts from (image-to-video); "" for a prompt-only run. */
+  imageUrl: string;
   /** Generated text, or — when outputKind is "video" — a URL. */
   output: string;
   outputKind: "text" | "video";

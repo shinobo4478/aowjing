@@ -182,11 +182,16 @@ export function getGeneration(id: string) {
 }
 
 /** `productIds` (0–2, in pin order) fill the template's {{product.*}}
- *  variables and are pinned to the new clip. */
-export function runGeneration(promptTemplateId: string, productIds: string[] = []) {
+ *  variables and are pinned to the new clip. `imageUrl` ("" for none) makes it
+ *  an image-to-video clip; only profiles that use fal accept one. */
+export function runGeneration(
+  promptTemplateId: string,
+  productIds: string[] = [],
+  imageUrl = "",
+) {
   return request<{ generation: Generation }>("/generations", {
     method: "POST",
-    body: JSON.stringify({ promptTemplateId, productIds }),
+    body: JSON.stringify({ promptTemplateId, productIds, imageUrl }),
   }).then((r) => r.generation);
 }
 
