@@ -137,6 +137,7 @@ type VideoShot struct {
 	Position           int16              `json:"position"`
 	Prompt             string             `json:"prompt"`
 	PicturePrompt      string             `json:"picture_prompt"`
+	EndPicturePrompt   string             `json:"end_picture_prompt"`
 	Seconds            int16              `json:"seconds"`
 	ImageUrl           string             `json:"image_url"`
 	ImageID            pgtype.UUID        `json:"image_id"`

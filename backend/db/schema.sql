@@ -136,6 +136,11 @@ CREATE TABLE IF NOT EXISTS video_shots (
     -- dialog closes. Not sent to the clip model, so changing it does not clear
     -- the approval.
     picture_prompt text    NOT NULL DEFAULT '',
+    -- What changes between the starting picture and the END picture (only the
+    -- subject's pose or position: the camera and room stay exactly the same).
+    -- '' for a shot that has no end picture. Kept so a drafted shot arrives with
+    -- it; the same note about the approval applies as for picture_prompt.
+    end_picture_prompt text NOT NULL DEFAULT '',
     seconds    smallint    NOT NULL DEFAULT 5 CHECK (seconds BETWEEN 3 AND 15),
     -- The picture the shot starts from: a link, or an uploaded/made one (at
     -- most one of the two is set). Both empty = text-to-video.

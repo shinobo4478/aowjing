@@ -13,6 +13,8 @@ export interface ShotDraft {
   prompt: string;
   /** What the starting picture should show (Make with AI starts from it). */
   picturePrompt: string;
+  /** What changes by the END picture (a pose or position only). */
+  endPicturePrompt: string;
   seconds: number;
 }
 
@@ -81,11 +83,21 @@ export default function ShotCard({
     typedPicturePrompt && typedPicturePrompt.base === shot.picturePrompt
       ? typedPicturePrompt.text
       : shot.picturePrompt;
+  // The same for the end picture prompt.
+  const [typedEndPrompt, setTypedEndPrompt] = useState<{
+    text: string;
+    base: string;
+  } | null>(null);
+  const endPicturePrompt =
+    typedEndPrompt && typedEndPrompt.base === shot.endPicturePrompt
+      ? typedEndPrompt.text
+      : shot.endPicturePrompt;
   const [seconds, setSeconds] = useState(shot.seconds);
-  const draft: ShotDraft = { prompt, picturePrompt, seconds };
+  const draft: ShotDraft = { prompt, picturePrompt, endPicturePrompt, seconds };
   const dirty =
     prompt.trim() !== shot.prompt ||
     picturePrompt.trim() !== shot.picturePrompt ||
+    endPicturePrompt.trim() !== shot.endPicturePrompt ||
     seconds !== shot.seconds;
 
   const hasPicture = shot.imageId !== "" || shot.imageUrl !== "";
@@ -259,6 +271,23 @@ export default function ShotCard({
             maxLength={2000}
             placeholder="Who is in the picture, what they are doing, the framing, the mood, in English."
           />
+          {(hasPicture || endPicturePrompt !== "") && (
+            <>
+              <Typography.Text type="secondary" style={{ display: "block", fontSize: 12, margin: "8px 0 2px" }}>
+                End picture prompt: only what changes by the end (a pose or position;
+                the camera and room stay). Leave empty if this shot has no end picture.
+              </Typography.Text>
+              <Input.TextArea
+                value={endPicturePrompt}
+                onChange={(e) =>
+                  setTypedEndPrompt({ text: e.target.value, base: shot.endPicturePrompt })
+                }
+                autoSize={{ minRows: 2, maxRows: 6 }}
+                maxLength={2000}
+                placeholder="Only the cat's pose changes: it crouches low, tail raised…"
+              />
+            </>
+          )}
           <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginTop: 8 }}>
             <Typography.Text type="secondary">Length</Typography.Text>
             <InputNumber

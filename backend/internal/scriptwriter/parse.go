@@ -28,8 +28,12 @@ type Brief struct {
 type Shot struct {
 	// PicturePrompt already has the scene in front of it.
 	PicturePrompt string
-	MotionPrompt  string
-	Seconds       int
+	// EndPicturePrompt says what changes by the END picture (only a pose or
+	// position), "" when the shot has no end picture because the next shot cuts to
+	// a new angle or moment. Never set on the last shot.
+	EndPicturePrompt string
+	MotionPrompt     string
+	Seconds          int
 }
 
 // Draft is a drafted video.
@@ -46,8 +50,9 @@ type reply struct {
 	Title string `json:"title"`
 	Scene string `json:"scene"`
 	Shots []struct {
-		PicturePrompt string `json:"picturePrompt"`
-		MotionPrompt  string `json:"motionPrompt"`
+		PicturePrompt    string `json:"picturePrompt"`
+		EndPicturePrompt string `json:"endPicturePrompt"`
+		MotionPrompt     string `json:"motionPrompt"`
 	} `json:"shots"`
 }
 
@@ -78,14 +83,22 @@ func parse(raw string, want, seconds int) (Draft, error) {
 	for i := 0; i < want; i++ {
 		pic := strings.TrimSpace(r.Shots[i].PicturePrompt)
 		motion := strings.TrimSpace(r.Shots[i].MotionPrompt)
+		end := strings.TrimSpace(r.Shots[i].EndPicturePrompt)
 		if pic == "" || motion == "" {
 			return Draft{}, fmt.Errorf("shot %d of the draft is missing a prompt", i+1)
 		}
+		// Nothing follows the last shot, so an end picture there would have no
+		// next shot to meet: drop it rather than keep a note that goes nowhere.
+		if i == want-1 {
+			end = ""
+		}
 		full := scene + " " + pic
-		if utf8.RuneCountInString(full) > maxPromptRunes || utf8.RuneCountInString(motion) > maxPromptRunes {
+		if utf8.RuneCountInString(full) > maxPromptRunes ||
+			utf8.RuneCountInString(motion) > maxPromptRunes ||
+			utf8.RuneCountInString(end) > maxPromptRunes {
 			return Draft{}, fmt.Errorf("shot %d of the draft is too long", i+1)
 		}
-		d.Shots = append(d.Shots, Shot{PicturePrompt: full, MotionPrompt: motion, Seconds: seconds})
+		d.Shots = append(d.Shots, Shot{PicturePrompt: full, EndPicturePrompt: end, MotionPrompt: motion, Seconds: seconds})
 	}
 	return d, nil
 }

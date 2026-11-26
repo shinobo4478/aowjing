@@ -409,8 +409,13 @@ Order of work (each a small PR):
    the reply carries `usage.cost`, shown afterwards; no per-token rate is listed
    on fal's pages, so the price before the call is only "a few cents at most",
    which is an estimate). The model is `scriptModel` in Settings, default
-   `anthropic/claude-sonnet-5` (an id fal's page lists as an example; **not yet
-   run against real fal**: the first real draft will show whether the id works).
+   `anthropic/claude-sonnet-5` (an id fal's page lists as an example). **The
+   owner ran a real draft on 2026-11-27 and it worked:** the id is accepted, the
+   JSON parsed, and the draft was sensible, with one shared scene line. Its flaws
+   were a style word and a look in a picture prompt ("a round-faced 3D cartoon
+   cat") and an extreme close-up followed by a wide shot (no chaining possible);
+   the system prompt now forbids both explicitly. The cost of that draft was not
+   recorded here (the screen shows "It cost $X" after a draft).
    The system prompt (`internal/scriptwriter/prompt.go`) carries the studio's
    rules (motion-only clip prompts, one shared scene line, no text in pictures,
    nothing harmful to imitate, hook / payoff / loop) and the owner's cat-and-bag
@@ -419,6 +424,21 @@ Order of work (each a small PR):
    from it and what is typed there is saved back); it is not sent to the clip
    model, so editing it does not clear the shot's OK. Existing DBs need
    `ALTER TABLE video_shots ADD COLUMN picture_prompt text NOT NULL DEFAULT '';`.
+   **The draft also decides what chains** (owner's request, same day): per shot it
+   may write an `endPicturePrompt` (`video_shots.end_picture_prompt`), only when
+   the action carries straight on into the next shot: the end of the first
+   picture's pose/position change, nothing else ("Only the …"), same camera, room
+   and light. Then the NEXT shot starts from that end picture, so the next shot's
+   picture prompt describes the state the end picture shows and its motion prompt
+   begins from it; where the next shot cuts, the field is empty. The last shot
+   never has one (the parser drops it). The "End picture…" dialog opens with that
+   text, and what is typed there is saved back to the shot. The pictures are
+   still made by the owner (no automatic spending); a "make all pictures" button
+   was considered and left for later because the owner must pick among candidates
+   and a bad picture spoils the ones edited from it. **Unverified:** how well the
+   model writes end prompts (small enough changes) on real drafts.
+   Existing DBs also need
+   `ALTER TABLE video_shots ADD COLUMN end_picture_prompt text NOT NULL DEFAULT '';`.
 9. ~~Video templates~~ **cut by the owner (2026-11-27):** not needed now.
 
 ## Explicitly OUT of scope for Phase 2 (do not build yet)

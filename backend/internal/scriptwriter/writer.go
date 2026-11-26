@@ -143,8 +143,13 @@ func (fakeLLM) Complete(_ context.Context, req generate.LLMRequest) (generate.LL
 	}
 	var shots []string
 	for i := 1; i <= n; i++ {
+		// Shot 1 chains into shot 2 (it has an end prompt); the rest cut.
+		end := ""
+		if i == 1 && n > 1 {
+			end = "Only the fake cat's pose changes in fake shot 1."
+		}
 		shots = append(shots, fmt.Sprintf(
-			`{"picturePrompt":"Fake picture prompt for shot %d.","motionPrompt":"Fake motion for shot %d. Static camera, no zoom."}`, i, i))
+			`{"picturePrompt":"Fake picture prompt for shot %d.","endPicturePrompt":"%s","motionPrompt":"Fake motion for shot %d. Static camera, no zoom."}`, i, end, i))
 	}
 	text := `{"title":"Fake draft","scene":"A fake sunny room with a sofa and a window.","shots":[` + strings.Join(shots, ",") + `]}`
 	return generate.LLMResult{Text: text}, nil

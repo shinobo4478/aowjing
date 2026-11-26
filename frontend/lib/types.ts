@@ -158,6 +158,8 @@ export interface Shot {
   /** What the starting picture should show (Make with AI uses it). Not sent to
    *  the clip model, so editing it does not clear the shot's OK. */
   picturePrompt: string;
+  /** What changes by the END picture (a pose or position only); "" for none. */
+  endPicturePrompt: string;
   seconds: number;
   /** A public link the shot starts from, or "" . */
   imageUrl: string;
@@ -186,6 +188,7 @@ export interface Shot {
 export interface ShotInput {
   prompt: string;
   picturePrompt: string;
+  endPicturePrompt: string;
   seconds: number;
   imageUrl: string;
   imageId: string;

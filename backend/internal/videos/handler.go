@@ -260,11 +260,11 @@ func (h *Handler) addShot(w http.ResponseWriter, r *http.Request) {
 	}
 	// A picture given with the new shot goes on with the update (CreateShot has
 	// no picture columns, to keep its query simple).
-	if in.ImageURL != "" || imageID.Valid || endID.Valid || in.PicturePrompt != "" {
+	if in.ImageURL != "" || imageID.Valid || endID.Valid || in.PicturePrompt != "" || in.EndPicturePrompt != "" {
 		shot, err = h.q.UpdateShot(r.Context(), sqlc.UpdateShotParams{
 			ID: shot.ID, Prompt: shot.Prompt, Seconds: shot.Seconds,
 			ImageUrl: in.ImageURL, ImageID: imageID, EndImageID: endID,
-			PicturePrompt: in.PicturePrompt,
+			PicturePrompt: in.PicturePrompt, EndPicturePrompt: in.EndPicturePrompt,
 		})
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "The shot was added but its picture was not.")
@@ -299,7 +299,7 @@ func (h *Handler) updateShot(w http.ResponseWriter, r *http.Request) {
 	updated, err := h.q.UpdateShot(r.Context(), sqlc.UpdateShotParams{
 		ID: shot.ID, Prompt: in.Prompt, Seconds: int16(in.Seconds),
 		ImageUrl: in.ImageURL, ImageID: imageID, EndImageID: endID,
-		PicturePrompt: in.PicturePrompt,
+		PicturePrompt: in.PicturePrompt, EndPicturePrompt: in.EndPicturePrompt,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to update the shot.")
@@ -910,7 +910,7 @@ func (h *Handler) draft(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, s := range d.Shots {
 		if _, err := h.q.CreateShotWithPlan(r.Context(), sqlc.CreateShotWithPlanParams{
-			VideoID: v.ID, Prompt: s.MotionPrompt, Seconds: int16(s.Seconds), PicturePrompt: s.PicturePrompt,
+			VideoID: v.ID, Prompt: s.MotionPrompt, Seconds: int16(s.Seconds), PicturePrompt: s.PicturePrompt, EndPicturePrompt: s.EndPicturePrompt,
 		}); err != nil {
 			_, _ = h.q.DeleteVideo(r.Context(), v.ID) // no half-filled video left behind
 			writeError(w, http.StatusInternalServerError, "The draft was written but its shots were not saved.")

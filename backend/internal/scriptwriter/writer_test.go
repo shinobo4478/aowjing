@@ -160,3 +160,87 @@ func TestRetryLoopShape(t *testing.T) {
 		}
 	})
 }
+
+func TestParseEndPicturePrompt(t *testing.T) {
+	const raw = `{"title":"t","scene":"S.","shots":[
+ {"picturePrompt":"a","endPicturePrompt":"Only the cat's pose changes.","motionPrompt":"m1"},
+ {"picturePrompt":"b","endPicturePrompt":"  ","motionPrompt":"m2"},
+ {"picturePrompt":"c","endPicturePrompt":"Only something changes.","motionPrompt":"m3"}]}`
+	d, err := parse(raw, 3, 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d.Shots[0].EndPicturePrompt != "Only the cat's pose changes." {
+		t.Errorf("shot 1 should keep its end prompt, got %q", d.Shots[0].EndPicturePrompt)
+	}
+	if d.Shots[1].EndPicturePrompt != "" {
+		t.Errorf("a blank end prompt means a cut, got %q", d.Shots[1].EndPicturePrompt)
+	}
+	// Nothing follows the last shot, so its end prompt is dropped.
+	if d.Shots[2].EndPicturePrompt != "" {
+		t.Errorf("the last shot cannot have an end picture, got %q", d.Shots[2].EndPicturePrompt)
+	}
+
+	// A reply without the field at all (an older style of answer) still parses.
+	d, err = parse(goodReply, 2, 4)
+	if err != nil || d.Shots[0].EndPicturePrompt != "" {
+		t.Errorf("missing endPicturePrompt should be fine: %v %+v", err, d.Shots)
+	}
+
+	// Too long.
+	long := `{"title":"t","scene":"S.","shots":[{"picturePrompt":"a","endPicturePrompt":"` +
+		strings.Repeat("x", 2000) + `","motionPrompt":"m"},{"picturePrompt":"b","motionPrompt":"n"}]}`
+	if _, err := parse(long, 2, 4); err == nil {
+		t.Error("an over-long end prompt should be refused")
+	}
+}
+
+func TestSystemPromptStatesTheChainingRules(t *testing.T) {
+	for _, want := range []string{
+		`"endPicturePrompt"`,
+		"morphs ANYTHING that differs",
+		"Only the ...",
+		"The last shot always has",
+		"the next shot STARTS from that end picture",
+	} {
+		if !strings.Contains(systemPrompt, want) {
+			t.Errorf("the system prompt lost %q", want)
+		}
+	}
+	// The worked example must itself be a reply the parser accepts, with one shot
+	// that chains and one that cuts: a broken example would teach the model a
+	// broken format.
+	start := strings.Index(systemPrompt, `{"title":"The bag drop"`)
+	if start < 0 {
+		t.Fatal("the worked example is missing")
+	}
+	d, err := parse(systemPrompt[start:], 3, 4)
+	if err != nil {
+		t.Fatalf("the worked example does not parse: %v", err)
+	}
+	if d.Shots[0].EndPicturePrompt == "" || d.Shots[1].EndPicturePrompt != "" {
+		t.Errorf("the example should chain shot 1 and cut shot 2, got %+v", d.Shots)
+	}
+}
+
+func TestFakeLLMChainsShotOne(t *testing.T) {
+	res, _ := fakeLLM{}.Complete(context.Background(), generate.LLMRequest{Prompt: userPrompt(Brief{Topic: "x y z", Shots: 3, Seconds: 4})})
+	d, err := parse(res.Text, 3, 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d.Shots[0].EndPicturePrompt == "" || d.Shots[1].EndPicturePrompt != "" {
+		t.Errorf("fake draft should chain shot 1 only: %+v", d.Shots)
+	}
+}
+
+func TestSystemPromptForbidsStyleWordsAndLooks(t *testing.T) {
+	// The owner's first real draft wrote "a round-faced 3D cartoon cat" into a
+	// picture prompt although the studio adds the style and reference pictures
+	// fix the look; the rule must stay spelled out.
+	for _, want := range []string{`no "3D", "cartoon"`, "Never describe how the character looks", "big jumps of framing"} {
+		if !strings.Contains(systemPrompt, want) {
+			t.Errorf("the system prompt lost %q", want)
+		}
+	}
+}

@@ -117,7 +117,7 @@ function Chooser({
   async function use() {
     setBusy(true);
     try {
-      if (source === "ai") await onPick({ imageId: madeId }, end ? undefined : madePrompt);
+      if (source === "ai") await onPick({ imageId: madeId }, madePrompt);
       else if (source === "past") await onPick({ imageId: pastId });
       else if (source === "link") await onPick({ imageUrl: link.trim() });
       else {
@@ -165,7 +165,7 @@ function Chooser({
           onChange={setMadeId}
           scenePictures={scenePictures}
           sameCamera={end}
-          initialPrompt={end ? "" : initialPicturePrompt}
+          initialPrompt={initialPicturePrompt}
           onPromptChange={setMadePrompt}
         />
       )}
