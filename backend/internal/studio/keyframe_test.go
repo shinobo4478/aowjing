@@ -56,3 +56,13 @@ func TestKeyframePrompt(t *testing.T) {
 		t.Errorf("no suffix, no refs: want unchanged, got %q", got)
 	}
 }
+
+func TestImageClipUSD(t *testing.T) {
+	// 5 s at $0.084/s is $0.42 (the first real clip); float rounding must not leak.
+	if got := For("3d").ImageClipUSD(); got != 0.42 {
+		t.Errorf("3d image clip = %v, want 0.42", got)
+	}
+	if got := (Recipe{}).ImageClipUSD(); got != 0 {
+		t.Errorf("unknown price should be 0, got %v", got)
+	}
+}

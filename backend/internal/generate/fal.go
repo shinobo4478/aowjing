@@ -3,6 +3,7 @@ package generate
 import (
 	"context"
 	"errors"
+	"strconv"
 	"time"
 )
 
@@ -33,9 +34,9 @@ const (
 	// took about 8 minutes.
 	falVideoMaxWait = 12 * time.Minute
 
-	// falClipSeconds is the length of an image-to-video clip. fal takes
-	// "3".."15" as a string.
-	falClipSeconds = "5"
+	// defaultClipSeconds is the length of an image-to-video clip when the
+	// request does not say. fal takes 3 to 15, as a string.
+	defaultClipSeconds = 5
 )
 
 type falVideoResult struct {
@@ -77,10 +78,14 @@ func (g *FalVideoGenerator) plan(req Request) (model string, input map[string]an
 	if req.ImageURL == "" {
 		return g.textModel, map[string]any{"prompt": req.Prompt}
 	}
+	seconds := req.Seconds
+	if seconds == 0 {
+		seconds = defaultClipSeconds
+	}
 	return g.imageModel, map[string]any{
 		"prompt":          req.Prompt,
 		"start_image_url": req.ImageURL,
-		"duration":        falClipSeconds, // a string on fal, not a number
+		"duration":        strconv.Itoa(seconds), // a string on fal, not a number
 		"generate_audio":  false,
 	}
 }

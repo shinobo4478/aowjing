@@ -13,6 +13,8 @@
 // the voice-over step (item 5) exists.
 package studio
 
+import "math"
+
 // Style is the name of a video style, as stored on a Profile.
 type Style string
 
@@ -23,6 +25,10 @@ const (
 	// DefaultStyle is what a profile gets when none is given.
 	DefaultStyle = Style3D
 )
+
+// ClipSeconds is the length of every clip for now (fal takes 3 to 15). It is
+// here, not in a handler, because the price shown before spending depends on it.
+const ClipSeconds = 5
 
 // Recipe is everything a style implies for making a clip.
 type Recipe struct {
@@ -46,6 +52,16 @@ type Recipe struct {
 	// clip that starts from a picture, here the look is being decided, so the
 	// style's wording belongs in the prompt.
 	KeyframeSuffix string
+
+	// ImagePricePerSecondUSD is what an image-to-video clip costs per second.
+	// 0 means not known. 0.084 is from the first real clip: 5 s cost $0.42.
+	ImagePricePerSecondUSD float64
+}
+
+// ImageClipUSD is the price of one image-to-video clip of ClipSeconds, rounded
+// to the cent-fraction fal bills in. 0 means the price is not known.
+func (r Recipe) ImageClipUSD() float64 {
+	return math.Round(r.ImagePricePerSecondUSD*ClipSeconds*10000) / 10000
 }
 
 // recipes is the registry, in the order shown in the UI. To add a style, add a
@@ -62,6 +78,8 @@ var recipes = []Recipe{
 		// seeing what Kling makes of it.
 		TextSuffix:     "3D animated film style, Pixar-like characters, soft cinematic lighting, smooth natural motion.",
 		KeyframeSuffix: "3D animated film style, Pixar-like characters, soft cinematic lighting.",
+
+		ImagePricePerSecondUSD: 0.084,
 	},
 }
 

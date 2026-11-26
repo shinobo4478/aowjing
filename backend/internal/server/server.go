@@ -11,6 +11,7 @@ import (
 	"github.com/shinobo4478/aowjing/backend/internal/auth"
 	"github.com/shinobo4478/aowjing/backend/internal/channels"
 	"github.com/shinobo4478/aowjing/backend/internal/config"
+	"github.com/shinobo4478/aowjing/backend/internal/credits"
 	"github.com/shinobo4478/aowjing/backend/internal/database/sqlc"
 	"github.com/shinobo4478/aowjing/backend/internal/generations"
 	"github.com/shinobo4478/aowjing/backend/internal/images"
@@ -52,6 +53,8 @@ func New(db *pgxpool.Pool, cfg config.Config, q *queue.Client) http.Handler {
 		r.Mount("/channels", channels.NewHandler(queries).Routes())
 		r.Mount("/prompt-templates", prompttemplates.NewHandler(queries).Routes())
 		r.Mount("/settings", settings.NewHandler(queries).Routes())
+		r.Get("/studio/pricing", s.handleStudioPricing)
+		r.Mount("/credits", credits.NewHandler(queries).Routes())
 		r.Mount("/images", images.NewHandler(queries).Routes())
 		// POST only enqueues; cmd/worker makes the pictures.
 		r.Mount("/keyframes", keyframes.NewHandler(queries, q).Routes())

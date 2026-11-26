@@ -29,6 +29,9 @@ type Request struct {
 	// ImageURL, when set, is a public image the video starts from
 	// (image-to-video). Generators that cannot use one ignore it.
 	ImageURL string
+	// Seconds is the clip length for an image-to-video clip (fal takes 3 to
+	// 15). 0 means the default, 5.
+	Seconds int
 }
 
 // Generator turns a request into a generation.
