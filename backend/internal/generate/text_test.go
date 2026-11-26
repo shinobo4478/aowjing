@@ -26,7 +26,7 @@ func TestTextGenerator(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res, err := g.Generate(context.Background(), tt.prompt)
+			res, err := g.Generate(context.Background(), Request{Prompt: tt.prompt})
 			if tt.wantErr {
 				if err == nil {
 					t.Fatalf("expected an error, got output %q", res.Output)

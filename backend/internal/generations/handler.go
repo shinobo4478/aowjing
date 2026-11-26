@@ -72,6 +72,9 @@ func (h *Handler) run(w http.ResponseWriter, r *http.Request) {
 		// Products chosen for this clip (0–2, in pin order). They fill the
 		// template's {{product.*}} variables and are pinned to the new clip.
 		ProductIDs []string `json:"productIds"`
+		// ImageURL makes this an image-to-video clip: a public image the video
+		// starts from (a real product photo, for Shopee clips). Optional.
+		ImageURL string `json:"imageUrl"`
 	}
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
@@ -103,6 +106,16 @@ func (h *Handler) run(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	imageURL, err := validateImageURL(body.ImageURL)
+	if err != nil {
+		writeFieldError(w, "imageUrl", err.Error())
+		return
+	}
+	if imageURL != "" && profile.Provider != "fal" {
+		writeFieldError(w, "imageUrl", "An image only works with the fal.ai video provider; this profile uses "+profile.Provider+".")
+		return
+	}
+
 	productIDs, err := products.ParseProductIDs(body.ProductIDs)
 	if err != nil {
 		writeFieldError(w, "productIds", err.Error())
@@ -131,6 +144,7 @@ func (h *Handler) run(w http.ResponseWriter, r *http.Request) {
 		ProfileID:        tmpl.ProfileID,
 		PromptTemplateID: templateID,
 		InputPrompt:      prompt,
+		ImageUrl:         imageURL,
 		Status:           "pending",
 		Provider:         profile.Provider,
 	})

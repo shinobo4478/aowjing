@@ -18,15 +18,20 @@ import (
 // -> poll status until COMPLETED -> GET the response for the video URL.
 type FalVideoGenerator struct {
 	apiKey string
-	model  string // fal model id, e.g. "fal-ai/kling-video/v3/standard/text-to-video"
-	http   *http.Client
+	// textModel makes a video from a prompt alone; imageModel starts from an
+	// image. e.g. "fal-ai/kling-video/v3/standard/text-to-video" and
+	// ".../image-to-video".
+	textModel  string
+	imageModel string
+	http       *http.Client
 }
 
-func NewFalVideoGenerator(apiKey, model string) *FalVideoGenerator {
+func NewFalVideoGenerator(apiKey, textModel, imageModel string) *FalVideoGenerator {
 	return &FalVideoGenerator{
-		apiKey: apiKey,
-		model:  model,
-		http:   &http.Client{Timeout: 30 * time.Second},
+		apiKey:     apiKey,
+		textModel:  textModel,
+		imageModel: imageModel,
+		http:       &http.Client{Timeout: 30 * time.Second},
 	}
 }
 
@@ -36,6 +41,10 @@ const (
 	falQueueBase = "https://queue.fal.run"
 	falPollEvery = 5 * time.Second
 	falMaxWait   = 12 * time.Minute
+
+	// falClipSeconds is the length of an image-to-video clip. fal takes
+	// "3".."15" as a string.
+	falClipSeconds = "5"
 )
 
 type falSubmitResponse struct {
@@ -54,12 +63,13 @@ type falResult struct {
 	} `json:"video"`
 }
 
-func (g *FalVideoGenerator) Generate(ctx context.Context, prompt string) (Result, error) {
+func (g *FalVideoGenerator) Generate(ctx context.Context, req Request) (Result, error) {
 	if g.apiKey == "" {
 		return Result{}, errors.New("fal.ai API key is not set — add it on the Settings screen")
 	}
 
-	sub, err := g.submit(ctx, prompt)
+	model, input := g.plan(req)
+	sub, err := g.submit(ctx, model, input)
 	if err != nil {
 		return Result{}, err
 	}
@@ -72,13 +82,29 @@ func (g *FalVideoGenerator) Generate(ctx context.Context, prompt string) (Result
 	if err != nil {
 		return Result{}, err
 	}
-	return Result{Output: url, Kind: "video", Provider: "fal", Model: g.model}, nil
+	return Result{Output: url, Kind: "video", Provider: "fal", Model: model}, nil
 }
 
-func (g *FalVideoGenerator) submit(ctx context.Context, prompt string) (falSubmitResponse, error) {
-	body, _ := json.Marshal(map[string]any{"prompt": prompt})
+// plan picks the model and builds its JSON input. With an image it uses the
+// image-to-video model, whose image field is start_image_url (not image_url).
+// Those clips are silent: generate_audio defaults to true on fal and costs
+// more, and Thai narration is added separately (CLAUDE.md, Phase 4).
+func (g *FalVideoGenerator) plan(req Request) (model string, input map[string]any) {
+	if req.ImageURL == "" {
+		return g.textModel, map[string]any{"prompt": req.Prompt}
+	}
+	return g.imageModel, map[string]any{
+		"prompt":          req.Prompt,
+		"start_image_url": req.ImageURL,
+		"duration":        falClipSeconds, // a string on fal, not a number
+		"generate_audio":  false,
+	}
+}
+
+func (g *FalVideoGenerator) submit(ctx context.Context, model string, input map[string]any) (falSubmitResponse, error) {
+	body, _ := json.Marshal(input)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		falQueueBase+"/"+g.model, bytes.NewReader(body))
+		falQueueBase+"/"+model, bytes.NewReader(body))
 	if err != nil {
 		return falSubmitResponse{}, err
 	}

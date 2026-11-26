@@ -14,8 +14,8 @@ type TextGenerator struct{}
 
 func (TextGenerator) Name() string { return "text" }
 
-func (TextGenerator) Generate(_ context.Context, prompt string) (Result, error) {
-	prompt = strings.TrimSpace(prompt)
+func (TextGenerator) Generate(_ context.Context, req Request) (Result, error) {
+	prompt := strings.TrimSpace(req.Prompt)
 	if prompt == "" {
 		return Result{}, errors.New("prompt is empty")
 	}

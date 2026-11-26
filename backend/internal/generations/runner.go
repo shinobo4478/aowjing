@@ -16,12 +16,14 @@ import (
 // cmd/worker.
 type Runner struct {
 	q        *sqlc.Queries
-	falModel string
-	fakeFal  bool
+	falModel string // text-to-video model id
+	// falImageModel is the image-to-video model id, used when a clip has an image.
+	falImageModel string
+	fakeFal       bool
 }
 
-func NewRunner(q *sqlc.Queries, falModel string, fakeFal bool) *Runner {
-	return &Runner{q: q, falModel: falModel, fakeFal: fakeFal}
+func NewRunner(q *sqlc.Queries, falModel, falImageModel string, fakeFal bool) *Runner {
+	return &Runner{q: q, falModel: falModel, falImageModel: falImageModel, fakeFal: fakeFal}
 }
 
 // generatorFor maps a profile's provider key to a Generator. "fal" reads the
@@ -37,7 +39,7 @@ func (rn *Runner) generatorFor(ctx context.Context, provider string) (generate.G
 		} else if err != nil {
 			return nil, err
 		}
-		return generate.NewFalVideoGenerator(key, rn.falModel), nil
+		return generate.NewFalVideoGenerator(key, rn.falModel, rn.falImageModel), nil
 	}
 	return generate.TextGenerator{}, nil
 }
@@ -61,7 +63,7 @@ func (rn *Runner) Run(ctx context.Context, generationID string) error {
 	}
 
 	finish := sqlc.FinishGenerationParams{ID: id, Provider: row.Provider, OutputKind: "text"}
-	if res, genErr := gen.Generate(ctx, row.InputPrompt); genErr != nil {
+	if res, genErr := gen.Generate(ctx, generate.Request{Prompt: row.InputPrompt, ImageURL: row.ImageUrl}); genErr != nil {
 		finish.Status = "failed"
 		finish.Error = genErr.Error()
 	} else {

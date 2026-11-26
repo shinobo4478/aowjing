@@ -24,6 +24,7 @@ type Generation struct {
 	ProfileID        pgtype.UUID        `json:"profile_id"`
 	PromptTemplateID pgtype.UUID        `json:"prompt_template_id"`
 	InputPrompt      string             `json:"input_prompt"`
+	ImageUrl         string             `json:"image_url"`
 	Output           string             `json:"output"`
 	OutputKind       string             `json:"output_kind"`
 	Status           string             `json:"status"`

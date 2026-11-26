@@ -153,12 +153,25 @@ Kling v3 image-to-video on fal (read from fal's model pages, 2026-11-26):
 model `fal-ai/kling-video/v3/standard/image-to-video`; the image field is
 `start_image_url` (not `image_url`); also `prompt`, `duration` ("3"–"15"),
 `generate_audio`, `end_image_url`, `negative_prompt`, `cfg_scale`; output
-`{"video":{"url":…}}`. **Not yet confirmed:** whether the queue URL works for
-it like the text-to-video one, and whether the image must be a public URL.
+`{"video":{"url":…}}`. Confirmed from fal's OpenAPI + queue docs (2026-11-26):
+same queue pattern (`POST https://queue.fal.run/<model>`, `Authorization: Key …`,
+use the `status_url`/`response_url` the submit reply returns — a hand-built URL
+with the full model path gives 405); `start_image_url` is required; the image
+may be a public URL or a base64 data URI (we only accept public https URLs);
+limits 50 MB, min 300×300 px, aspect ratio 0.4–2.5; `duration` defaults "5" and
+`generate_audio` defaults true. **Still unverified against a real key:** the
+real request has not been run (only the request body is unit-tested).
+**Price discrepancy:** fal's pricing page lists the Standard image-to-video
+at $0.14/s (no audio on/off split stated), higher than the $0.084/s used for
+the budget above — re-check on the fal dashboard before trusting the estimate
+(a 5 s shot would be ≈ $0.70, not $0.42).
 
 Order of work (each a small PR):
 1. `image_url` on a generation + `FalVideoGenerator` uses the image-to-video
-   model when it is present (`generate_audio:false`). Verify against fal.
+   model when it is present (`generate_audio:false`). **Backend done** (`FAL_IMAGE_MODEL`,
+   `generate.Request`, `POST /generations` takes `imageUrl`, fal profiles only;
+   existing DBs need `ALTER TABLE generations ADD COLUMN image_url text NOT NULL DEFAULT '';`).
+   UI field for the image link and the first real fal run are still to do.
 2. `video_style` on Profile + the recipe registry (`3d` only).
 3. Shots: a generation that is a set of ordered clips.
 4. Keyframe generation (image model on fal) instead of pasting URLs.
