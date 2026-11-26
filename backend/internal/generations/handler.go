@@ -81,11 +81,22 @@ func (h *Handler) run(w http.ResponseWriter, r *http.Request) {
 		// ImageID is the same, for a picture uploaded through POST /images.
 		// Give this or imageUrl, not both.
 		ImageID string `json:"imageId"`
+		// Seconds is the clip length (3-15) for a clip that starts from a
+		// picture. Left out means the default.
+		Seconds int `json:"seconds"`
 	}
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "Invalid JSON body.")
+		return
+	}
+
+	if body.Seconds == 0 {
+		body.Seconds = studio.DefaultClipSeconds
+	}
+	if !studio.ValidClipSeconds(body.Seconds) {
+		writeFieldError(w, "seconds", "A clip is 3 to 15 seconds long.")
 		return
 	}
 
@@ -112,7 +123,7 @@ func (h *Handler) run(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	imageURL, err := validateImageURL(body.ImageURL)
+	imageURL, err := ValidateImageURL(body.ImageURL)
 	if err != nil {
 		writeFieldError(w, "imageUrl", err.Error())
 		return
@@ -179,6 +190,7 @@ func (h *Handler) run(w http.ResponseWriter, r *http.Request) {
 		ImageID:          imageID,
 		Status:           "pending",
 		Provider:         profile.Provider,
+		Seconds:          int16(body.Seconds),
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to save generation.")

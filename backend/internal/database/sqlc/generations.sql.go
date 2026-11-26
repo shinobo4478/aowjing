@@ -13,9 +13,10 @@ import (
 
 const createGeneration = `-- name: CreateGeneration :one
 INSERT INTO generations (
-    profile_id, prompt_template_id, input_prompt, image_url, image_id, output, status, error, provider, model
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-RETURNING id, profile_id, prompt_template_id, input_prompt, image_url, image_id, output, output_kind, status, error, provider, model, created_at
+    profile_id, prompt_template_id, input_prompt, image_url, image_id, output, status, error, provider, model,
+    seconds, shot_id
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+RETURNING id, profile_id, prompt_template_id, input_prompt, image_url, image_id, seconds, shot_id, output, output_kind, status, error, provider, model, created_at
 `
 
 type CreateGenerationParams struct {
@@ -29,6 +30,8 @@ type CreateGenerationParams struct {
 	Error            string      `json:"error"`
 	Provider         string      `json:"provider"`
 	Model            string      `json:"model"`
+	Seconds          int16       `json:"seconds"`
+	ShotID           pgtype.UUID `json:"shot_id"`
 }
 
 func (q *Queries) CreateGeneration(ctx context.Context, arg CreateGenerationParams) (Generation, error) {
@@ -43,6 +46,8 @@ func (q *Queries) CreateGeneration(ctx context.Context, arg CreateGenerationPara
 		arg.Error,
 		arg.Provider,
 		arg.Model,
+		arg.Seconds,
+		arg.ShotID,
 	)
 	var i Generation
 	err := row.Scan(
@@ -52,6 +57,8 @@ func (q *Queries) CreateGeneration(ctx context.Context, arg CreateGenerationPara
 		&i.InputPrompt,
 		&i.ImageUrl,
 		&i.ImageID,
+		&i.Seconds,
+		&i.ShotID,
 		&i.Output,
 		&i.OutputKind,
 		&i.Status,
@@ -111,7 +118,7 @@ func (q *Queries) FinishGeneration(ctx context.Context, arg FinishGenerationPara
 }
 
 const getGeneration = `-- name: GetGeneration :one
-SELECT g.id, g.profile_id, g.prompt_template_id, g.input_prompt, g.image_url, g.image_id, g.output, g.output_kind, g.status, g.error, g.provider, g.model, g.created_at, pt.name AS template_name
+SELECT g.id, g.profile_id, g.prompt_template_id, g.input_prompt, g.image_url, g.image_id, g.seconds, g.shot_id, g.output, g.output_kind, g.status, g.error, g.provider, g.model, g.created_at, pt.name AS template_name
 FROM generations g
 LEFT JOIN prompt_templates pt ON pt.id = g.prompt_template_id
 WHERE g.id = $1
@@ -124,6 +131,8 @@ type GetGenerationRow struct {
 	InputPrompt      string             `json:"input_prompt"`
 	ImageUrl         string             `json:"image_url"`
 	ImageID          pgtype.UUID        `json:"image_id"`
+	Seconds          int16              `json:"seconds"`
+	ShotID           pgtype.UUID        `json:"shot_id"`
 	Output           string             `json:"output"`
 	OutputKind       string             `json:"output_kind"`
 	Status           string             `json:"status"`
@@ -144,6 +153,8 @@ func (q *Queries) GetGeneration(ctx context.Context, id pgtype.UUID) (GetGenerat
 		&i.InputPrompt,
 		&i.ImageUrl,
 		&i.ImageID,
+		&i.Seconds,
+		&i.ShotID,
 		&i.Output,
 		&i.OutputKind,
 		&i.Status,
@@ -157,7 +168,7 @@ func (q *Queries) GetGeneration(ctx context.Context, id pgtype.UUID) (GetGenerat
 }
 
 const listGenerationsByProfile = `-- name: ListGenerationsByProfile :many
-SELECT g.id, g.profile_id, g.prompt_template_id, g.input_prompt, g.image_url, g.image_id, g.output, g.output_kind, g.status, g.error, g.provider, g.model, g.created_at, pt.name AS template_name
+SELECT g.id, g.profile_id, g.prompt_template_id, g.input_prompt, g.image_url, g.image_id, g.seconds, g.shot_id, g.output, g.output_kind, g.status, g.error, g.provider, g.model, g.created_at, pt.name AS template_name
 FROM generations g
 LEFT JOIN prompt_templates pt ON pt.id = g.prompt_template_id
 WHERE g.profile_id = $1
@@ -171,6 +182,8 @@ type ListGenerationsByProfileRow struct {
 	InputPrompt      string             `json:"input_prompt"`
 	ImageUrl         string             `json:"image_url"`
 	ImageID          pgtype.UUID        `json:"image_id"`
+	Seconds          int16              `json:"seconds"`
+	ShotID           pgtype.UUID        `json:"shot_id"`
 	Output           string             `json:"output"`
 	OutputKind       string             `json:"output_kind"`
 	Status           string             `json:"status"`
@@ -197,6 +210,8 @@ func (q *Queries) ListGenerationsByProfile(ctx context.Context, profileID pgtype
 			&i.InputPrompt,
 			&i.ImageUrl,
 			&i.ImageID,
+			&i.Seconds,
+			&i.ShotID,
 			&i.Output,
 			&i.OutputKind,
 			&i.Status,

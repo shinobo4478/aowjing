@@ -168,10 +168,14 @@ export interface Settings {
 
 /** What the clips cost, from GET /studio/pricing. */
 export interface StudioPricing {
-  clipSeconds: number;
-  /** Price of one image-to-video clip by video style; a style whose price is
-   *  not known is missing. */
-  imageClipUsd: Record<string, number>;
+  /** The length a clip gets when none is chosen, and the range fal accepts. */
+  defaultSeconds: number;
+  minSeconds: number;
+  maxSeconds: number;
+  /** Price per second of an image-to-video clip by video style; a style whose
+   *  price is not known is missing. Multiply by the clip's length (assumed to
+   *  scale linearly; only checked at 5 s). */
+  imageUsdPerSecond: Record<string, number>;
 }
 
 /** The fal.ai credit balance, from GET /credits/fal. `configured` is false until

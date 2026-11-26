@@ -231,6 +231,23 @@ Order of work (each a small PR):
    - Order of work, each a small PR from `main`: (1) tables + API (videos,
      shots, seconds on a generation, price per shot), (2) the Video page,
      (3) "generate all", continuity references, download list.
+   - **(1) is built** (backend only; verified with the fake worker against
+     Postgres, nothing spent): `internal/videos` — `GET/POST /videos`,
+     `GET/PATCH/DELETE /videos/{id}`, `POST /videos/{id}/shots`,
+     `PUT /videos/{id}/shots/order`, `PATCH/DELETE /videos/{id}/shots/{shotId}`,
+     `POST /videos/{id}/shots/{shotId}/generate` (202; 409 if that shot is
+     already being made, so a double click cannot pay twice; 422 without a prompt
+     or a starting picture — a shot is always image-to-video, because that is the
+     only path whose length and price are known). Deleting a video keeps the clips
+     already made (they become ordinary clips); deleting a shot closes the gap in
+     the order. `POST /generations` also takes `seconds` (3–15, default 5), the
+     worker sends `generations.seconds` to fal, and `GET /studio/pricing` now
+     returns the price per second (the screen multiplies by the length).
+     Existing DBs need the two `CREATE TABLE`s (`videos`, `video_shots`) and
+     `ALTER TABLE generations ADD COLUMN seconds smallint NOT NULL DEFAULT 5
+     CHECK (seconds BETWEEN 3 AND 15), ADD COLUMN shot_id uuid REFERENCES
+     video_shots (id) ON DELETE SET NULL;` (see `db/schema.sql`; create
+     `video_shots` first).
 4. Keyframe generation (image model on fal) instead of pasting URLs.
    **Built (done before item 3, decided with the owner), verified end to end
    with the fake generator; not yet run against real fal:**

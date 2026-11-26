@@ -1,0 +1,78 @@
+package videos
+
+import (
+	"github.com/shinobo4478/aowjing/backend/internal/database/sqlc"
+	"github.com/shinobo4478/aowjing/backend/internal/pgconv"
+)
+
+// videoDTO is the API JSON shape for one video. ShotCount and TotalSeconds are
+// filled in the list; the detail response carries the shots themselves.
+type videoDTO struct {
+	ID           string `json:"id"`
+	ProfileID    string `json:"profileId"`
+	Title        string `json:"title"`
+	ShotCount    int    `json:"shotCount"`
+	TotalSeconds int    `json:"totalSeconds"`
+	CreatedAt    string `json:"createdAt"`
+	UpdatedAt    string `json:"updatedAt"`
+}
+
+// attemptDTO is the newest attempt at a shot (a row of generations).
+type attemptDTO struct {
+	ID        string `json:"id"`
+	Status    string `json:"status"` // pending | succeeded | failed
+	Output    string `json:"output"` // the clip URL once succeeded
+	Error     string `json:"error"`
+	Seconds   int    `json:"seconds"`
+	CreatedAt string `json:"createdAt"`
+}
+
+type shotDTO struct {
+	ID       string `json:"id"`
+	VideoID  string `json:"videoId"`
+	Position int    `json:"position"`
+	Prompt   string `json:"prompt"`
+	Seconds  int    `json:"seconds"`
+	ImageURL string `json:"imageUrl"`
+	ImageID  string `json:"imageId"`
+	// Latest is the newest attempt, nil if the shot has never been generated;
+	// Attempts counts all of them (each was paid for).
+	Latest   *attemptDTO `json:"latest"`
+	Attempts int         `json:"attempts"`
+}
+
+func toVideoDTO(v sqlc.Video, shotCount, totalSeconds int) videoDTO {
+	return videoDTO{
+		ID:           pgconv.UUIDString(v.ID),
+		ProfileID:    pgconv.UUIDString(v.ProfileID),
+		Title:        v.Title,
+		ShotCount:    shotCount,
+		TotalSeconds: totalSeconds,
+		CreatedAt:    pgconv.TimeString(v.CreatedAt),
+		UpdatedAt:    pgconv.TimeString(v.UpdatedAt),
+	}
+}
+
+func toShotDTO(s sqlc.VideoShot, latest *sqlc.ListShotLatestGenerationsRow) shotDTO {
+	d := shotDTO{
+		ID:       pgconv.UUIDString(s.ID),
+		VideoID:  pgconv.UUIDString(s.VideoID),
+		Position: int(s.Position),
+		Prompt:   s.Prompt,
+		Seconds:  int(s.Seconds),
+		ImageURL: s.ImageUrl,
+		ImageID:  pgconv.UUIDString(s.ImageID),
+	}
+	if latest != nil {
+		d.Attempts = int(latest.Attempts)
+		d.Latest = &attemptDTO{
+			ID:        pgconv.UUIDString(latest.ID),
+			Status:    latest.Status,
+			Output:    latest.Output,
+			Error:     latest.Error,
+			Seconds:   int(latest.Seconds),
+			CreatedAt: pgconv.TimeString(latest.CreatedAt),
+		}
+	}
+	return d
+}

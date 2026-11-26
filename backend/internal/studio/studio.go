@@ -26,9 +26,17 @@ const (
 	DefaultStyle = Style3D
 )
 
-// ClipSeconds is the length of every clip for now (fal takes 3 to 15). It is
-// here, not in a handler, because the price shown before spending depends on it.
-const ClipSeconds = 5
+// Clip lengths in seconds. fal takes 3 to 15 for Kling v3 image-to-video; the
+// default is what a clip gets when the owner does not choose. They live here,
+// not in a handler, because the price shown before spending depends on them.
+const (
+	MinClipSeconds     = 3
+	MaxClipSeconds     = 15
+	DefaultClipSeconds = 5
+)
+
+// ValidClipSeconds reports whether n is a length fal accepts.
+func ValidClipSeconds(n int) bool { return n >= MinClipSeconds && n <= MaxClipSeconds }
 
 // Recipe is everything a style implies for making a clip.
 type Recipe struct {
@@ -58,10 +66,12 @@ type Recipe struct {
 	ImagePricePerSecondUSD float64
 }
 
-// ImageClipUSD is the price of one image-to-video clip of ClipSeconds, rounded
-// to the cent-fraction fal bills in. 0 means the price is not known.
-func (r Recipe) ImageClipUSD() float64 {
-	return math.Round(r.ImagePricePerSecondUSD*ClipSeconds*10000) / 10000
+// ImageClipUSD is the price of one image-to-video clip of the given length,
+// rounded to the fraction of a cent fal bills in. 0 means the price is not
+// known. That the price scales linearly with the length is an assumption, only
+// checked at 5 s so far.
+func (r Recipe) ImageClipUSD(seconds int) float64 {
+	return math.Round(r.ImagePricePerSecondUSD*float64(seconds)*10000) / 10000
 }
 
 // recipes is the registry, in the order shown in the UI. To add a style, add a
