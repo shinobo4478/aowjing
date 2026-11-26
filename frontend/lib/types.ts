@@ -104,6 +104,8 @@ export interface Generation {
   imageUrl: string;
   /** Picture uploaded from the owner's computer; "" if none. Served by GET /images/{id}. */
   imageId: string;
+  /** Picture the clip was asked to end on; "" if none. */
+  endImageId: string;
   /** Generated text, or — when outputKind is "video" — a URL. */
   output: string;
   outputKind: "text" | "video";
@@ -158,6 +160,10 @@ export interface Shot {
   imageUrl: string;
   /** A stored picture the shot starts from (GET /images/{id}), or "". */
   imageId: string;
+  /** A stored picture the clip should END on (fal's end_image_url), or "". The
+   *  clip flows from the starting picture to this one, so the two must differ
+   *  only in the subject's pose. */
+  endImageId: string;
   /** The owner OKed this plan on the storyboard, so it may be made in bulk.
    *  Changing the plan clears it. */
   approved: boolean;
@@ -165,6 +171,11 @@ export interface Shot {
   latest: ShotAttempt | null;
   /** How many attempts there have been; each was paid for. */
   attempts: number;
+  /** The clip to USE for this shot: the attempt the owner chose, else the newest
+   *  successful one; null while none has succeeded. */
+  take: ShotAttempt | null;
+  /** True when `take` was chosen by the owner (not just the newest). */
+  takeChosen: boolean;
 }
 
 /** What the screen sends to change a shot: its whole plan at once. At most one
@@ -174,6 +185,8 @@ export interface ShotInput {
   seconds: number;
   imageUrl: string;
   imageId: string;
+  /** A stored picture to end on; only with a starting picture. "" for none. */
+  endImageId: string;
 }
 
 /** A picture that gives a profile its own look (character, mascot, style). It

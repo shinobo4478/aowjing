@@ -82,10 +82,14 @@ func (g *FalVideoGenerator) plan(req Request) (model string, input map[string]an
 	if seconds == 0 {
 		seconds = defaultClipSeconds
 	}
-	return g.imageModel, map[string]any{
+	input = map[string]any{
 		"prompt":          req.Prompt,
 		"start_image_url": req.ImageURL,
 		"duration":        strconv.Itoa(seconds), // a string on fal, not a number
 		"generate_audio":  false,
 	}
+	if req.EndImageURL != "" {
+		input["end_image_url"] = req.EndImageURL
+	}
+	return g.imageModel, input
 }

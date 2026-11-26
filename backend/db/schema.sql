@@ -136,6 +136,11 @@ CREATE TABLE IF NOT EXISTS video_shots (
     -- most one of the two is set). Both empty = text-to-video.
     image_url  text        NOT NULL DEFAULT '',
     image_id   uuid            REFERENCES images (id) ON DELETE SET NULL,
+    -- The picture the clip should END on (fal's end_image_url): the clip flows
+    -- from the starting picture to this one, so it only works when the two
+    -- differ in the subject's pose and nothing else (same camera, same room).
+    -- A stored picture only, and only with a starting picture.
+    end_image_id uuid          REFERENCES images (id) ON DELETE SET NULL,
     -- The owner looked at the storyboard and OKed this plan, so it may be made
     -- in bulk. Changing the prompt, length or picture clears it (UpdateShot).
     approved   boolean     NOT NULL DEFAULT false,
@@ -157,6 +162,8 @@ CREATE TABLE IF NOT EXISTS generations (
     image_url          text        NOT NULL DEFAULT '',
     -- ...or an uploaded one (at most one of image_url / image_id is set).
     image_id           uuid            REFERENCES images (id) ON DELETE SET NULL,
+    -- The picture the clip was asked to end on, if any (see video_shots).
+    end_image_id       uuid            REFERENCES images (id) ON DELETE SET NULL,
     -- Clip length asked for (3-15 s; fal's range).
     seconds            smallint    NOT NULL DEFAULT 5 CHECK (seconds BETWEEN 3 AND 15),
     -- The shot this is an attempt at, if any. A deleted shot leaves its clips
@@ -173,6 +180,13 @@ CREATE TABLE IF NOT EXISTS generations (
 );
 
 CREATE INDEX IF NOT EXISTS generations_profile_id_idx ON generations (profile_id);
+
+-- The take the owner picked as THE clip of a shot (any attempt, not just the
+-- newest). NULL means "the newest successful attempt". Added here, after
+-- generations, because generations point back at video_shots (shot_id): the two
+-- tables reference each other. A deleted attempt just clears the choice.
+ALTER TABLE video_shots
+    ADD COLUMN IF NOT EXISTS chosen_generation_id uuid REFERENCES generations (id) ON DELETE SET NULL;
 
 -- Global key/value settings — provider credentials and the like. One row per
 -- key, not duplicated per profile. The API whitelists which keys it accepts.

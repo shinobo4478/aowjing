@@ -31,9 +31,13 @@ WHERE id = $1;
 -- Every picture of a video's shots, collected BEFORE the video is deleted so
 -- the ones nothing else uses can be removed afterwards.
 -- name: ListVideoImageIDs :many
-SELECT image_id AS image_id
-FROM video_shots
-WHERE video_id = $1 AND image_id IS NOT NULL;
+SELECT s.image_id AS image_id
+FROM video_shots s
+WHERE s.video_id = $1 AND s.image_id IS NOT NULL
+UNION
+SELECT e.end_image_id
+FROM video_shots e
+WHERE e.video_id = $1 AND e.end_image_id IS NOT NULL;
 
 -- name: ListShots :many
 SELECT * FROM video_shots
@@ -66,11 +70,13 @@ UPDATE video_shots
 SET approved = CASE
         WHEN prompt = $2 AND seconds = $3 AND image_url = $4
              AND image_id IS NOT DISTINCT FROM sqlc.narg('image_id')::uuid
+             AND end_image_id IS NOT DISTINCT FROM sqlc.narg('end_image_id')::uuid
         THEN approved ELSE false END,
     prompt = $2,
     seconds = $3,
     image_url = $4,
     image_id = sqlc.narg('image_id')::uuid,
+    end_image_id = sqlc.narg('end_image_id')::uuid,
     updated_at = now()
 WHERE id = $1
 RETURNING *;
@@ -103,6 +109,44 @@ WHERE s.id = r.id AND s.position <> r.n;
 UPDATE video_shots
 SET position = $3
 WHERE id = $1 AND video_id = $2;
+
+-- Every attempt at one shot, newest first, for choosing the take to use.
+-- name: ListShotAttempts :many
+SELECT g.id AS id,
+       g.status AS status,
+       g.output AS output,
+       g.error AS error,
+       g.seconds AS seconds,
+       g.created_at AS created_at
+FROM generations g
+WHERE g.shot_id = $1
+ORDER BY g.created_at DESC;
+
+-- Picks (or, with NULL, clears) the take of a shot. The handler has checked the
+-- attempt belongs to the shot and succeeded.
+-- name: SetShotChosen :one
+UPDATE video_shots
+SET chosen_generation_id = sqlc.narg('generation_id')::uuid,
+    updated_at = now()
+WHERE id = $1
+RETURNING *;
+
+-- The take of each shot of a video: the one the owner chose if it succeeded,
+-- else the newest successful attempt. `chosen` says which of the two it is.
+-- name: ListShotTakes :many
+SELECT DISTINCT ON (s.id)
+       s.id AS shot_id,
+       g.id AS id,
+       g.status AS status,
+       g.output AS output,
+       g.error AS error,
+       g.seconds AS seconds,
+       g.created_at AS created_at,
+       COALESCE(g.id = s.chosen_generation_id, false)::boolean AS chosen
+FROM video_shots s
+JOIN generations g ON g.shot_id = s.id AND g.status = 'succeeded'
+WHERE s.video_id = $1
+ORDER BY s.id, COALESCE(g.id = s.chosen_generation_id, false) DESC, g.created_at DESC;
 
 -- The newest attempt at each shot of a video, and how many attempts there have
 -- been, so the page can show each shot's current result without a request per

@@ -89,6 +89,10 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		// shots of a video), so a new shot shows it from another angle. At most
 		// 2; they are sent before the profile's reference pictures.
 		SceneImageIDs []string `json:"sceneImageIds"`
+		// SameCamera, with scene pictures, asks for the strict wording that keeps the
+		// camera, room and everything but the pose fixed: for an END picture, since a
+		// clip morphs whatever differs between its first and last picture.
+		SameCamera bool `json:"sameCamera"`
 	}
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
@@ -152,7 +156,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		ProfileID: profileID,
 		// The style's wording is added here, not in the worker, so the stored
 		// prompt is exactly what the image model receives.
-		Prompt:         studio.For(profile.VideoStyle).KeyframePrompt(prompt, lookRefs, len(sceneIDs)),
+		Prompt:         studio.For(profile.VideoStyle).KeyframePrompt(prompt, lookRefs, len(sceneIDs), body.SameCamera),
 		Model:          model.Key,
 		Count:          int16(body.Count),
 		ReferenceCount: int16(lookRefs + len(sceneIDs)),

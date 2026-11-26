@@ -270,6 +270,9 @@ export function createKeyframe(input: {
   /** Stored pictures of the SAME scene to keep (other shots of a video), at most
    *  2, so the new picture shows that scene from another angle or moment. */
   sceneImageIds?: string[];
+  /** With scene pictures: keep the camera, room and everything but the pose
+   *  fixed (for an END picture, since a clip morphs whatever differs). */
+  sameCamera?: boolean;
 }) {
   return request<{ keyframe: Keyframe }>("/keyframes", {
     method: "POST",
@@ -349,6 +352,23 @@ export function reorderShots(videoId: string, shotIds: string[]) {
     method: "PUT",
     body: JSON.stringify({ shotIds }),
   });
+}
+
+/** Every attempt at a shot, newest first, to compare takes. `chosenId` is the
+ *  take the owner picked ("" = the newest successful one is used). */
+export function listShotAttempts(videoId: string, shotId: string) {
+  return request<{ attempts: ShotAttempt[]; chosenId: string }>(
+    `/videos/${videoId}/shots/${shotId}/attempts`,
+  );
+}
+
+/** Picks which attempt is THE clip of a shot; "" goes back to the newest
+ *  successful one. Only a finished attempt of that shot can be chosen. */
+export function setShotTake(videoId: string, shotId: string, generationId: string) {
+  return request<{ shot: Shot }>(`/videos/${videoId}/shots/${shotId}/take`, {
+    method: "PUT",
+    body: JSON.stringify({ generationId }),
+  }).then((r) => r.shot);
 }
 
 /** Marks a shot's plan as looked at and OK (or not). Changing the shot's prompt,

@@ -29,6 +29,13 @@ export default function ShotCard({
   onSave,
   onChoosePicture,
   onRemovePicture,
+  hasPreviousEnd,
+  onStartFromPreviousEnd,
+  onOpenTakes,
+  canUseNextAsEnd,
+  onChooseEnd,
+  onUseNextAsEnd,
+  onRemoveEnd,
   onGenerate,
   onMove,
   onDelete,
@@ -45,6 +52,17 @@ export default function ShotCard({
   onSave: (draft: ShotDraft) => Promise<void>;
   onChoosePicture: (draft: ShotDraft) => void;
   onRemovePicture: (draft: ShotDraft) => Promise<void>;
+  /** The previous shot has an end picture that can be this shot's start (so a
+   *  shot begins on the pose the one before it ends on). */
+  hasPreviousEnd: boolean;
+  onStartFromPreviousEnd: (draft: ShotDraft) => void;
+  /** Opens the dialog to compare this shot's takes and pick one. */
+  onOpenTakes: () => void;
+  /** The next shot has a stored starting picture that can be this one's end. */
+  canUseNextAsEnd: boolean;
+  onChooseEnd: (draft: ShotDraft) => void;
+  onUseNextAsEnd: (draft: ShotDraft) => void;
+  onRemoveEnd: (draft: ShotDraft) => Promise<void>;
   onGenerate: (draft: ShotDraft) => void;
   onMove: (direction: -1 | 1) => void;
   onDelete: () => void;
@@ -139,6 +157,68 @@ export default function ShotCard({
                 Remove
               </Button>
             )}
+            {hasPreviousEnd && (
+              <Button size="small" type="text" disabled={busy} onClick={() => onStartFromPreviousEnd(draft)}>
+                Use previous end
+              </Button>
+            )}
+          </Space>
+        </div>
+
+        {/* End picture: the clip flows from the starting picture to this one. */}
+        <div style={{ width: 108 }}>
+          {shot.endImageId ? (
+            // Served by the API with the session cookie, so next/image cannot optimize it.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={imageSrc(shot.endImageId)}
+              alt={`End picture of shot ${shot.position}`}
+              style={{ width: 108, height: 192, objectFit: "cover", borderRadius: 4, display: "block" }}
+            />
+          ) : (
+            <div
+              style={{
+                width: 108,
+                height: 192,
+                border: "1px dashed rgba(255,255,255,0.25)",
+                borderRadius: 4,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                textAlign: "center",
+                padding: 8,
+              }}
+            >
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                {hasPicture
+                  ? "No end picture (optional): the clip decides how it ends"
+                  : "Choose a starting picture first"}
+              </Typography.Text>
+            </div>
+          )}
+          <Space size={4} style={{ marginTop: 4 }} wrap>
+            <Button
+              size="small"
+              disabled={busy || !hasPicture}
+              onClick={() => onChooseEnd(draft)}
+            >
+              {shot.endImageId ? "Change end" : "End picture…"}
+            </Button>
+            {canUseNextAsEnd && (
+              <Button
+                size="small"
+                type="text"
+                disabled={busy || !hasPicture}
+                onClick={() => onUseNextAsEnd(draft)}
+              >
+                Use next shot&apos;s
+              </Button>
+            )}
+            {shot.endImageId && (
+              <Button size="small" type="text" disabled={busy} onClick={() => void onRemoveEnd(draft)}>
+                Remove
+              </Button>
+            )}
           </Space>
         </div>
 
@@ -192,7 +272,7 @@ export default function ShotCard({
           )}
         </div>
 
-        {/* Newest attempt */}
+        {/* The newest attempt's state, and the take in use */}
         <div style={{ flex: "0 1 220px", minWidth: 160 }}>
           {shot.latest ? (
             <>
@@ -200,26 +280,42 @@ export default function ShotCard({
               <Typography.Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
                 {shot.attempts} attempt{shot.attempts === 1 ? "" : "s"}
               </Typography.Text>
-              {shot.latest.status === "succeeded" && shot.latest.output && (
-                <div style={{ marginTop: 8 }}>
-                  <video
-                    controls
-                    preload="metadata"
-                    src={shot.latest.output}
-                    style={{ width: "100%", maxHeight: 260, borderRadius: 4, background: "#000" }}
-                  />
-                  <a href={shot.latest.output} target="_blank" rel="noreferrer">
-                    Open clip
-                  </a>
-                  <Typography.Paragraph type="secondary" style={{ margin: "4px 0 0", fontSize: 12 }}>
-                    fal keeps the file at least 7 days. Download what you want to keep.
-                  </Typography.Paragraph>
-                </div>
-              )}
               {shot.latest.status === "failed" && (
                 <Typography.Paragraph type="danger" style={{ margin: "8px 0 0", fontSize: 12 }}>
                   {shot.latest.error || "It failed."}
                 </Typography.Paragraph>
+              )}
+              {shot.take?.output && (
+                <div style={{ marginTop: 8 }}>
+                  <video
+                    controls
+                    preload="metadata"
+                    src={shot.take.output}
+                    style={{ width: "100%", maxHeight: 260, borderRadius: 4, background: "#000" }}
+                  />
+                  <Typography.Text type="secondary" style={{ fontSize: 12, display: "block" }}>
+                    {shot.takeChosen ? "Your chosen take" : "Newest take"}
+                    {shot.latest.status === "pending" ? " (a new one is being made)" : ""}
+                    {shot.takeChosen &&
+                    shot.latest.status === "succeeded" &&
+                    shot.latest.id !== shot.take.id
+                      ? " · a newer take exists"
+                      : ""}
+                  </Typography.Text>
+                  <Space size={8} wrap>
+                    <a href={shot.take.output} target="_blank" rel="noreferrer">
+                      Open clip
+                    </a>
+                    {shot.attempts > 1 && (
+                      <Button size="small" type="link" style={{ padding: 0 }} onClick={onOpenTakes}>
+                        Compare takes ({shot.attempts})
+                      </Button>
+                    )}
+                  </Space>
+                  <Typography.Paragraph type="secondary" style={{ margin: "4px 0 0", fontSize: 12 }}>
+                    fal keeps the file at least 7 days. Download what you want to keep.
+                  </Typography.Paragraph>
+                </div>
               )}
             </>
           ) : (

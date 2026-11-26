@@ -50,7 +50,7 @@ VALUES (
     $2,
     $3
 )
-RETURNING id, video_id, position, prompt, seconds, image_url, image_id, approved, created_at, updated_at
+RETURNING id, video_id, position, prompt, seconds, image_url, image_id, end_image_id, approved, created_at, updated_at, chosen_generation_id
 `
 
 type CreateShotParams struct {
@@ -71,9 +71,11 @@ func (q *Queries) CreateShot(ctx context.Context, arg CreateShotParams) (VideoSh
 		&i.Seconds,
 		&i.ImageUrl,
 		&i.ImageID,
+		&i.EndImageID,
 		&i.Approved,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ChosenGenerationID,
 	)
 	return i, err
 }
@@ -129,7 +131,7 @@ func (q *Queries) DeleteVideo(ctx context.Context, id pgtype.UUID) (int64, error
 }
 
 const getShot = `-- name: GetShot :one
-SELECT id, video_id, position, prompt, seconds, image_url, image_id, approved, created_at, updated_at FROM video_shots
+SELECT id, video_id, position, prompt, seconds, image_url, image_id, end_image_id, approved, created_at, updated_at, chosen_generation_id FROM video_shots
 WHERE id = $1
 `
 
@@ -144,9 +146,11 @@ func (q *Queries) GetShot(ctx context.Context, id pgtype.UUID) (VideoShot, error
 		&i.Seconds,
 		&i.ImageUrl,
 		&i.ImageID,
+		&i.EndImageID,
 		&i.Approved,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ChosenGenerationID,
 	)
 	return i, err
 }
@@ -167,6 +171,55 @@ func (q *Queries) GetVideo(ctx context.Context, id pgtype.UUID) (Video, error) {
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const listShotAttempts = `-- name: ListShotAttempts :many
+SELECT g.id AS id,
+       g.status AS status,
+       g.output AS output,
+       g.error AS error,
+       g.seconds AS seconds,
+       g.created_at AS created_at
+FROM generations g
+WHERE g.shot_id = $1
+ORDER BY g.created_at DESC
+`
+
+type ListShotAttemptsRow struct {
+	ID        pgtype.UUID        `json:"id"`
+	Status    string             `json:"status"`
+	Output    string             `json:"output"`
+	Error     string             `json:"error"`
+	Seconds   int16              `json:"seconds"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+// Every attempt at one shot, newest first, for choosing the take to use.
+func (q *Queries) ListShotAttempts(ctx context.Context, shotID pgtype.UUID) ([]ListShotAttemptsRow, error) {
+	rows, err := q.db.Query(ctx, listShotAttempts, shotID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListShotAttemptsRow
+	for rows.Next() {
+		var i ListShotAttemptsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Status,
+			&i.Output,
+			&i.Error,
+			&i.Seconds,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listShotLatestGenerations = `-- name: ListShotLatestGenerations :many
@@ -227,8 +280,66 @@ func (q *Queries) ListShotLatestGenerations(ctx context.Context, videoID pgtype.
 	return items, nil
 }
 
+const listShotTakes = `-- name: ListShotTakes :many
+SELECT DISTINCT ON (s.id)
+       s.id AS shot_id,
+       g.id AS id,
+       g.status AS status,
+       g.output AS output,
+       g.error AS error,
+       g.seconds AS seconds,
+       g.created_at AS created_at,
+       COALESCE(g.id = s.chosen_generation_id, false)::boolean AS chosen
+FROM video_shots s
+JOIN generations g ON g.shot_id = s.id AND g.status = 'succeeded'
+WHERE s.video_id = $1
+ORDER BY s.id, COALESCE(g.id = s.chosen_generation_id, false) DESC, g.created_at DESC
+`
+
+type ListShotTakesRow struct {
+	ShotID    pgtype.UUID        `json:"shot_id"`
+	ID        pgtype.UUID        `json:"id"`
+	Status    string             `json:"status"`
+	Output    string             `json:"output"`
+	Error     string             `json:"error"`
+	Seconds   int16              `json:"seconds"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	Chosen    bool               `json:"chosen"`
+}
+
+// The take of each shot of a video: the one the owner chose if it succeeded,
+// else the newest successful attempt. `chosen` says which of the two it is.
+func (q *Queries) ListShotTakes(ctx context.Context, videoID pgtype.UUID) ([]ListShotTakesRow, error) {
+	rows, err := q.db.Query(ctx, listShotTakes, videoID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListShotTakesRow
+	for rows.Next() {
+		var i ListShotTakesRow
+		if err := rows.Scan(
+			&i.ShotID,
+			&i.ID,
+			&i.Status,
+			&i.Output,
+			&i.Error,
+			&i.Seconds,
+			&i.CreatedAt,
+			&i.Chosen,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listShots = `-- name: ListShots :many
-SELECT id, video_id, position, prompt, seconds, image_url, image_id, approved, created_at, updated_at FROM video_shots
+SELECT id, video_id, position, prompt, seconds, image_url, image_id, end_image_id, approved, created_at, updated_at, chosen_generation_id FROM video_shots
 WHERE video_id = $1
 ORDER BY position
 `
@@ -250,9 +361,11 @@ func (q *Queries) ListShots(ctx context.Context, videoID pgtype.UUID) ([]VideoSh
 			&i.Seconds,
 			&i.ImageUrl,
 			&i.ImageID,
+			&i.EndImageID,
 			&i.Approved,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ChosenGenerationID,
 		); err != nil {
 			return nil, err
 		}
@@ -265,9 +378,13 @@ func (q *Queries) ListShots(ctx context.Context, videoID pgtype.UUID) ([]VideoSh
 }
 
 const listVideoImageIDs = `-- name: ListVideoImageIDs :many
-SELECT image_id AS image_id
-FROM video_shots
-WHERE video_id = $1 AND image_id IS NOT NULL
+SELECT s.image_id AS image_id
+FROM video_shots s
+WHERE s.video_id = $1 AND s.image_id IS NOT NULL
+UNION
+SELECT e.end_image_id
+FROM video_shots e
+WHERE e.video_id = $1 AND e.end_image_id IS NOT NULL
 `
 
 // Every picture of a video's shots, collected BEFORE the video is deleted so
@@ -346,7 +463,7 @@ UPDATE video_shots
 SET approved = $2,
     updated_at = now()
 WHERE id = $1
-RETURNING id, video_id, position, prompt, seconds, image_url, image_id, approved, created_at, updated_at
+RETURNING id, video_id, position, prompt, seconds, image_url, image_id, end_image_id, approved, created_at, updated_at, chosen_generation_id
 `
 
 type SetShotApprovedParams struct {
@@ -365,9 +482,46 @@ func (q *Queries) SetShotApproved(ctx context.Context, arg SetShotApprovedParams
 		&i.Seconds,
 		&i.ImageUrl,
 		&i.ImageID,
+		&i.EndImageID,
 		&i.Approved,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ChosenGenerationID,
+	)
+	return i, err
+}
+
+const setShotChosen = `-- name: SetShotChosen :one
+UPDATE video_shots
+SET chosen_generation_id = $2::uuid,
+    updated_at = now()
+WHERE id = $1
+RETURNING id, video_id, position, prompt, seconds, image_url, image_id, end_image_id, approved, created_at, updated_at, chosen_generation_id
+`
+
+type SetShotChosenParams struct {
+	ID           pgtype.UUID `json:"id"`
+	GenerationID pgtype.UUID `json:"generation_id"`
+}
+
+// Picks (or, with NULL, clears) the take of a shot. The handler has checked the
+// attempt belongs to the shot and succeeded.
+func (q *Queries) SetShotChosen(ctx context.Context, arg SetShotChosenParams) (VideoShot, error) {
+	row := q.db.QueryRow(ctx, setShotChosen, arg.ID, arg.GenerationID)
+	var i VideoShot
+	err := row.Scan(
+		&i.ID,
+		&i.VideoID,
+		&i.Position,
+		&i.Prompt,
+		&i.Seconds,
+		&i.ImageUrl,
+		&i.ImageID,
+		&i.EndImageID,
+		&i.Approved,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ChosenGenerationID,
 	)
 	return i, err
 }
@@ -394,22 +548,25 @@ UPDATE video_shots
 SET approved = CASE
         WHEN prompt = $2 AND seconds = $3 AND image_url = $4
              AND image_id IS NOT DISTINCT FROM $5::uuid
+             AND end_image_id IS NOT DISTINCT FROM $6::uuid
         THEN approved ELSE false END,
     prompt = $2,
     seconds = $3,
     image_url = $4,
     image_id = $5::uuid,
+    end_image_id = $6::uuid,
     updated_at = now()
 WHERE id = $1
-RETURNING id, video_id, position, prompt, seconds, image_url, image_id, approved, created_at, updated_at
+RETURNING id, video_id, position, prompt, seconds, image_url, image_id, end_image_id, approved, created_at, updated_at, chosen_generation_id
 `
 
 type UpdateShotParams struct {
-	ID       pgtype.UUID `json:"id"`
-	Prompt   string      `json:"prompt"`
-	Seconds  int16       `json:"seconds"`
-	ImageUrl string      `json:"image_url"`
-	ImageID  pgtype.UUID `json:"image_id"`
+	ID         pgtype.UUID `json:"id"`
+	Prompt     string      `json:"prompt"`
+	Seconds    int16       `json:"seconds"`
+	ImageUrl   string      `json:"image_url"`
+	ImageID    pgtype.UUID `json:"image_id"`
+	EndImageID pgtype.UUID `json:"end_image_id"`
 }
 
 // Changing the plan clears the approval: it applied to the plan that was
@@ -421,6 +578,7 @@ func (q *Queries) UpdateShot(ctx context.Context, arg UpdateShotParams) (VideoSh
 		arg.Seconds,
 		arg.ImageUrl,
 		arg.ImageID,
+		arg.EndImageID,
 	)
 	var i VideoShot
 	err := row.Scan(
@@ -431,9 +589,11 @@ func (q *Queries) UpdateShot(ctx context.Context, arg UpdateShotParams) (VideoSh
 		&i.Seconds,
 		&i.ImageUrl,
 		&i.ImageID,
+		&i.EndImageID,
 		&i.Approved,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ChosenGenerationID,
 	)
 	return i, err
 }

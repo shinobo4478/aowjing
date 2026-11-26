@@ -35,6 +35,8 @@ type shotDTO struct {
 	Seconds  int    `json:"seconds"`
 	ImageURL string `json:"imageUrl"`
 	ImageID  string `json:"imageId"`
+	// EndImageID is the picture the clip should end on, "" if none.
+	EndImageID string `json:"endImageId"`
 	// Approved: the owner OKed this plan on the storyboard, so it may be made in
 	// bulk. Changing the plan clears it.
 	Approved bool `json:"approved"`
@@ -42,6 +44,10 @@ type shotDTO struct {
 	// Attempts counts all of them (each was paid for).
 	Latest   *attemptDTO `json:"latest"`
 	Attempts int         `json:"attempts"`
+	// Take is the clip to USE for this shot: the attempt the owner chose, else the
+	// newest successful one; nil while none has succeeded. TakeChosen says which.
+	Take       *attemptDTO `json:"take"`
+	TakeChosen bool        `json:"takeChosen"`
 }
 
 func toVideoDTO(v sqlc.Video, shotCount, totalSeconds int) videoDTO {
@@ -56,16 +62,17 @@ func toVideoDTO(v sqlc.Video, shotCount, totalSeconds int) videoDTO {
 	}
 }
 
-func toShotDTO(s sqlc.VideoShot, latest *sqlc.ListShotLatestGenerationsRow) shotDTO {
+func toShotDTO(s sqlc.VideoShot, latest *sqlc.ListShotLatestGenerationsRow, take *sqlc.ListShotTakesRow) shotDTO {
 	d := shotDTO{
-		ID:       pgconv.UUIDString(s.ID),
-		VideoID:  pgconv.UUIDString(s.VideoID),
-		Position: int(s.Position),
-		Prompt:   s.Prompt,
-		Seconds:  int(s.Seconds),
-		ImageURL: s.ImageUrl,
-		ImageID:  pgconv.UUIDString(s.ImageID),
-		Approved: s.Approved,
+		ID:         pgconv.UUIDString(s.ID),
+		VideoID:    pgconv.UUIDString(s.VideoID),
+		Position:   int(s.Position),
+		Prompt:     s.Prompt,
+		Seconds:    int(s.Seconds),
+		ImageURL:   s.ImageUrl,
+		ImageID:    pgconv.UUIDString(s.ImageID),
+		EndImageID: pgconv.UUIDString(s.EndImageID),
+		Approved:   s.Approved,
 	}
 	if latest != nil {
 		d.Attempts = int(latest.Attempts)
@@ -76,6 +83,17 @@ func toShotDTO(s sqlc.VideoShot, latest *sqlc.ListShotLatestGenerationsRow) shot
 			Error:     latest.Error,
 			Seconds:   int(latest.Seconds),
 			CreatedAt: pgconv.TimeString(latest.CreatedAt),
+		}
+	}
+	if take != nil {
+		d.TakeChosen = take.Chosen
+		d.Take = &attemptDTO{
+			ID:        pgconv.UUIDString(take.ID),
+			Status:    take.Status,
+			Output:    take.Output,
+			Error:     take.Error,
+			Seconds:   int(take.Seconds),
+			CreatedAt: pgconv.TimeString(take.CreatedAt),
 		}
 	}
 	return d

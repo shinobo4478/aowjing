@@ -21,6 +21,27 @@ func TestFalPlan(t *testing.T) {
 			want:      map[string]any{"prompt": "a cat"},
 		},
 		{
+			name: "an end picture is sent as end_image_url",
+			req: Request{
+				Prompt: "pounce", ImageURL: "https://example.com/a.jpg",
+				EndImageURL: "https://example.com/b.jpg", Seconds: 4,
+			},
+			wantModel: "fal/image-model",
+			want: map[string]any{
+				"prompt":          "pounce",
+				"start_image_url": "https://example.com/a.jpg",
+				"end_image_url":   "https://example.com/b.jpg",
+				"duration":        "4",
+				"generate_audio":  false,
+			},
+		},
+		{
+			name:      "an end picture without a start picture is ignored (text-to-video)",
+			req:       Request{Prompt: "a cat", EndImageURL: "https://example.com/b.jpg"},
+			wantModel: "fal/text-model",
+			want:      map[string]any{"prompt": "a cat"},
+		},
+		{
 			name:      "an explicit length is sent as a string",
 			req:       Request{Prompt: "slow zoom", ImageURL: "https://example.com/p.jpg", Seconds: 8},
 			wantModel: "fal/image-model",

@@ -51,6 +51,8 @@ func (h *Handler) Routes() http.Handler {
 	r.Delete("/{id}/shots/{shotId}", h.deleteShot)
 	r.Post("/{id}/shots/{shotId}/generate", h.generateShot)
 	r.Put("/{id}/shots/{shotId}/approved", h.setApproved)
+	r.Get("/{id}/shots/{shotId}/attempts", h.listAttempts)
+	r.Put("/{id}/shots/{shotId}/take", h.setTake)
 	r.Post("/{id}/generate", h.generateShots)
 	return r
 }
@@ -148,11 +150,16 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "Failed to load the shots.")
 		return
 	}
+	takes, err := h.takeByShot(r.Context(), v.ID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to load the shots.")
+		return
+	}
 
 	out := make([]shotDTO, len(shots))
 	total := 0
 	for i, s := range shots {
-		out[i] = toShotDTO(s, latest[pgconv.UUIDString(s.ID)])
+		out[i] = toShotDTO(s, latest[pgconv.UUIDString(s.ID)], takes[pgconv.UUIDString(s.ID)])
 		total += int(s.Seconds)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -233,7 +240,7 @@ func (h *Handler) addShot(w http.ResponseWriter, r *http.Request) {
 		writeFieldError(w, "shots", "A video can have at most 12 shots.")
 		return
 	}
-	imageID, ok := h.resolveImage(w, r, in)
+	imageID, endID, ok := h.resolveImages(w, r, in)
 	if !ok {
 		return
 	}
@@ -247,17 +254,17 @@ func (h *Handler) addShot(w http.ResponseWriter, r *http.Request) {
 	}
 	// A picture given with the new shot goes on with the update (CreateShot has
 	// no picture columns, to keep its query simple).
-	if in.ImageURL != "" || imageID.Valid {
+	if in.ImageURL != "" || imageID.Valid || endID.Valid {
 		shot, err = h.q.UpdateShot(r.Context(), sqlc.UpdateShotParams{
 			ID: shot.ID, Prompt: shot.Prompt, Seconds: shot.Seconds,
-			ImageUrl: in.ImageURL, ImageID: imageID,
+			ImageUrl: in.ImageURL, ImageID: imageID, EndImageID: endID,
 		})
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "The shot was added but its picture was not.")
 			return
 		}
 	}
-	writeJSON(w, http.StatusCreated, map[string]any{"shot": toShotDTO(shot, nil)})
+	writeJSON(w, http.StatusCreated, map[string]any{"shot": toShotDTO(shot, nil, nil)})
 }
 
 func (h *Handler) updateShot(w http.ResponseWriter, r *http.Request) {
@@ -277,28 +284,28 @@ func (h *Handler) updateShot(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"errors": errs})
 		return
 	}
-	imageID, ok := h.resolveImage(w, r, in)
+	imageID, endID, ok := h.resolveImages(w, r, in)
 	if !ok {
 		return
 	}
 
 	updated, err := h.q.UpdateShot(r.Context(), sqlc.UpdateShotParams{
 		ID: shot.ID, Prompt: in.Prompt, Seconds: int16(in.Seconds),
-		ImageUrl: in.ImageURL, ImageID: imageID,
+		ImageUrl: in.ImageURL, ImageID: imageID, EndImageID: endID,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to update the shot.")
 		return
 	}
-	// If the shot swapped to another picture, drop the old one when nothing
-	// else uses it.
+	// If the shot swapped to another picture (start or end), drop the old one
+	// when nothing else uses it.
 	if shot.ImageID.Valid && shot.ImageID != imageID {
 		_ = h.q.DeleteImageIfUnused(r.Context(), shot.ImageID)
 	}
-	latest, _ := h.latestByShot(r.Context(), v.ID)
-	writeJSON(w, http.StatusOK, map[string]any{
-		"shot": toShotDTO(updated, latest[pgconv.UUIDString(updated.ID)]),
-	})
+	if shot.EndImageID.Valid && shot.EndImageID != endID {
+		_ = h.q.DeleteImageIfUnused(r.Context(), shot.EndImageID)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"shot": h.shotDTOFor(r.Context(), v.ID, updated)})
 }
 
 func (h *Handler) deleteShot(w http.ResponseWriter, r *http.Request) {
@@ -454,6 +461,7 @@ func (h *Handler) queueShot(ctx context.Context, v sqlc.Video, profile sqlc.Prof
 		InputPrompt: studio.For(profile.VideoStyle).Compose(shot.Prompt, true),
 		ImageUrl:    shot.ImageUrl,
 		ImageID:     shot.ImageID,
+		EndImageID:  shot.EndImageID,
 		Status:      "pending",
 		Provider:    profile.Provider,
 		Seconds:     shot.Seconds,
@@ -503,8 +511,7 @@ func (h *Handler) setApproved(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "Failed to approve the shot.")
 		return
 	}
-	latest, _ := h.latestByShot(r.Context(), v.ID)
-	writeJSON(w, http.StatusOK, map[string]any{"shot": toShotDTO(updated, latest[pgconv.UUIDString(updated.ID)])})
+	writeJSON(w, http.StatusOK, map[string]any{"shot": h.shotDTOFor(r.Context(), v.ID, updated)})
 }
 
 // generateShots makes an attempt at each of the listed shots in one go (the
@@ -621,6 +628,111 @@ func (h *Handler) loadShot(w http.ResponseWriter, r *http.Request, v sqlc.Video)
 	return s, true
 }
 
+// takeByShot maps a shot id to the take to use: the attempt the owner chose if
+// it succeeded, else the newest successful one. A shot with none is absent.
+func (h *Handler) takeByShot(ctx context.Context, videoID pgtype.UUID) (map[string]*sqlc.ListShotTakesRow, error) {
+	rows, err := h.q.ListShotTakes(ctx, videoID)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]*sqlc.ListShotTakesRow, len(rows))
+	for i := range rows {
+		out[pgconv.UUIDString(rows[i].ShotID)] = &rows[i]
+	}
+	return out, nil
+}
+
+// shotDTOFor builds one shot's DTO with its newest attempt and its take. A
+// failure to read them leaves those out rather than failing the whole answer.
+func (h *Handler) shotDTOFor(ctx context.Context, videoID pgtype.UUID, s sqlc.VideoShot) shotDTO {
+	latest, _ := h.latestByShot(ctx, videoID)
+	takes, _ := h.takeByShot(ctx, videoID)
+	id := pgconv.UUIDString(s.ID)
+	return toShotDTO(s, latest[id], takes[id])
+}
+
+// listAttempts returns every attempt at a shot, newest first, so the owner can
+// compare the takes and pick one.
+func (h *Handler) listAttempts(w http.ResponseWriter, r *http.Request) {
+	v, ok := h.loadVideo(w, r)
+	if !ok {
+		return
+	}
+	shot, ok := h.loadShot(w, r, v)
+	if !ok {
+		return
+	}
+	rows, err := h.q.ListShotAttempts(r.Context(), shot.ID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to list the attempts.")
+		return
+	}
+	out := make([]attemptDTO, len(rows))
+	for i, row := range rows {
+		out[i] = attemptDTO{
+			ID:        pgconv.UUIDString(row.ID),
+			Status:    row.Status,
+			Output:    row.Output,
+			Error:     row.Error,
+			Seconds:   int(row.Seconds),
+			CreatedAt: pgconv.TimeString(row.CreatedAt),
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"attempts": out,
+		"chosenId": pgconv.UUIDString(shot.ChosenGenerationID),
+	})
+}
+
+// setTake picks which attempt is THE clip of a shot (an empty generationId goes
+// back to "the newest successful one"). Only a successful attempt of this shot
+// can be chosen.
+func (h *Handler) setTake(w http.ResponseWriter, r *http.Request) {
+	v, ok := h.loadVideo(w, r)
+	if !ok {
+		return
+	}
+	shot, ok := h.loadShot(w, r, v)
+	if !ok {
+		return
+	}
+	var body struct {
+		GenerationID string `json:"generationId"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+
+	var chosen pgtype.UUID // NULL unless one is given
+	if body.GenerationID != "" {
+		id, err := pgconv.ParseUUID(body.GenerationID)
+		if err != nil {
+			writeFieldError(w, "generationId", "Invalid attempt id.")
+			return
+		}
+		g, err := h.q.GetGeneration(r.Context(), id)
+		if errors.Is(err, pgx.ErrNoRows) || (err == nil && g.ShotID != shot.ID) {
+			writeFieldError(w, "generationId", "That is not an attempt at this shot.")
+			return
+		}
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Failed to check the attempt.")
+			return
+		}
+		if g.Status != "succeeded" {
+			writeFieldError(w, "generationId", "Only a finished attempt can be chosen.")
+			return
+		}
+		chosen = id
+	}
+	updated, err := h.q.SetShotChosen(r.Context(), sqlc.SetShotChosenParams{ID: shot.ID, GenerationID: chosen})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to choose the take.")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"shot": h.shotDTOFor(r.Context(), v.ID, updated)})
+}
+
 // latestByShot maps a shot id to its newest attempt.
 func (h *Handler) latestByShot(ctx context.Context, videoID pgtype.UUID) (map[string]*sqlc.ListShotLatestGenerationsRow, error) {
 	rows, err := h.q.ListShotLatestGenerations(ctx, videoID)
@@ -634,16 +746,27 @@ func (h *Handler) latestByShot(ctx context.Context, videoID pgtype.UUID) (map[st
 	return out, nil
 }
 
-// resolveImage turns the input's imageId into a UUID that is known to exist.
+// resolveImages resolves the start and end pictures of the input to UUIDs known to exist.
 // An empty imageId is a NULL (the shot has no stored picture). It writes the
 // error response itself.
-func (h *Handler) resolveImage(w http.ResponseWriter, r *http.Request, in shotInput) (pgtype.UUID, bool) {
-	if in.ImageID == "" {
+func (h *Handler) resolveImages(w http.ResponseWriter, r *http.Request, in shotInput) (start, end pgtype.UUID, ok bool) {
+	start, ok = h.resolvePicture(w, r, "imageId", in.ImageID)
+	if !ok {
+		return start, end, false
+	}
+	end, ok = h.resolvePicture(w, r, "endImageId", in.EndImageID)
+	return start, end, ok
+}
+
+// resolvePicture turns one picture id from the input into a UUID that is known
+// to exist; "" is a NULL. `field` names it in the error message.
+func (h *Handler) resolvePicture(w http.ResponseWriter, r *http.Request, field, raw string) (pgtype.UUID, bool) {
+	if raw == "" {
 		return pgtype.UUID{}, true
 	}
-	id, err := pgconv.ParseUUID(in.ImageID)
+	id, err := pgconv.ParseUUID(raw)
 	if err != nil {
-		writeFieldError(w, "imageId", "Invalid image id.")
+		writeFieldError(w, field, "Invalid image id.")
 		return pgtype.UUID{}, false
 	}
 	ok, err := h.q.ImageExists(r.Context(), id)
@@ -652,7 +775,7 @@ func (h *Handler) resolveImage(w http.ResponseWriter, r *http.Request, in shotIn
 		return pgtype.UUID{}, false
 	}
 	if !ok {
-		writeFieldError(w, "imageId", "That picture no longer exists. Choose it again.")
+		writeFieldError(w, field, "That picture no longer exists. Choose it again.")
 		return pgtype.UUID{}, false
 	}
 	return id, true
