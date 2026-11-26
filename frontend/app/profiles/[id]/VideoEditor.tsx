@@ -20,8 +20,10 @@ import { formatUsd } from "@/lib/format";
 import { MAX_SHOTS, type Shot, type StudioPricing, type Video } from "@/lib/types";
 import { refreshCredits } from "../../CreditsBadge";
 import PictureModal, { type PictureChoice } from "./PictureModal";
+import ClipList from "./ClipList";
 import ShotCard, { type ShotDraft } from "./ShotCard";
 import Storyboard, { isReadyToMake } from "./Storyboard";
+import TakesModal from "./TakesModal";
 
 const POLL_EVERY_MS = 5000;
 const POLL_MAX_TRIES = 240; // 20 minutes; a real clip took about 8
@@ -64,6 +66,8 @@ export default function VideoEditor({
     draft: ShotDraft;
     end: boolean;
   } | null>(null);
+  // The shot whose takes are being compared.
+  const [comparing, setComparing] = useState<Shot | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -202,6 +206,18 @@ export default function VideoEditor({
     await run(
       async () => replaceShot(await plan(shot, draft, { end: next.imageId })),
       "Failed to set the end picture.",
+    );
+  }
+
+  /** The starting picture is the previous shot's end picture: one click, so the
+   *  shot begins on the pose the one before it ends on (the same stored picture
+   *  serves as both; it is removed only when neither uses it any more). */
+  async function startFromPreviousEnd(shot: Shot, draft: ShotDraft) {
+    const prev = shots.find((s) => s.position === shot.position - 1);
+    if (!prev || prev.endImageId === "") return;
+    await run(
+      async () => replaceShot(await plan(shot, draft, { start: { imageId: prev.endImageId } })),
+      "Failed to set the starting picture.",
     );
   }
 
@@ -418,6 +434,11 @@ export default function VideoEditor({
               (s) => s.position === shot.position + 1 && s.imageId !== "",
             )}
             onChooseEnd={(d) => setChoosing({ shot, draft: d, end: true })}
+            hasPreviousEnd={shots.some(
+              (s) => s.position === shot.position - 1 && s.endImageId !== "",
+            )}
+            onStartFromPreviousEnd={(d) => void startFromPreviousEnd(shot, d)}
+            onOpenTakes={() => setComparing(shot)}
             onUseNextAsEnd={(d) => void endOnNextPicture(shot, d)}
             onRemoveEnd={(d) => removeEndPicture(shot, d)}
             onGenerate={(d) => confirmGenerate(shot, d)}
@@ -435,6 +456,18 @@ export default function VideoEditor({
         {shots.length >= MAX_SHOTS ? `At most ${MAX_SHOTS} shots` : "Add a shot"}
       </Button>
 
+      <ClipList shots={shots} />
+
+      <TakesModal
+        open={comparing !== null}
+        videoId={videoId}
+        shot={comparing}
+        onClose={() => setComparing(null)}
+        onChanged={(next) => {
+          replaceShot(next);
+          setComparing(next);
+        }}
+      />
       <PictureModal
         open={choosing !== null}
         profileId={profileId}

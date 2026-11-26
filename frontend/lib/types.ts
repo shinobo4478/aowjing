@@ -171,6 +171,11 @@ export interface Shot {
   latest: ShotAttempt | null;
   /** How many attempts there have been; each was paid for. */
   attempts: number;
+  /** The clip to USE for this shot: the attempt the owner chose, else the newest
+   *  successful one; null while none has succeeded. */
+  take: ShotAttempt | null;
+  /** True when `take` was chosen by the owner (not just the newest). */
+  takeChosen: boolean;
 }
 
 /** What the screen sends to change a shot: its whole plan at once. At most one

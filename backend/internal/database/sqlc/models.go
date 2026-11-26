@@ -132,17 +132,18 @@ type Video struct {
 }
 
 type VideoShot struct {
-	ID         pgtype.UUID        `json:"id"`
-	VideoID    pgtype.UUID        `json:"video_id"`
-	Position   int16              `json:"position"`
-	Prompt     string             `json:"prompt"`
-	Seconds    int16              `json:"seconds"`
-	ImageUrl   string             `json:"image_url"`
-	ImageID    pgtype.UUID        `json:"image_id"`
-	EndImageID pgtype.UUID        `json:"end_image_id"`
-	Approved   bool               `json:"approved"`
-	CreatedAt  pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+	ID                 pgtype.UUID        `json:"id"`
+	VideoID            pgtype.UUID        `json:"video_id"`
+	Position           int16              `json:"position"`
+	Prompt             string             `json:"prompt"`
+	Seconds            int16              `json:"seconds"`
+	ImageUrl           string             `json:"image_url"`
+	ImageID            pgtype.UUID        `json:"image_id"`
+	EndImageID         pgtype.UUID        `json:"end_image_id"`
+	Approved           bool               `json:"approved"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	ChosenGenerationID pgtype.UUID        `json:"chosen_generation_id"`
 }
 
 type YoutubeAccount struct {

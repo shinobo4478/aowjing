@@ -181,6 +181,13 @@ CREATE TABLE IF NOT EXISTS generations (
 
 CREATE INDEX IF NOT EXISTS generations_profile_id_idx ON generations (profile_id);
 
+-- The take the owner picked as THE clip of a shot (any attempt, not just the
+-- newest). NULL means "the newest successful attempt". Added here, after
+-- generations, because generations point back at video_shots (shot_id): the two
+-- tables reference each other. A deleted attempt just clears the choice.
+ALTER TABLE video_shots
+    ADD COLUMN IF NOT EXISTS chosen_generation_id uuid REFERENCES generations (id) ON DELETE SET NULL;
+
 -- Global key/value settings — provider credentials and the like. One row per
 -- key, not duplicated per profile. The API whitelists which keys it accepts.
 CREATE TABLE IF NOT EXISTS settings (

@@ -308,8 +308,23 @@ Order of work (each a small PR):
      picture. Chain pictures from the *first* picture when edits drift; use a
      cut (a new start picture of the same scene, no end picture) where the
      camera must change.
-   - **Still to do in (3):** a download list; try Kling `elements` once for a
-     character that changes inside a clip.
+   - **Shot cards, chaining and takes (built after the owner's first edit):**
+     "Use previous end" on a shot's starting picture sets it to the previous
+     shot's end picture (the same stored picture serves as both, and is deleted
+     only when nothing uses it). Every attempt at a shot is kept; the owner
+     compares them in "Compare takes" and picks one (`video_shots.
+     chosen_generation_id`, `PUT /videos/{id}/shots/{shotId}/take`, `GET …/attempts`;
+     only a finished attempt of that shot can be chosen; empty goes back to the
+     newest successful one; deleting the chosen attempt falls back to it). The
+     shot shows its *take* (chosen, else newest successful) next to the state of
+     the newest attempt, and "Clips for your editor" lists each shot's take in
+     order with its link and "Copy all links". Existing DBs need
+     `ALTER TABLE video_shots ADD COLUMN chosen_generation_id uuid REFERENCES
+     generations (id) ON DELETE SET NULL;` (the two tables point at each other,
+     so it is added after `generations`).
+   - **Still to do in (3):** try Kling `elements` once for a character that
+     changes inside a clip. Then item 5 (Thai voice-over) is the biggest lever
+     for Shorts.
    - **Other video models on fal (read from fal's pages 2026-11-26, prices as
      listed):** Kling v3 Standard (ours) $0.084/s silent ($0.126/s with audio),
      3–15 s, has `end_image_url` and `elements` (1–3 reference pictures per
