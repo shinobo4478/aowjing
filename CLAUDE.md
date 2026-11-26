@@ -205,7 +205,32 @@ Order of work (each a small PR):
    `ALTER TABLE profiles ADD COLUMN video_style text NOT NULL DEFAULT '3d';`.
    Adding a style = a constant + a recipe entry in `studio.go` + an option in
    `frontend/lib/types.ts`. The audio route joins the recipe with item 5.
-3. Shots: a generation that is a set of ordered clips.
+3. Shots: a generation that is a set of ordered clips. **Design agreed with
+   the owner (2026-11-26), not built yet:**
+   - A **Video** (belongs to a Profile) is an ordered list of **shots**. The
+     owner chooses how many shots (1–12) and **each shot's length** (3–15 s,
+     fal's range); the total length and total price are shown. Each shot has its
+     **own prompt** (motion/camera, English) — not one template for the whole
+     video — and its own starting picture (make with AI / earlier clip / upload /
+     link, as in the Generate dialog today). A single clip made from a template
+     keeps working as it does now.
+   - Plan vs attempts: a shot (`video_shots`: video, position, prompt, seconds,
+     image) is the editable plan; every press of Generate on it is a normal
+     generation row (`generations.shot_id`), so retakes keep their history and
+     cost. The shot shows its latest result.
+   - Spending: Generate per shot asks first with that shot's price (seconds ×
+     the style's per-second price, $0.084 for 3D — linear scaling is NOT yet
+     verified, check the first non-5 s bill); "Generate all unfinished shots"
+     asks once with the total. The worker runs up to 5 at a time.
+   - Continuity between shots: the profile's Look pictures plus the picture
+     chosen for the previous shot go along as references when a keyframe is made.
+     Taking the last frame of a clip needs ffmpeg (a new dependency: ask first),
+     so it is not part of this.
+   - The finished shots are downloaded (fal links last at least 7 days) and
+     joined in CapCut for now (item 6).
+   - Order of work, each a small PR from `main`: (1) tables + API (videos,
+     shots, seconds on a generation, price per shot), (2) the Video page,
+     (3) "generate all", continuity references, download list.
 4. Keyframe generation (image model on fal) instead of pasting URLs.
    **Built (done before item 3, decided with the owner), verified end to end
    with the fake generator; not yet run against real fal:**
