@@ -115,6 +115,48 @@ export interface Generation {
   createdAt: string; // ISO 8601
 }
 
+/** A picture that gives a profile its own look (character, mascot, style). It
+ *  goes to the image model with every keyframe request. */
+export interface ReferencePicture {
+  /** Served by GET /images/{id}. */
+  imageId: string;
+  position: number;
+}
+
+/** An image model the owner can choose for keyframes (from GET /keyframes/models). */
+export interface KeyframeModel {
+  key: string;
+  label: string;
+  /** Price of one picture in US dollars, as fal lists it. */
+  priceUsd: number;
+}
+
+export interface KeyframeModels {
+  models: KeyframeModel[];
+  /** The most pictures one request may ask for. */
+  maxImages: number;
+  /** The most reference pictures a profile keeps. */
+  maxReferences: number;
+  aspect: string;
+}
+
+/** One request to make keyframe pictures (the starting image of a clip). */
+export interface Keyframe {
+  id: string;
+  profileId: string;
+  /** Exactly what was sent, with the style's wording added. */
+  prompt: string;
+  model: string;
+  count: number;
+  /** How many reference pictures went with it (0 = text only). */
+  referenceCount: number;
+  status: "pending" | "succeeded" | "failed";
+  error: string;
+  /** The candidate pictures, once it has succeeded. */
+  imageIds: string[];
+  createdAt: string; // ISO 8601
+}
+
 /** Global provider credentials, edited on the Settings screen. */
 export interface Settings {
   /** fal.ai API key, used by FalVideoGenerator. */

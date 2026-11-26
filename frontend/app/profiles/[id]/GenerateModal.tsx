@@ -17,6 +17,7 @@ import { ApiError, listProducts, MAX_IMAGE_BYTES, uploadImage } from "@/lib/api"
 import { productSlotsNeeded } from "@/lib/template";
 import { MAX_PRODUCTS_PER_CLIP, type Product, type PromptTemplate } from "@/lib/types";
 import { mobileModal } from "@/lib/ui";
+import KeyframePicker from "./KeyframePicker";
 
 /** What the owner chose in the dialog. At most one of `imageUrl` (a pasted
  *  link) and `imageId` (a picture already uploaded) is set; both "" means a
@@ -27,8 +28,9 @@ export interface GenerateChoices {
   imageId: string;
 }
 
-/** Where the starting image comes from. */
-type ImageSource = "link" | "file";
+/** Where the starting image comes from: a pasted link, a file from this
+ *  computer, or a picture made with an image model ("ai", see KeyframePicker). */
+type ImageSource = "link" | "file" | "ai";
 
 /** Checks a picked file before uploading it; null = fine. The backend checks
  *  the same things (and the pixel size, which the browser can't read cheaply). */
@@ -111,6 +113,8 @@ function Choices({
   const [picked, setPicked] = useState<{ file: File; preview: string } | null>(
     null,
   );
+  // The picture chosen among the ones made with an image model.
+  const [madeImageId, setMadeImageId] = useState("");
   const [busy, setBusy] = useState(false);
 
   // A preview URL holds the file in memory until revoked. Replace/remove
@@ -168,6 +172,7 @@ function Choices({
 
   const useLink = askImage && source === "link";
   const useFile = askImage && source === "file" && picked !== null;
+  const useMade = askImage && source === "ai";
   const imageError = useLink ? imageUrlError(imageUrl) : null;
 
   async function go() {
@@ -175,7 +180,7 @@ function Choices({
     try {
       // Upload first, inside the dialog, so a refused picture (too small, …)
       // shows its message here and keeps what was chosen.
-      let imageId = "";
+      let imageId = useMade ? madeImageId : "";
       if (useFile) {
         try {
           imageId = (await uploadImage(picked!.file)).id;
@@ -233,11 +238,18 @@ function Choices({
               options={[
                 { value: "link", label: "Link" },
                 { value: "file", label: "From this computer" },
+                { value: "ai", label: "Make with AI" },
               ]}
             />
           </div>
 
-          {source === "link" ? (
+          {source === "ai" ? (
+            <KeyframePicker
+              profileId={template.profileId}
+              value={madeImageId}
+              onChange={setMadeImageId}
+            />
+          ) : source === "link" ? (
             <Input
               value={imageUrl}
               onChange={(e) => setImageUrl(e.target.value)}
@@ -292,7 +304,9 @@ function Choices({
             {imageError ??
               (source === "link"
                 ? "A public link, at least 300×300 px. With an image the clip is silent and 5 seconds long; leave it empty to generate from the prompt alone."
-                : "A JPG or PNG, at least 300×300 px, up to 8 MB. With an image the clip is silent and 5 seconds long; choose nothing to generate from the prompt alone.")}
+                : source === "file"
+                  ? "A JPG or PNG, at least 300×300 px, up to 8 MB. With an image the clip is silent and 5 seconds long; choose nothing to generate from the prompt alone."
+                  : "Make a picture first, then pick one. The clip is silent and 5 seconds long, and starts from the picture you pick.")}
           </Typography.Paragraph>
         </div>
       )}
@@ -300,7 +314,7 @@ function Choices({
       <Button
         type="primary"
         style={{ marginTop: 20 }}
-        disabled={chosen.length < need || !!imageError}
+        disabled={chosen.length < need || !!imageError || (useMade && !madeImageId)}
         loading={busy}
         onClick={go}
       >

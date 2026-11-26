@@ -8,6 +8,8 @@ import type {
   Channel,
   ChannelInput,
   Generation,
+  Keyframe,
+  KeyframeModels,
   Placement,
   Product,
   ProductInput,
@@ -17,6 +19,7 @@ import type {
   ProfileInput,
   PromptTemplate,
   PromptTemplateInput,
+  ReferencePicture,
   Settings,
   YouTubeAccount,
   YouTubePrivacy,
@@ -216,6 +219,65 @@ export function imageSrc(imageId: string) {
 
 /** Mirrors images.MaxBytes on the backend. */
 export const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+
+/** Mirrors maxReferenceBytes on the backend (profiles/references.go). */
+export const MAX_REFERENCE_BYTES = 4 * 1024 * 1024;
+
+// --- Reference pictures (give a profile its own look) ---
+
+export function listReferences(profileId: string) {
+  return request<{ references: ReferencePicture[] }>(
+    `/profiles/${profileId}/references`,
+  ).then((r) => r.references);
+}
+
+export function addReference(profileId: string, file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  return request<{ reference: ReferencePicture }>(
+    `/profiles/${profileId}/references`,
+    { method: "POST", body: form, headers: {} },
+  ).then((r) => r.reference);
+}
+
+export function removeReference(profileId: string, imageId: string) {
+  return request<void>(`/profiles/${profileId}/references/${imageId}`, {
+    method: "DELETE",
+  });
+}
+
+// --- Keyframes (make the starting picture of a clip with an image model) ---
+
+export function getKeyframeModels() {
+  return request<KeyframeModels>("/keyframes/models");
+}
+
+/** Asks for `count` pictures. With `useReferences` (the default) the profile's
+ *  reference pictures go along so its character stays the same. Returns the
+ *  pending request; poll getKeyframe until it has finished. */
+export function createKeyframe(input: {
+  profileId: string;
+  prompt: string;
+  model: string;
+  count: number;
+  useReferences: boolean;
+}) {
+  return request<{ keyframe: Keyframe }>("/keyframes", {
+    method: "POST",
+    body: JSON.stringify(input),
+  }).then((r) => r.keyframe);
+}
+
+export function getKeyframe(id: string) {
+  return request<{ keyframe: Keyframe }>(`/keyframes/${id}`).then(
+    (r) => r.keyframe,
+  );
+}
+
+/** Discards a request and every picture of it that no clip uses. */
+export function deleteKeyframe(id: string) {
+  return request<void>(`/keyframes/${id}`, { method: "DELETE" });
+}
 
 export function deleteGeneration(id: string) {
   return request<void>(`/generations/${id}`, { method: "DELETE" });

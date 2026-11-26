@@ -165,9 +165,13 @@ succeeded on `fal-ai/kling-video/v3/standard/image-to-video` with
 `generate_audio:false`; the owner judged the clip OK. It cost **$0.42**
 (= $0.084/s), so the budget above holds — the $0.14/s on fal's pricing page is
 presumably the audio-on rate. The clip took ~8 minutes from Generate to done
-(the UI polls for 20 minutes). **Still unverified:** how long fal keeps the
-video link alive (download it right away), and the 3D wording on a
-text-to-video clip (the image clip adds no wording).
+(the UI polls for 20 minutes). **Link lifetime (from fal's docs, 2026-11-26):**
+generated files are kept "at least 7 days by default" (fal's FAQ; the retention
+page gives no number), then deleted for good; a request header
+`X-Fal-Object-Lifecycle-Preference: {"expiration_duration_seconds": N}` (null =
+never) sets it per call — we do not send it yet. Download clips you want within
+7 days. **Still unverified:** the 3D wording on a text-to-video clip (the image
+clip adds no wording).
 
 Order of work (each a small PR):
 1. `image_url` on a generation + `FalVideoGenerator` uses the image-to-video
@@ -203,6 +207,35 @@ Order of work (each a small PR):
    `frontend/lib/types.ts`. The audio route joins the recipe with item 5.
 3. Shots: a generation that is a set of ordered clips.
 4. Keyframe generation (image model on fal) instead of pasting URLs.
+   **Built (done before item 3, decided with the owner), verified end to end
+   with the fake generator; not yet run against real fal:**
+   - Two image models, chosen per request in the Generate dialog ("Make with
+     AI"): `nano-banana` (`fal-ai/nano-banana` / `…/edit`, $0.0398 per picture)
+     and `seedream` (`fal-ai/bytedance/seedream/v4/text-to-image` / `…/edit`,
+     $0.03). Prices are what fal's model pages list (2026-11-26), not yet seen on
+     a bill. Registry: `internal/studio/keyframe.go`; the per-model request
+     fields live in `internal/generate/image.go`, keyed by the model key.
+   - The owner picks how many pictures (1–4) and sees the estimate first; the
+     pictures are 9:16 (`studio.KeyframeAspect`).
+   - **Reference pictures per Profile** (the "Look" tab, up to 4, JPG/PNG,
+     ≤ 4 MB each; `profile_reference_images`) give a profile its own character.
+     When it has any, the edit model is used and they are sent as data URIs,
+     with "Keep the same character and overall look…" + the style's wording
+     (`Recipe.KeyframeSuffix`) added to the prompt; a checkbox in the dialog turns
+     them off. **Unverified:** that fal accepts four base64 pictures in one
+     request, and how well either model keeps a character.
+   - Candidates are downloaded by the worker and stored in `images` (a fal link
+     expires). Picking one passes its `imageId` to the clip as before; the
+     request and the unpicked candidates are deleted when the dialog closes
+     (`DELETE /keyframes/{id}` keeps any picture a clip already uses). Deleting
+     a profile now also removes the pictures only it used (this closes the old
+     orphan-images gap).
+   - A keyframe job retries at most twice (each retry is paid for); once the
+     model has been called every outcome is recorded and the job is not retried.
+   - Prompts: the image models' pages do not say whether Thai is supported;
+     write picture descriptions in English until tried.
+   - Existing DBs need the three `CREATE TABLE`s in `db/schema.sql`
+     (`profile_reference_images`, `keyframes`, `keyframe_images`).
 5. Thai voice-over (TTS provider chosen after the owner listens to Thai
    samples from each candidate).
 6. Join clips + audio. **Conflicts with a rule above:** joining makes a full
