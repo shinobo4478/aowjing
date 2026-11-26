@@ -86,6 +86,8 @@ export interface Generation {
   inputPrompt: string;
   /** Image the clip starts from (image-to-video); "" for a prompt-only run. */
   imageUrl: string;
+  /** Picture uploaded from the owner's computer; "" if none. Served by GET /images/{id}. */
+  imageId: string;
   /** Generated text, or — when outputKind is "video" — a URL. */
   output: string;
   outputKind: "text" | "video";

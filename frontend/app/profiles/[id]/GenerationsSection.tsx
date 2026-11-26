@@ -5,6 +5,7 @@ import { App, Button, Empty, Popconfirm, Space, Table, Typography } from "antd";
 import type { TableColumnsType } from "antd";
 import {
   deleteGeneration,
+  imageSrc,
   listGenerations,
   listPlacements,
   listProducts,
@@ -217,6 +218,28 @@ export default function GenerationsSection({
                       {row.imageUrl} ↗
                     </a>
                   </div>
+                </div>
+              )}
+              {row.imageId && (
+                <div>
+                  <Typography.Text type="secondary">
+                    Starting image (uploaded)
+                  </Typography.Text>
+                  <a
+                    href={imageSrc(row.imageId)}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ display: "block", marginTop: 4 }}
+                  >
+                    {/* A plain <img>: it is a small, cookie-protected API
+                        response, so next/image's optimizer has nothing to do. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={imageSrc(row.imageId)}
+                      alt="Starting image"
+                      style={{ maxWidth: 160, maxHeight: 160, borderRadius: 4 }}
+                    />
+                  </a>
                 </div>
               )}
               <div>

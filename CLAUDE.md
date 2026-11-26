@@ -183,8 +183,9 @@ Order of work (each a small PR):
    nothing else uses it; uploads never used by a clip, and pictures of clips removed
    with their profile, stay until cleaned by hand. Existing DBs need
    `CREATE TABLE images (…)` and `ALTER TABLE generations ADD COLUMN image_id uuid
-   REFERENCES images (id) ON DELETE SET NULL;` (see `db/schema.sql`). Backend only
-   so far: the file picker in `GenerateModal` is still to do.
+   REFERENCES images (id) ON DELETE SET NULL;` (see `db/schema.sql`). The
+   dialog has a "Link / From this computer" switch (`GenerateModal`); the file is
+   uploaded when Generate is pressed, and the clip row shows its thumbnail.
 2. `video_style` on Profile + the recipe registry (`3d` only).
 3. Shots: a generation that is a set of ordered clips.
 4. Keyframe generation (image model on fal) instead of pasting URLs.
