@@ -15,6 +15,7 @@ import (
 	"github.com/shinobo4478/aowjing/backend/internal/database"
 	"github.com/shinobo4478/aowjing/backend/internal/database/sqlc"
 	"github.com/shinobo4478/aowjing/backend/internal/generations"
+	"github.com/shinobo4478/aowjing/backend/internal/keyframes"
 	"github.com/shinobo4478/aowjing/backend/internal/queue"
 )
 
@@ -42,9 +43,18 @@ func run() error {
 	defer db.Close()
 	log.Println("connected to database")
 
-	runner := generations.NewRunner(sqlc.New(db), cfg.FakeFal)
+	queries := sqlc.New(db)
+	runner := generations.NewRunner(queries, cfg.FakeFal)
+	keyframeRunner := keyframes.NewRunner(queries, cfg.FakeFal)
 
 	mux := asynq.NewServeMux()
+	mux.HandleFunc(queue.TaskKeyframeRun, func(ctx context.Context, t *asynq.Task) error {
+		var p queue.KeyframeRunPayload
+		if err := json.Unmarshal(t.Payload(), &p); err != nil {
+			return asynq.SkipRetry
+		}
+		return keyframeRunner.Run(ctx, p.KeyframeID)
+	})
 	mux.HandleFunc(queue.TaskGenerationRun, func(ctx context.Context, t *asynq.Task) error {
 		var p queue.GenerationRunPayload
 		if err := json.Unmarshal(t.Payload(), &p); err != nil {

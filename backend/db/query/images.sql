@@ -11,8 +11,26 @@ SELECT id, content_type, size_bytes, data
 FROM images
 WHERE id = $1;
 
--- Removes an image once no clip uses it (called after a clip is deleted).
+-- Removes an image once nothing uses it: not a clip's starting image, not a
+-- profile's reference picture, not a keyframe candidate. Called after the thing
+-- that used it is deleted. (The cascades on profile_reference_images and
+-- keyframe_images would otherwise silently drop those links.)
 -- name: DeleteImageIfUnused :exec
 DELETE FROM images i
 WHERE i.id = $1
-  AND NOT EXISTS (SELECT 1 FROM generations g WHERE g.image_id = i.id);
+  AND NOT EXISTS (SELECT 1 FROM generations g WHERE g.image_id = i.id)
+  AND NOT EXISTS (SELECT 1 FROM profile_reference_images r WHERE r.image_id = i.id)
+  AND NOT EXISTS (SELECT 1 FROM keyframe_images k WHERE k.image_id = i.id);
+
+-- Every picture a profile owns, collected BEFORE the profile is deleted so the
+-- ones nothing else uses can be removed afterwards.
+-- name: ListProfileImageIDs :many
+SELECT g.image_id AS image_id FROM generations g
+WHERE g.profile_id = $1 AND g.image_id IS NOT NULL
+UNION
+SELECT r.image_id FROM profile_reference_images r WHERE r.profile_id = $1
+UNION
+SELECT k.image_id
+FROM keyframe_images k
+JOIN keyframes f ON f.id = k.keyframe_id
+WHERE f.profile_id = $1;

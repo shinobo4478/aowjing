@@ -42,6 +42,10 @@ type Recipe struct {
 	// already sets the look (a real product photo must not be restyled), so
 	// this is only for motion wording, and empty for most styles.
 	ImageSuffix string
+	// KeyframeSuffix is appended to the prompt of a keyframe picture. Unlike a
+	// clip that starts from a picture, here the look is being decided, so the
+	// style's wording belongs in the prompt.
+	KeyframeSuffix string
 }
 
 // recipes is the registry, in the order shown in the UI. To add a style, add a
@@ -56,7 +60,8 @@ var recipes = []Recipe{
 
 		// Starting wording, not tested against real clips yet: adjust it after
 		// seeing what Kling makes of it.
-		TextSuffix: "3D animated film style, Pixar-like characters, soft cinematic lighting, smooth natural motion.",
+		TextSuffix:     "3D animated film style, Pixar-like characters, soft cinematic lighting, smooth natural motion.",
+		KeyframeSuffix: "3D animated film style, Pixar-like characters, soft cinematic lighting.",
 	},
 }
 

@@ -49,6 +49,24 @@ type Image struct {
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
 
+type Keyframe struct {
+	ID             pgtype.UUID        `json:"id"`
+	ProfileID      pgtype.UUID        `json:"profile_id"`
+	Prompt         string             `json:"prompt"`
+	Model          string             `json:"model"`
+	Count          int16              `json:"count"`
+	ReferenceCount int16              `json:"reference_count"`
+	Status         string             `json:"status"`
+	Error          string             `json:"error"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
+type KeyframeImage struct {
+	KeyframeID pgtype.UUID `json:"keyframe_id"`
+	ImageID    pgtype.UUID `json:"image_id"`
+	Position   int16       `json:"position"`
+}
+
 type Product struct {
 	ID           pgtype.UUID        `json:"id"`
 	Name         string             `json:"name"`
@@ -71,6 +89,12 @@ type Profile struct {
 	VideoStyle  string             `json:"video_style"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+type ProfileReferenceImage struct {
+	ProfileID pgtype.UUID `json:"profile_id"`
+	ImageID   pgtype.UUID `json:"image_id"`
+	Position  int16       `json:"position"`
 }
 
 type PromptTemplate struct {

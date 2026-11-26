@@ -2,13 +2,13 @@ package generations
 
 import (
 	"context"
-	"encoding/base64"
 	"errors"
 
 	"github.com/jackc/pgx/v5"
 
 	"github.com/shinobo4478/aowjing/backend/internal/database/sqlc"
 	"github.com/shinobo4478/aowjing/backend/internal/generate"
+	"github.com/shinobo4478/aowjing/backend/internal/images"
 	"github.com/shinobo4478/aowjing/backend/internal/pgconv"
 	"github.com/shinobo4478/aowjing/backend/internal/studio"
 )
@@ -55,11 +55,7 @@ func (rn *Runner) imageFor(ctx context.Context, row sqlc.GetGenerationRow) (stri
 	if err != nil {
 		return "", err
 	}
-	return dataURI(img.ContentType, img.Data), nil
-}
-
-func dataURI(contentType string, data []byte) string {
-	return "data:" + contentType + ";base64," + base64.StdEncoding.EncodeToString(data)
+	return images.DataURI(img.ContentType, img.Data), nil
 }
 
 // Run processes one generation by id. A provider failure is stored on the row

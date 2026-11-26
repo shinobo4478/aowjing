@@ -62,6 +62,48 @@ CREATE TABLE IF NOT EXISTS images (
     created_at   timestamptz NOT NULL DEFAULT now()
 );
 
+-- The pictures that give a profile its own look (its character, mascot or
+-- style), sent to the image model as reference images whenever the profile
+-- makes a keyframe. At most 4 (position 1-4; with the primary key the database
+-- itself enforces the cap). Removed with the profile.
+CREATE TABLE IF NOT EXISTS profile_reference_images (
+    profile_id uuid     NOT NULL REFERENCES profiles (id) ON DELETE CASCADE,
+    image_id   uuid     NOT NULL REFERENCES images (id) ON DELETE CASCADE,
+    position   smallint NOT NULL CHECK (position BETWEEN 1 AND 4),
+    PRIMARY KEY (profile_id, position),
+    UNIQUE (profile_id, image_id)
+);
+
+-- One request to make keyframe pictures (the starting image of a clip) with an
+-- image model. Like a generation it is created pending and finished by the
+-- worker; the pictures it made are in keyframe_images. `prompt` is exactly what
+-- was sent (the profile's style wording already added). Removed with its profile.
+CREATE TABLE IF NOT EXISTS keyframes (
+    id         uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    profile_id uuid        NOT NULL REFERENCES profiles (id) ON DELETE CASCADE,
+    prompt     text        NOT NULL,
+    -- Key of the image model chosen (internal/studio), e.g. 'nano-banana'.
+    model      text        NOT NULL,
+    -- How many pictures were asked for, and how many reference pictures went
+    -- with the request (0 = made from the text alone).
+    count      smallint    NOT NULL,
+    reference_count smallint NOT NULL DEFAULT 0,
+    status     text        NOT NULL,
+    error      text        NOT NULL DEFAULT '',
+    created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS keyframes_profile_id_idx ON keyframes (profile_id);
+
+CREATE TABLE IF NOT EXISTS keyframe_images (
+    keyframe_id uuid     NOT NULL REFERENCES keyframes (id) ON DELETE CASCADE,
+    image_id    uuid     NOT NULL REFERENCES images (id) ON DELETE CASCADE,
+    position    smallint NOT NULL,
+    PRIMARY KEY (keyframe_id, position)
+);
+
+CREATE INDEX IF NOT EXISTS keyframe_images_image_id_idx ON keyframe_images (image_id);
+
 -- One run of a prompt template through the AI provider. An immutable record:
 -- the exact prompt that was sent, what came back, and which provider/model
 -- produced it. Kept even if the source template is later deleted (the link is

@@ -1,4 +1,4 @@
-package generations
+package images
 
 import (
 	"encoding/base64"
@@ -8,7 +8,7 @@ import (
 
 func TestDataURI(t *testing.T) {
 	data := []byte{0x89, 'P', 'N', 'G', 0x00, 0xff, 0x10}
-	got := dataURI("image/png", data)
+	got := DataURI("image/png", data)
 
 	const prefix = "data:image/png;base64,"
 	if !strings.HasPrefix(got, prefix) {

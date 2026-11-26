@@ -34,6 +34,11 @@ func (h *Handler) Routes() http.Handler {
 	r.Get("/{id}", h.get)
 	r.Patch("/{id}", h.update)
 	r.Delete("/{id}", h.delete)
+
+	// The pictures that give this profile its own look (see references.go).
+	r.Get("/{id}/references", h.listReferences)
+	r.Post("/{id}/references", h.addReference)
+	r.Delete("/{id}/references/{imageId}", h.removeReference)
 	return r
 }
 
@@ -180,6 +185,13 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "Invalid profile id.")
 		return
 	}
+	// Look first: once the profile is gone we can no longer tell which stored
+	// pictures were its (clip starting images, reference pictures, keyframes).
+	imageIDs, err := h.q.ListProfileImageIDs(r.Context(), id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to delete profile.")
+		return
+	}
 	n, err := h.q.DeleteProfile(r.Context(), id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to delete profile.")
@@ -188,6 +200,11 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 	if n == 0 {
 		writeError(w, http.StatusNotFound, "Profile not found.")
 		return
+	}
+	// Drop each picture nothing else uses. A failure only leaves a stray
+	// picture behind, so it does not fail the delete.
+	for _, imageID := range imageIDs {
+		_ = h.q.DeleteImageIfUnused(r.Context(), imageID)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
