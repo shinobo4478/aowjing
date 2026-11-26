@@ -12,10 +12,11 @@ type generationDTO struct {
 	PromptTemplateID string `json:"promptTemplateId"` // "" if the template was deleted
 	TemplateName     string `json:"templateName"`     // "" if the template was deleted
 	InputPrompt      string `json:"inputPrompt"`
-	ImageURL         string `json:"imageUrl"` // "" for text-to-video
-	ImageID          string `json:"imageId"`  // uploaded picture, "" if none
-	Seconds          int    `json:"seconds"`  // clip length asked for
-	ShotID           string `json:"shotId"`   // the video shot this is an attempt at, "" if none
+	ImageURL         string `json:"imageUrl"`   // "" for text-to-video
+	ImageID          string `json:"imageId"`    // uploaded picture, "" if none
+	EndImageID       string `json:"endImageId"` // picture the clip was asked to end on, "" if none
+	Seconds          int    `json:"seconds"`    // clip length asked for
+	ShotID           string `json:"shotId"`     // the video shot this is an attempt at, "" if none
 	Output           string `json:"output"`
 	OutputKind       string `json:"outputKind"` // "text" | "video"
 	Status           string `json:"status"`
@@ -34,6 +35,7 @@ func modelDTO(g sqlc.Generation, templateName string) generationDTO {
 		InputPrompt:      g.InputPrompt,
 		ImageURL:         g.ImageUrl,
 		ImageID:          pgconv.UUIDString(g.ImageID),
+		EndImageID:       pgconv.UUIDString(g.EndImageID),
 		Seconds:          int(g.Seconds),
 		ShotID:           pgconv.UUIDString(g.ShotID),
 		Output:           g.Output,
@@ -54,6 +56,7 @@ func listRowDTO(r sqlc.ListGenerationsByProfileRow) generationDTO {
 		InputPrompt:      r.InputPrompt,
 		ImageUrl:         r.ImageUrl,
 		ImageID:          r.ImageID,
+		EndImageID:       r.EndImageID,
 		Seconds:          r.Seconds,
 		ShotID:           r.ShotID,
 		Output:           r.Output,
@@ -74,6 +77,7 @@ func getRowDTO(r sqlc.GetGenerationRow) generationDTO {
 		InputPrompt:      r.InputPrompt,
 		ImageUrl:         r.ImageUrl,
 		ImageID:          r.ImageID,
+		EndImageID:       r.EndImageID,
 		Seconds:          r.Seconds,
 		ShotID:           r.ShotID,
 		Output:           r.Output,

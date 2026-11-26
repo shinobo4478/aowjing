@@ -24,19 +24,25 @@ export default function PictureModal({
   open,
   profileId,
   scenePictures,
+  end = false,
   onClose,
   onPick,
 }: {
   open: boolean;
   profileId: string;
-  /** Pictures of the video's other shots, to make this one match their scene. */
+  /** Pictures to make this one match: the video's other shots, or (for an end
+   *  picture) the shot's own starting picture. */
   scenePictures: { imageId: string; label: string }[];
+  /** Choosing the END picture of a shot: the clip flows from the starting
+   *  picture to this one, so a picture made here keeps the camera, room and
+   *  light exactly and changes only the pose; a link is not accepted. */
+  end?: boolean;
   onClose: () => void;
   onPick: (choice: PictureChoice) => Promise<void>;
 }) {
   return (
     <Modal
-      title="Starting picture"
+      title={end ? "End picture" : "Starting picture"}
       open={open}
       onCancel={onClose}
       footer={null}
@@ -45,7 +51,12 @@ export default function PictureModal({
       {...mobileModal}
     >
       {open && (
-        <Chooser profileId={profileId} scenePictures={scenePictures} onPick={onPick} />
+        <Chooser
+          profileId={profileId}
+          scenePictures={scenePictures}
+          end={end}
+          onPick={onPick}
+        />
       )}
     </Modal>
   );
@@ -54,9 +65,11 @@ export default function PictureModal({
 function Chooser({
   profileId,
   scenePictures,
+  end,
   onPick,
 }: {
   profileId: string;
+  end: boolean;
   scenePictures: { imageId: string; label: string }[];
   onPick: (choice: PictureChoice) => Promise<void>;
 }) {
@@ -130,7 +143,8 @@ function Chooser({
           { value: "ai", label: "Make with AI" },
           { value: "past", label: "From an earlier clip" },
           { value: "file", label: "From this computer" },
-          { value: "link", label: "Link" },
+          // An end picture must be a stored one (the backend takes only ids).
+          ...(end ? [] : [{ value: "link" as const, label: "Link" }]),
         ]}
       />
 
@@ -140,6 +154,7 @@ function Chooser({
           value={madeId}
           onChange={setMadeId}
           scenePictures={scenePictures}
+          sameCamera={end}
         />
       )}
       {source === "past" && (

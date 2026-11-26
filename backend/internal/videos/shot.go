@@ -29,6 +29,10 @@ type shotInput struct {
 	// generated.
 	ImageURL string `json:"imageUrl"`
 	ImageID  string `json:"imageId"`
+	// EndImageID is a stored picture the clip should END on (fal's
+	// end_image_url): it flows from the starting picture to this one. Only with a
+	// starting picture, and a stored picture only (never a link).
+	EndImageID string `json:"endImageId"`
 }
 
 // normalizeAndValidate trims the input and returns a message per field; an
@@ -57,6 +61,10 @@ func (in *shotInput) normalizeAndValidate() map[string]string {
 	in.ImageID = strings.TrimSpace(in.ImageID)
 	if in.ImageID != "" && in.ImageURL != "" {
 		errs["imageId"] = "Give an image link or a picture, not both."
+	}
+	in.EndImageID = strings.TrimSpace(in.EndImageID)
+	if in.EndImageID != "" && in.ImageURL == "" && in.ImageID == "" {
+		errs["endImageId"] = "Choose a starting picture before an end picture."
 	}
 	return errs
 }

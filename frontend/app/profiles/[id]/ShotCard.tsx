@@ -29,6 +29,10 @@ export default function ShotCard({
   onSave,
   onChoosePicture,
   onRemovePicture,
+  canUseNextAsEnd,
+  onChooseEnd,
+  onUseNextAsEnd,
+  onRemoveEnd,
   onGenerate,
   onMove,
   onDelete,
@@ -45,6 +49,11 @@ export default function ShotCard({
   onSave: (draft: ShotDraft) => Promise<void>;
   onChoosePicture: (draft: ShotDraft) => void;
   onRemovePicture: (draft: ShotDraft) => Promise<void>;
+  /** The next shot has a stored starting picture that can be this one's end. */
+  canUseNextAsEnd: boolean;
+  onChooseEnd: (draft: ShotDraft) => void;
+  onUseNextAsEnd: (draft: ShotDraft) => void;
+  onRemoveEnd: (draft: ShotDraft) => Promise<void>;
   onGenerate: (draft: ShotDraft) => void;
   onMove: (direction: -1 | 1) => void;
   onDelete: () => void;
@@ -136,6 +145,63 @@ export default function ShotCard({
             </Button>
             {hasPicture && (
               <Button size="small" type="text" disabled={busy} onClick={() => void onRemovePicture(draft)}>
+                Remove
+              </Button>
+            )}
+          </Space>
+        </div>
+
+        {/* End picture: the clip flows from the starting picture to this one. */}
+        <div style={{ width: 108 }}>
+          {shot.endImageId ? (
+            // Served by the API with the session cookie, so next/image cannot optimize it.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={imageSrc(shot.endImageId)}
+              alt={`End picture of shot ${shot.position}`}
+              style={{ width: 108, height: 192, objectFit: "cover", borderRadius: 4, display: "block" }}
+            />
+          ) : (
+            <div
+              style={{
+                width: 108,
+                height: 192,
+                border: "1px dashed rgba(255,255,255,0.25)",
+                borderRadius: 4,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                textAlign: "center",
+                padding: 8,
+              }}
+            >
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                {hasPicture
+                  ? "No end picture (optional): the clip decides how it ends"
+                  : "Choose a starting picture first"}
+              </Typography.Text>
+            </div>
+          )}
+          <Space size={4} style={{ marginTop: 4 }} wrap>
+            <Button
+              size="small"
+              disabled={busy || !hasPicture}
+              onClick={() => onChooseEnd(draft)}
+            >
+              {shot.endImageId ? "Change end" : "End picture…"}
+            </Button>
+            {canUseNextAsEnd && (
+              <Button
+                size="small"
+                type="text"
+                disabled={busy || !hasPicture}
+                onClick={() => onUseNextAsEnd(draft)}
+              >
+                Use next shot&apos;s
+              </Button>
+            )}
+            {shot.endImageId && (
+              <Button size="small" type="text" disabled={busy} onClick={() => void onRemoveEnd(draft)}>
                 Remove
               </Button>
             )}

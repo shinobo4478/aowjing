@@ -31,9 +31,13 @@ WHERE id = $1;
 -- Every picture of a video's shots, collected BEFORE the video is deleted so
 -- the ones nothing else uses can be removed afterwards.
 -- name: ListVideoImageIDs :many
-SELECT image_id AS image_id
-FROM video_shots
-WHERE video_id = $1 AND image_id IS NOT NULL;
+SELECT s.image_id AS image_id
+FROM video_shots s
+WHERE s.video_id = $1 AND s.image_id IS NOT NULL
+UNION
+SELECT e.end_image_id
+FROM video_shots e
+WHERE e.video_id = $1 AND e.end_image_id IS NOT NULL;
 
 -- name: ListShots :many
 SELECT * FROM video_shots
@@ -66,11 +70,13 @@ UPDATE video_shots
 SET approved = CASE
         WHEN prompt = $2 AND seconds = $3 AND image_url = $4
              AND image_id IS NOT DISTINCT FROM sqlc.narg('image_id')::uuid
+             AND end_image_id IS NOT DISTINCT FROM sqlc.narg('end_image_id')::uuid
         THEN approved ELSE false END,
     prompt = $2,
     seconds = $3,
     image_url = $4,
     image_id = sqlc.narg('image_id')::uuid,
+    end_image_id = sqlc.narg('end_image_id')::uuid,
     updated_at = now()
 WHERE id = $1
 RETURNING *;

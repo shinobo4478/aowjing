@@ -35,6 +35,7 @@ export default function KeyframePicker({
   value,
   onChange,
   scenePictures = [],
+  sameCamera = false,
 }: {
   profileId: string;
   value: string;
@@ -42,6 +43,10 @@ export default function KeyframePicker({
   /** Pictures of the same scene this one should match: the other shots of a
    *  video, in order. The first is chosen at the start (it is the "master"). */
   scenePictures?: { imageId: string; label: string }[];
+  /** Making an END picture: the clip flows from the starting picture to this
+   *  one, so the camera, room and light must stay exactly as they are and only
+   *  the pose may change. */
+  sameCamera?: boolean;
 }) {
   const { message, modal } = App.useApp();
   const [info, setInfo] = useState<KeyframeModels | null>(null);
@@ -137,7 +142,9 @@ export default function KeyframePicker({
           </p>
           <p style={{ margin: 0 }}>
             {sceneIds.length > 0
-              ? `The scene of ${sceneIds.length} other shot${sceneIds.length === 1 ? "" : "s"} will be kept. `
+              ? sameCamera
+                ? "The starting picture will be kept exactly, except for the pose. "
+                : `The scene of ${sceneIds.length} other shot${sceneIds.length === 1 ? "" : "s"} will be kept. `
               : ""}
             {effectiveRefs > 0
               ? `${effectiveRefs} reference picture${effectiveRefs === 1 ? "" : "s"} in all will be sent along. `
@@ -167,6 +174,7 @@ export default function KeyframePicker({
           count,
           useReferences: useRefs,
           sceneImageIds: sceneIds,
+          sameCamera: sameCamera && sceneIds.length > 0,
         }),
       );
     } catch (err) {
@@ -191,7 +199,11 @@ export default function KeyframePicker({
         autoSize={{ minRows: 5, maxRows: 14 }}
         maxLength={1500}
         showCount
-        placeholder="Describe the scene, in English: who is in it, where, the light, the mood…"
+        placeholder={
+          sameCamera
+            ? "Describe ONLY what changes, in English: the pose or what the character is doing at the end. The camera, room and light stay exactly as in the starting picture."
+            : "Describe the scene, in English: who is in it, where, the light, the mood…"
+        }
       />
 
       <Select
@@ -220,8 +232,9 @@ export default function KeyframePicker({
       {scenePictures.length > 0 && (
         <div style={{ marginTop: 12 }}>
           <Typography.Text>
-            Keep the same scene as (the room, light and character stay, the
-            camera angle or moment changes):
+            {sameCamera
+              ? "Start from (the camera, room, light and everything but the pose stay exactly the same):"
+              : "Keep the same scene as (the room, light and character stay, the camera angle or moment changes):"}
           </Typography.Text>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 6 }}>
             {scenePictures.map((p) => {
@@ -247,7 +260,9 @@ export default function KeyframePicker({
             })}
           </div>
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            Up to {MAX_SCENE_PICTURES}. Describe only what is different in this shot.
+            {sameCamera
+              ? "Describe only the pose or action that differs."
+              : `Up to ${MAX_SCENE_PICTURES}. Describe only what is different in this shot.`}
           </Typography.Text>
         </div>
       )}

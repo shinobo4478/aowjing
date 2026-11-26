@@ -84,9 +84,20 @@ func (rn *Runner) Run(ctx context.Context, generationID string) error {
 	if err != nil {
 		return err
 	}
+	// The picture the clip should end on, if the shot has one (a stored picture;
+	// a data URI like the starting one).
+	endURL := ""
+	if row.EndImageID.Valid {
+		end, err := rn.q.GetImage(ctx, row.EndImageID)
+		if err != nil {
+			return err
+		}
+		endURL = images.DataURI(end.ContentType, end.Data)
+	}
 
 	finish := sqlc.FinishGenerationParams{ID: id, Provider: row.Provider, OutputKind: "text"}
-	if res, genErr := gen.Generate(ctx, generate.Request{Prompt: row.InputPrompt, ImageURL: imageURL, Seconds: int(row.Seconds)}); genErr != nil {
+	req := generate.Request{Prompt: row.InputPrompt, ImageURL: imageURL, EndImageURL: endURL, Seconds: int(row.Seconds)}
+	if res, genErr := gen.Generate(ctx, req); genErr != nil {
 		finish.Status = "failed"
 		finish.Error = genErr.Error()
 	} else {

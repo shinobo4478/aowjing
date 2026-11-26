@@ -99,15 +99,27 @@ const MaxSceneReferences = 2
 // change only what the description says. A starting guess, not tested yet.
 const keepSceneInstruction = "Keep the same scene as in the first reference picture(s): the same room, furniture, props, lighting, colors and character. Change only what is described below, such as the camera angle or what the character is doing."
 
+// keepSceneSameCameraInstruction is for an END picture: the clip flows from the
+// starting picture to it (fal's end_image_url), and the model morphs anything
+// that differs, so everything but the subject's pose must stay identical. This
+// is the wording that made a clean end picture for the owner's first test; the
+// first try without "same camera" made the rug shrink and a stool vanish
+// during the clip.
+const keepSceneSameCameraInstruction = "Use the first reference picture as the exact starting frame: the same camera position, framing, lens, room layout, furniture, rug, props and lighting; nothing in the background changes. Change only what is described below, such as the character's pose or what it is doing."
+
 // KeyframePrompt is the prompt to send for a keyframe: the owner's scene
 // description, an instruction to reuse the references when there are any, and
 // this style's wording (so the picture already has the look the clip should
 // keep). sceneRefs pictures of the same scene come first among the references,
 // then lookRefs of the profile's own; with scene pictures the "keep the scene"
 // instruction is used, with only the profile's the "keep the look" one.
-func (r Recipe) KeyframePrompt(prompt string, lookRefs, sceneRefs int) string {
+// sameCamera (with scene pictures) swaps in the stricter wording that keeps
+// the camera and everything but the pose fixed, for an end picture.
+func (r Recipe) KeyframePrompt(prompt string, lookRefs, sceneRefs int, sameCamera bool) string {
 	out := prompt
 	switch {
+	case sceneRefs > 0 && sameCamera:
+		out = keepSceneSameCameraInstruction + " " + out
 	case sceneRefs > 0:
 		out = keepSceneInstruction + " " + out
 	case lookRefs > 0:

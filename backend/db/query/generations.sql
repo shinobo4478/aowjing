@@ -14,8 +14,8 @@ WHERE g.id = $1;
 -- name: CreateGeneration :one
 INSERT INTO generations (
     profile_id, prompt_template_id, input_prompt, image_url, image_id, output, status, error, provider, model,
-    seconds, shot_id
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+    seconds, shot_id, end_image_id
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 RETURNING *;
 
 -- name: FinishGeneration :exec

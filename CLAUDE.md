@@ -283,10 +283,33 @@ Order of work (each a small PR):
      Existing DBs need `ALTER TABLE keyframes ADD COLUMN extra_image_ids uuid[]
      NOT NULL DEFAULT '{}';` and `ALTER TABLE video_shots ADD COLUMN approved
      boolean NOT NULL DEFAULT false;`.
-   - **Still to do in (3):** a download list; trying fal's start+end picture
-     mode (`end_image_url`) once on one clip to see whether it joins two shots
-     smoothly (price and effect unverified); the owner's read on the first real
-     video.
+   - **End picture (`end_image_url`), tried by the owner by hand against fal
+     (2026-11-26):** with two pictures made independently (same cat and room,
+     but the rug, a stool and the camera distance differed) the clip *morphed*
+     one into the other: the rug shrank and the stool faded out. With an end
+     picture made by editing the start picture ("exact same camera, framing,
+     room, rug, lighting; only the pose changes") the owner found the clip
+     continuous. So an end picture only works when the two pictures differ in
+     the subject's pose and nothing else; the prompt should then say "static
+     camera, no zoom" (the framing is already in the pictures).
+     **Built:** each shot has an optional End picture (`video_shots.end_image_id`,
+     a stored picture only, only with a starting picture; changing it clears the
+     OK). "End picture…" opens the picture dialog in `end` mode: Make with AI
+     starts from the shot's own starting picture with the strict
+     `keepSceneSameCameraInstruction` (`sameCamera` on `POST /keyframes`), no
+     link source; "Use next shot's" sets the end to the next shot's starting
+     picture so a clip ends on the pose the next one starts from. The worker sends
+     `end_image_url` (data URI) and `generations.end_image_id` records it. The
+     confirm says the price with an end picture is not confirmed: **check the
+     first bill** (a 4 s clip should be $0.336). Existing DBs need
+     `ALTER TABLE video_shots ADD COLUMN end_image_id uuid REFERENCES images
+     (id) ON DELETE SET NULL;` and the same column on `generations`.
+     The picture the clip really ends on is close to, not identical to, the end
+     picture. Chain pictures from the *first* picture when edits drift; use a
+     cut (a new start picture of the same scene, no end picture) where the
+     camera must change.
+   - **Still to do in (3):** a download list; try Kling `elements` once for a
+     character that changes inside a clip.
    - **Other video models on fal (read from fal's pages 2026-11-26, prices as
      listed):** Kling v3 Standard (ours) $0.084/s silent ($0.126/s with audio),
      3–15 s, has `end_image_url` and `elements` (1–3 reference pictures per

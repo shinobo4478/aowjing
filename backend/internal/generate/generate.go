@@ -29,6 +29,10 @@ type Request struct {
 	// ImageURL, when set, is a public image the video starts from
 	// (image-to-video). Generators that cannot use one ignore it.
 	ImageURL string
+	// EndImageURL, when set together with ImageURL, is a picture the clip should
+	// end on (fal's end_image_url): the clip flows from the starting picture to
+	// this one. Ignored without a starting picture.
+	EndImageURL string
 	// Seconds is the clip length for an image-to-video clip (fal takes 3 to
 	// 15). 0 means the default, 5.
 	Seconds int

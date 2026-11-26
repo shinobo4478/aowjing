@@ -270,6 +270,9 @@ export function createKeyframe(input: {
   /** Stored pictures of the SAME scene to keep (other shots of a video), at most
    *  2, so the new picture shows that scene from another angle or moment. */
   sceneImageIds?: string[];
+  /** With scene pictures: keep the camera, room and everything but the pose
+   *  fixed (for an END picture, since a clip morphs whatever differs). */
+  sameCamera?: boolean;
 }) {
   return request<{ keyframe: Keyframe }>("/keyframes", {
     method: "POST",

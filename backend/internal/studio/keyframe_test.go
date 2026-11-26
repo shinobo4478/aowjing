@@ -44,16 +44,16 @@ func TestKeyframeModelIDAndCost(t *testing.T) {
 
 func TestKeyframePrompt(t *testing.T) {
 	r := For("3d")
-	plain := r.KeyframePrompt("a cat on a sofa", 0, 0)
+	plain := r.KeyframePrompt("a cat on a sofa", 0, 0, false)
 	if plain == "a cat on a sofa" || len(plain) <= len("a cat on a sofa") {
 		t.Errorf("3d should add its wording, got %q", plain)
 	}
-	withRefs := r.KeyframePrompt("a cat on a sofa", 2, 0)
+	withRefs := r.KeyframePrompt("a cat on a sofa", 2, 0, false)
 	if withRefs == plain || withRefs[:len(keepLookInstruction)] != keepLookInstruction {
 		t.Errorf("references should add the keep-the-look instruction first, got %q", withRefs)
 	}
 	bare := Recipe{}
-	if got := bare.KeyframePrompt("x", 0, 0); got != "x" {
+	if got := bare.KeyframePrompt("x", 0, 0, false); got != "x" {
 		t.Errorf("no suffix, no refs: want unchanged, got %q", got)
 	}
 }
@@ -82,7 +82,7 @@ func TestClipSeconds(t *testing.T) {
 
 func TestKeyframePromptScene(t *testing.T) {
 	r := For("3d")
-	scene := r.KeyframePrompt("same room, camera from the left", 2, 1)
+	scene := r.KeyframePrompt("same room, camera from the left", 2, 1, false)
 	if scene[:len(keepSceneInstruction)] != keepSceneInstruction {
 		t.Errorf("scene pictures should add the keep-the-scene instruction first, got %q", scene)
 	}
@@ -90,8 +90,23 @@ func TestKeyframePromptScene(t *testing.T) {
 	if strings.Contains(scene, keepLookInstruction) {
 		t.Errorf("scene instruction should replace the look one, got %q", scene)
 	}
-	look := r.KeyframePrompt("x", 2, 0)
+	look := r.KeyframePrompt("x", 2, 0, false)
 	if !strings.HasPrefix(look, keepLookInstruction) {
 		t.Errorf("profile references alone use the look instruction, got %q", look)
+	}
+}
+
+func TestKeyframePromptSameCamera(t *testing.T) {
+	r := For("3d")
+	got := r.KeyframePrompt("the cat crouches", 0, 1, true)
+	if !strings.HasPrefix(got, keepSceneSameCameraInstruction) {
+		t.Errorf("an end picture should use the same-camera instruction, got %q", got)
+	}
+	if strings.Contains(got, "camera angle") {
+		t.Errorf("same-camera wording must not invite a new camera angle, got %q", got)
+	}
+	// Without scene pictures there is nothing to keep fixed: the flag changes nothing.
+	if a, b := r.KeyframePrompt("x", 2, 0, true), r.KeyframePrompt("x", 2, 0, false); a != b {
+		t.Errorf("same-camera without scene pictures should be ignored:\n%q\n%q", a, b)
 	}
 }

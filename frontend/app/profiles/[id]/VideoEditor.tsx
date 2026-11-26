@@ -57,9 +57,13 @@ export default function VideoEditor({
   const [pricing, setPricing] = useState<StudioPricing | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  // The shot whose starting picture is being chosen, with what was typed on its
-  // card (saved together with the picture).
-  const [choosing, setChoosing] = useState<{ shot: Shot; draft: ShotDraft } | null>(null);
+  // The shot whose starting (or, with `end`, ending) picture is being chosen,
+  // with what was typed on its card (saved together with the picture).
+  const [choosing, setChoosing] = useState<{
+    shot: Shot;
+    draft: ShotDraft;
+    end: boolean;
+  } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -135,26 +139,36 @@ export default function VideoEditor({
     setShots((all) => all.map((s) => (s.id === next.id ? next : s)));
 
   /** Saves a shot's whole plan: what was typed plus its current picture. */
-  function plan(shot: Shot, draft: ShotDraft, picture?: PictureChoice | "none") {
-    // Without `picture` the shot keeps the one it has; a new one replaces it
-    // (a shot has an image id or a link, never both).
+  function plan(
+    shot: Shot,
+    draft: ShotDraft,
+    change: { start?: PictureChoice | "none"; end?: string | "none" } = {},
+  ) {
+    // Without a change the shot keeps the pictures it has; a new start replaces
+    // the old (a shot has an image id or a link, never both).
     let imageId = shot.imageId;
     let imageUrl = shot.imageUrl;
-    if (picture === "none") {
+    let endImageId = shot.endImageId;
+    const { start, end } = change;
+    if (start === "none") {
       imageId = "";
       imageUrl = "";
-    } else if (picture && "imageId" in picture) {
-      imageId = picture.imageId;
+      endImageId = ""; // an end picture needs a starting picture
+    } else if (start && "imageId" in start) {
+      imageId = start.imageId;
       imageUrl = "";
-    } else if (picture) {
-      imageUrl = picture.imageUrl;
+    } else if (start) {
+      imageUrl = start.imageUrl;
       imageId = "";
     }
+    if (end === "none") endImageId = "";
+    else if (end) endImageId = end;
     return updateShot(videoId, shot.id, {
       prompt: draft.prompt,
       seconds: draft.seconds,
       imageUrl,
       imageId,
+      endImageId,
     });
   }
 
@@ -164,25 +178,49 @@ export default function VideoEditor({
 
   async function pickPicture(choice: PictureChoice) {
     if (!choosing) return;
-    const { shot, draft } = choosing;
-    const ok = await run(async () => replaceShot(await plan(shot, draft, choice)), "Failed to use the picture.");
+    const { shot, draft, end } = choosing;
+    const change = end
+      ? { end: "imageId" in choice ? choice.imageId : "none" } // an end picture is never a link
+      : { start: choice };
+    const ok = await run(async () => replaceShot(await plan(shot, draft, change)), "Failed to use the picture.");
     if (ok) setChoosing(null);
   }
 
   async function removePicture(shot: Shot, draft: ShotDraft) {
-    await run(async () => replaceShot(await plan(shot, draft, "none")), "Failed to remove the picture.");
+    await run(async () => replaceShot(await plan(shot, draft, { start: "none" })), "Failed to remove the picture.");
+  }
+
+  async function removeEndPicture(shot: Shot, draft: ShotDraft) {
+    await run(async () => replaceShot(await plan(shot, draft, { end: "none" })), "Failed to remove the end picture.");
+  }
+
+  /** The end picture is the next shot's starting picture: one click, so the
+   *  clip ends on the pose the next one starts from. */
+  async function endOnNextPicture(shot: Shot, draft: ShotDraft) {
+    const next = shots.find((s) => s.position === shot.position + 1);
+    if (!next || next.imageId === "") return;
+    await run(
+      async () => replaceShot(await plan(shot, draft, { end: next.imageId })),
+      "Failed to set the end picture.",
+    );
   }
 
   // Generating spends credits, so ask first, with the price.
   function confirmGenerate(shot: Shot, draft: ShotDraft) {
     const price = perSecond === undefined ? undefined : perSecond * draft.seconds;
+    const flow = shot.endImageId
+      ? "from the starting picture to the end picture"
+      : "from the starting picture";
     modal.confirm({
       title: `Generate shot ${shot.position}?`,
       content:
         price !== undefined ? (
           <p style={{ margin: 0 }}>
-            A {draft.seconds}-second silent clip from the starting picture:{" "}
+            A {draft.seconds}-second silent clip {flow}:{" "}
             <strong>≈ {formatUsd(price)}</strong>, charged to your fal.ai credits.
+            {shot.endImageId
+              ? " (The price with an end picture has not been confirmed against a bill.)"
+              : ""}
             {shot.attempts > 0
               ? ` This is attempt ${shot.attempts + 1}; the earlier ones stay in the Generations tab.`
               : ""}
@@ -374,8 +412,14 @@ export default function VideoEditor({
             maxSeconds={maxSeconds}
             busy={busy}
             onSave={(d) => save(shot, d)}
-            onChoosePicture={(d) => setChoosing({ shot, draft: d })}
+            onChoosePicture={(d) => setChoosing({ shot, draft: d, end: false })}
             onRemovePicture={(d) => removePicture(shot, d)}
+            canUseNextAsEnd={shots.some(
+              (s) => s.position === shot.position + 1 && s.imageId !== "",
+            )}
+            onChooseEnd={(d) => setChoosing({ shot, draft: d, end: true })}
+            onUseNextAsEnd={(d) => void endOnNextPicture(shot, d)}
+            onRemoveEnd={(d) => removeEndPicture(shot, d)}
             onGenerate={(d) => confirmGenerate(shot, d)}
             onMove={(dir) => void move(shot, dir)}
             onDelete={() => void remove(shot)}
@@ -394,10 +438,19 @@ export default function VideoEditor({
       <PictureModal
         open={choosing !== null}
         profileId={profileId}
-        // The other shots' stored pictures, so a new picture can match their scene.
-        scenePictures={shots
-          .filter((s) => s.imageId !== "" && s.id !== choosing?.shot.id)
-          .map((s) => ({ imageId: s.imageId, label: `Shot ${s.position}` }))}
+        end={choosing?.end ?? false}
+        // A starting picture can match the other shots' scene; an END picture is
+        // made from the shot's own starting picture (same camera, only the pose
+        // changes), since the clip morphs whatever differs between the two.
+        scenePictures={
+          choosing?.end
+            ? choosing.shot.imageId !== ""
+              ? [{ imageId: choosing.shot.imageId, label: "Starting picture" }]
+              : []
+            : shots
+                .filter((s) => s.imageId !== "" && s.id !== choosing?.shot.id)
+                .map((s) => ({ imageId: s.imageId, label: `Shot ${s.position}` }))
+        }
         onClose={() => setChoosing(null)}
         onPick={pickPicture}
       />

@@ -26,6 +26,7 @@ type Generation struct {
 	InputPrompt      string             `json:"input_prompt"`
 	ImageUrl         string             `json:"image_url"`
 	ImageID          pgtype.UUID        `json:"image_id"`
+	EndImageID       pgtype.UUID        `json:"end_image_id"`
 	Seconds          int16              `json:"seconds"`
 	ShotID           pgtype.UUID        `json:"shot_id"`
 	Output           string             `json:"output"`
@@ -131,16 +132,17 @@ type Video struct {
 }
 
 type VideoShot struct {
-	ID        pgtype.UUID        `json:"id"`
-	VideoID   pgtype.UUID        `json:"video_id"`
-	Position  int16              `json:"position"`
-	Prompt    string             `json:"prompt"`
-	Seconds   int16              `json:"seconds"`
-	ImageUrl  string             `json:"image_url"`
-	ImageID   pgtype.UUID        `json:"image_id"`
-	Approved  bool               `json:"approved"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	ID         pgtype.UUID        `json:"id"`
+	VideoID    pgtype.UUID        `json:"video_id"`
+	Position   int16              `json:"position"`
+	Prompt     string             `json:"prompt"`
+	Seconds    int16              `json:"seconds"`
+	ImageUrl   string             `json:"image_url"`
+	ImageID    pgtype.UUID        `json:"image_id"`
+	EndImageID pgtype.UUID        `json:"end_image_id"`
+	Approved   bool               `json:"approved"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
 }
 
 type YoutubeAccount struct {

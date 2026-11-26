@@ -89,6 +89,7 @@ export default function Storyboard({
               </button>
               <div style={{ fontSize: 12, marginTop: 2 }}>
                 {s.position} · {s.seconds}s
+                {s.endImageId !== "" && " · →end"}
                 {s.latest?.status === "succeeded" && " · made"}
                 {s.latest?.status === "pending" && " · …"}
               </div>
