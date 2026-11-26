@@ -177,7 +177,8 @@ export default function KeyframePicker({
         value={model || undefined}
         onChange={setModel}
         loading={!info}
-        style={{ width: "100%", marginTop: 8 }}
+        // The character counter sits just below the text box and needs the room.
+        style={{ width: "100%", marginTop: 28 }}
         options={(info?.models ?? []).map((m) => ({
           value: m.key,
           label: `${m.label} — ${formatUsd(m.priceUsd)} per picture`,
