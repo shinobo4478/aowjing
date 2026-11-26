@@ -20,6 +20,7 @@ import (
 	"github.com/shinobo4478/aowjing/backend/internal/profiles"
 	"github.com/shinobo4478/aowjing/backend/internal/prompttemplates"
 	"github.com/shinobo4478/aowjing/backend/internal/queue"
+	"github.com/shinobo4478/aowjing/backend/internal/scriptwriter"
 	"github.com/shinobo4478/aowjing/backend/internal/settings"
 	"github.com/shinobo4478/aowjing/backend/internal/videos"
 	"github.com/shinobo4478/aowjing/backend/internal/youtube"
@@ -57,7 +58,7 @@ func New(db *pgxpool.Pool, cfg config.Config, q *queue.Client) http.Handler {
 		r.Get("/studio/pricing", s.handleStudioPricing)
 		r.Mount("/credits", credits.NewHandler(queries).Routes())
 		r.Mount("/images", images.NewHandler(queries).Routes())
-		r.Mount("/videos", videos.NewHandler(db, queries, q).Routes())
+		r.Mount("/videos", videos.NewHandler(db, queries, q, scriptwriter.New(queries, cfg.FakeFal)).Routes())
 		// POST only enqueues; cmd/worker makes the pictures.
 		r.Mount("/keyframes", keyframes.NewHandler(queries, q).Routes())
 		r.Mount("/products", products.NewHandler(queries).Routes())

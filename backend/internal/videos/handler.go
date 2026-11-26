@@ -10,6 +10,9 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
+	"time"
+	"unicode/utf8"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
@@ -18,6 +21,7 @@ import (
 
 	"github.com/shinobo4478/aowjing/backend/internal/database/sqlc"
 	"github.com/shinobo4478/aowjing/backend/internal/pgconv"
+	"github.com/shinobo4478/aowjing/backend/internal/scriptwriter"
 	"github.com/shinobo4478/aowjing/backend/internal/studio"
 )
 
@@ -27,13 +31,14 @@ type Enqueuer interface {
 }
 
 type Handler struct {
-	db  *pgxpool.Pool
-	q   *sqlc.Queries
-	enq Enqueuer
+	db      *pgxpool.Pool
+	q       *sqlc.Queries
+	enq     Enqueuer
+	drafter Drafter
 }
 
-func NewHandler(db *pgxpool.Pool, q *sqlc.Queries, enq Enqueuer) *Handler {
-	return &Handler{db: db, q: q, enq: enq}
+func NewHandler(db *pgxpool.Pool, q *sqlc.Queries, enq Enqueuer, drafter Drafter) *Handler {
+	return &Handler{db: db, q: q, enq: enq, drafter: drafter}
 }
 
 // Routes returns the router to mount at /videos.
@@ -41,6 +46,7 @@ func (h *Handler) Routes() http.Handler {
 	r := chi.NewRouter()
 	r.Get("/", h.list)
 	r.Post("/", h.create)
+	r.Post("/draft", h.draft)
 	r.Get("/{id}", h.get)
 	r.Patch("/{id}", h.rename)
 	r.Delete("/{id}", h.delete)
@@ -254,10 +260,11 @@ func (h *Handler) addShot(w http.ResponseWriter, r *http.Request) {
 	}
 	// A picture given with the new shot goes on with the update (CreateShot has
 	// no picture columns, to keep its query simple).
-	if in.ImageURL != "" || imageID.Valid || endID.Valid {
+	if in.ImageURL != "" || imageID.Valid || endID.Valid || in.PicturePrompt != "" || in.EndPicturePrompt != "" {
 		shot, err = h.q.UpdateShot(r.Context(), sqlc.UpdateShotParams{
 			ID: shot.ID, Prompt: shot.Prompt, Seconds: shot.Seconds,
 			ImageUrl: in.ImageURL, ImageID: imageID, EndImageID: endID,
+			PicturePrompt: in.PicturePrompt, EndPicturePrompt: in.EndPicturePrompt,
 		})
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "The shot was added but its picture was not.")
@@ -292,6 +299,7 @@ func (h *Handler) updateShot(w http.ResponseWriter, r *http.Request) {
 	updated, err := h.q.UpdateShot(r.Context(), sqlc.UpdateShotParams{
 		ID: shot.ID, Prompt: in.Prompt, Seconds: int16(in.Seconds),
 		ImageUrl: in.ImageURL, ImageID: imageID, EndImageID: endID,
+		PicturePrompt: in.PicturePrompt, EndPicturePrompt: in.EndPicturePrompt,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to update the shot.")
@@ -816,4 +824,110 @@ func writeFieldError(w http.ResponseWriter, field, msg string) {
 
 func writeError(w http.ResponseWriter, code int, msg string) {
 	writeJSON(w, code, map[string]string{"error": msg})
+}
+
+// --- drafting a video with the script helper ----------------------------------
+
+// Drafter writes a shot list for a brief (internal/scriptwriter).
+type Drafter interface {
+	Draft(ctx context.Context, b scriptwriter.Brief) (scriptwriter.Draft, error)
+}
+
+// draftTimeout covers the model's reply (fal's queue wait is up to 3 minutes).
+const draftTimeout = 4 * time.Minute
+
+// draft asks the script helper for a shot list and creates a Video from it:
+// the scene and each shot's picture prompt, motion prompt and length are filled
+// in for the owner to read and change. It makes no pictures and no clips; the
+// only cost is the model's reply, which is returned so the screen can show it.
+func (h *Handler) draft(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		ProfileID string `json:"profileId"`
+		Topic     string `json:"topic"`
+		Shots     int    `json:"shots"`
+		Seconds   int    `json:"seconds"`
+		Title     string `json:"title"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	profileID, err := pgconv.ParseUUID(body.ProfileID)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "A valid profileId is required.")
+		return
+	}
+	profile, err := h.q.GetProfile(r.Context(), profileID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		writeError(w, http.StatusNotFound, "Profile not found.")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to load profile.")
+		return
+	}
+	if profile.Provider != "fal" {
+		writeFieldError(w, "profileId", "Videos are for fal.ai video profiles; this profile uses "+profile.Provider+".")
+		return
+	}
+	if body.Seconds == 0 {
+		body.Seconds = studio.DefaultClipSeconds
+	}
+	brief := scriptwriter.Brief{
+		Topic: body.Topic, Shots: body.Shots, Seconds: body.Seconds,
+		ProfileName: profile.Name, Niche: profile.Niche, Description: profile.Description,
+	}
+	if errs := brief.Validate(); len(errs) > 0 {
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"errors": errs})
+		return
+	}
+	var title string
+	if strings.TrimSpace(body.Title) != "" {
+		if title, err = validateTitle(body.Title); err != nil {
+			writeFieldError(w, "title", err.Error())
+			return
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), draftTimeout)
+	defer cancel()
+	d, err := h.drafter.Draft(ctx, brief)
+	if err != nil {
+		writeError(w, http.StatusBadGateway, "The draft could not be written: "+err.Error())
+		return
+	}
+	if title == "" {
+		title = d.Title
+	}
+	if title == "" {
+		title = brief.Topic
+	}
+	title = truncateRunes(title, maxTitleRunes)
+
+	v, err := h.q.CreateVideo(r.Context(), sqlc.CreateVideoParams{ProfileID: profileID, Title: title})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "The draft was written but the video was not saved.")
+		return
+	}
+	for _, s := range d.Shots {
+		if _, err := h.q.CreateShotWithPlan(r.Context(), sqlc.CreateShotWithPlanParams{
+			VideoID: v.ID, Prompt: s.MotionPrompt, Seconds: int16(s.Seconds), PicturePrompt: s.PicturePrompt, EndPicturePrompt: s.EndPicturePrompt,
+		}); err != nil {
+			_, _ = h.q.DeleteVideo(r.Context(), v.ID) // no half-filled video left behind
+			writeError(w, http.StatusInternalServerError, "The draft was written but its shots were not saved.")
+			return
+		}
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{
+		"video":   toVideoDTO(v, len(d.Shots), len(d.Shots)*brief.Seconds),
+		"costUsd": d.CostUSD,
+		"model":   d.Model,
+	})
+}
+
+// truncateRunes cuts s to at most n characters (not bytes).
+func truncateRunes(s string, n int) string {
+	if utf8.RuneCountInString(s) <= n {
+		return s
+	}
+	return string([]rune(s)[:n])
 }

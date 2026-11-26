@@ -23,6 +23,13 @@ const (
 type shotInput struct {
 	Prompt  string `json:"prompt"`
 	Seconds int    `json:"seconds"`
+	// PicturePrompt is what the starting picture should show (used by Make with
+	// AI). It is the owner's note to the image model, not sent to the clip model.
+	PicturePrompt string `json:"picturePrompt"`
+	// EndPicturePrompt says what changes between the starting picture and the end
+	// picture (only a pose or position; camera and room stay). Used by Make with AI
+	// when making the end picture; not sent to the clip model.
+	EndPicturePrompt string `json:"endPicturePrompt"`
 	// ImageURL is a public link the shot starts from; ImageID is a stored
 	// picture (uploaded, or made with AI). Give at most one. Neither means the
 	// shot has no picture yet, which is fine while planning but cannot be
@@ -44,6 +51,15 @@ func (in *shotInput) normalizeAndValidate() map[string]string {
 	in.Prompt = strings.TrimSpace(in.Prompt)
 	if utf8.RuneCountInString(in.Prompt) > maxPromptRunes {
 		errs["prompt"] = "The prompt must be 2000 characters or fewer."
+	}
+
+	in.EndPicturePrompt = strings.TrimSpace(in.EndPicturePrompt)
+	if utf8.RuneCountInString(in.EndPicturePrompt) > maxPromptRunes {
+		errs["endPicturePrompt"] = "The end picture prompt must be 2000 characters or fewer."
+	}
+	in.PicturePrompt = strings.TrimSpace(in.PicturePrompt)
+	if utf8.RuneCountInString(in.PicturePrompt) > maxPromptRunes {
+		errs["picturePrompt"] = "The picture prompt must be 2000 characters or fewer."
 	}
 
 	if in.Seconds == 0 {

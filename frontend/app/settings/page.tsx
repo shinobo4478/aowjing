@@ -68,6 +68,14 @@ export default function SettingsPage() {
               <Input.Password autoComplete="off" placeholder="fal-…" />
             </Form.Item>
 
+            <Form.Item
+              label="Script model (optional)"
+              name="scriptModel"
+              extra={'The AI model that drafts shot lists, as an OpenRouter-style id, e.g. "anthropic/claude-sonnet-5" or "google/gemini-2.5-flash". It runs through fal with the key above and is billed per token. Leave empty for the built-in default.'}
+            >
+              <Input autoComplete="off" placeholder="anthropic/claude-sonnet-5" />
+            </Form.Item>
+
             <Form.Item style={{ marginBottom: 0 }}>
               <Button type="primary" htmlType="submit" loading={saving}>
                 Save changes

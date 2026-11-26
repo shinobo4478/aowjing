@@ -8,6 +8,7 @@ import { ApiError, createVideo, deleteVideo, listVideos } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
 import type { ProviderKey, Video } from "@/lib/types";
 import { mobileModal } from "@/lib/ui";
+import DraftModal from "./DraftModal";
 import VideoEditor from "./VideoEditor";
 
 /**
@@ -33,6 +34,7 @@ export default function VideosSection({
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [drafting, setDrafting] = useState(false);
   const [title, setTitle] = useState("");
   const [titleError, setTitleError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -158,7 +160,10 @@ export default function VideosSection({
         />
       )}
 
-      <Flex justify="end">
+      <Flex justify="end" gap={8}>
+        <Button disabled={provider !== "fal"} onClick={() => setDrafting(true)}>
+          Draft with AI
+        </Button>
         <Button disabled={provider !== "fal"} onClick={() => setCreating(true)}>
           New video
         </Button>
@@ -179,6 +184,16 @@ export default function VideosSection({
               description="No videos yet. A video is a list of shots, each with its own prompt, length and starting picture."
             />
           ),
+        }}
+      />
+
+      <DraftModal
+        open={drafting}
+        profileId={profileId}
+        onClose={() => setDrafting(false)}
+        onDrafted={(v) => {
+          setDrafting(false);
+          open(v.id);
         }}
       />
 
