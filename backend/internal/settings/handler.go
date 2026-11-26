@@ -14,7 +14,12 @@ import (
 
 // knownKeys is the whitelist the API accepts. Add a key here when a new
 // provider needs a credential.
-var knownKeys = []string{"falApiKey"}
+//
+//   - falApiKey: the key used to make clips and pictures (needs the API preset).
+//   - falBillingKey: optional, a separate key on fal's BILLING preset, used only
+//     to read the credit balance for the menu bar. Kept apart so the key that
+//     makes clips does not need billing access.
+var knownKeys = []string{"falApiKey", "falBillingKey"}
 
 type Handler struct {
 	q *sqlc.Queries

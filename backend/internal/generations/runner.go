@@ -2,13 +2,13 @@ package generations
 
 import (
 	"context"
-	"encoding/base64"
 	"errors"
 
 	"github.com/jackc/pgx/v5"
 
 	"github.com/shinobo4478/aowjing/backend/internal/database/sqlc"
 	"github.com/shinobo4478/aowjing/backend/internal/generate"
+	"github.com/shinobo4478/aowjing/backend/internal/images"
 	"github.com/shinobo4478/aowjing/backend/internal/pgconv"
 	"github.com/shinobo4478/aowjing/backend/internal/studio"
 )
@@ -55,11 +55,7 @@ func (rn *Runner) imageFor(ctx context.Context, row sqlc.GetGenerationRow) (stri
 	if err != nil {
 		return "", err
 	}
-	return dataURI(img.ContentType, img.Data), nil
-}
-
-func dataURI(contentType string, data []byte) string {
-	return "data:" + contentType + ";base64," + base64.StdEncoding.EncodeToString(data)
+	return images.DataURI(img.ContentType, img.Data), nil
 }
 
 // Run processes one generation by id. A provider failure is stored on the row
@@ -90,7 +86,7 @@ func (rn *Runner) Run(ctx context.Context, generationID string) error {
 	}
 
 	finish := sqlc.FinishGenerationParams{ID: id, Provider: row.Provider, OutputKind: "text"}
-	if res, genErr := gen.Generate(ctx, generate.Request{Prompt: row.InputPrompt, ImageURL: imageURL}); genErr != nil {
+	if res, genErr := gen.Generate(ctx, generate.Request{Prompt: row.InputPrompt, ImageURL: imageURL, Seconds: studio.ClipSeconds}); genErr != nil {
 		finish.Status = "failed"
 		finish.Error = genErr.Error()
 	} else {

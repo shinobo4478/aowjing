@@ -11,9 +11,11 @@ import (
 	"github.com/shinobo4478/aowjing/backend/internal/auth"
 	"github.com/shinobo4478/aowjing/backend/internal/channels"
 	"github.com/shinobo4478/aowjing/backend/internal/config"
+	"github.com/shinobo4478/aowjing/backend/internal/credits"
 	"github.com/shinobo4478/aowjing/backend/internal/database/sqlc"
 	"github.com/shinobo4478/aowjing/backend/internal/generations"
 	"github.com/shinobo4478/aowjing/backend/internal/images"
+	"github.com/shinobo4478/aowjing/backend/internal/keyframes"
 	"github.com/shinobo4478/aowjing/backend/internal/products"
 	"github.com/shinobo4478/aowjing/backend/internal/profiles"
 	"github.com/shinobo4478/aowjing/backend/internal/prompttemplates"
@@ -51,7 +53,11 @@ func New(db *pgxpool.Pool, cfg config.Config, q *queue.Client) http.Handler {
 		r.Mount("/channels", channels.NewHandler(queries).Routes())
 		r.Mount("/prompt-templates", prompttemplates.NewHandler(queries).Routes())
 		r.Mount("/settings", settings.NewHandler(queries).Routes())
+		r.Get("/studio/pricing", s.handleStudioPricing)
+		r.Mount("/credits", credits.NewHandler(queries).Routes())
 		r.Mount("/images", images.NewHandler(queries).Routes())
+		// POST only enqueues; cmd/worker makes the pictures.
+		r.Mount("/keyframes", keyframes.NewHandler(queries, q).Routes())
 		r.Mount("/products", products.NewHandler(queries).Routes())
 		r.Mount("/placements", products.NewPlacementHandler(db, queries).Routes())
 

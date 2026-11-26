@@ -21,6 +21,17 @@ func TestFalPlan(t *testing.T) {
 			want:      map[string]any{"prompt": "a cat"},
 		},
 		{
+			name:      "an explicit length is sent as a string",
+			req:       Request{Prompt: "slow zoom", ImageURL: "https://example.com/p.jpg", Seconds: 8},
+			wantModel: "fal/image-model",
+			want: map[string]any{
+				"prompt":          "slow zoom",
+				"start_image_url": "https://example.com/p.jpg",
+				"duration":        "8",
+				"generate_audio":  false,
+			},
+		},
+		{
 			name:      "image uses image-to-video, silent, duration as a string",
 			req:       Request{Prompt: "slow zoom", ImageURL: "https://example.com/p.jpg"},
 			wantModel: "fal/image-model",

@@ -18,6 +18,14 @@ type GenerationRunPayload struct {
 	GenerationID string `json:"generationId"`
 }
 
+// TaskKeyframeRun makes the keyframe pictures of one keyframe request.
+// Payload: KeyframeRunPayload.
+const TaskKeyframeRun = "keyframe:run"
+
+type KeyframeRunPayload struct {
+	KeyframeID string `json:"keyframeId"`
+}
+
 // Client enqueues tasks. Safe for concurrent use; call Close on shutdown.
 type Client struct {
 	c *asynq.Client
@@ -35,5 +43,16 @@ func (c *Client) EnqueueGenerationRun(ctx context.Context, generationID string) 
 		return err
 	}
 	_, err = c.c.EnqueueContext(ctx, asynq.NewTask(TaskGenerationRun, payload))
+	return err
+}
+
+// EnqueueKeyframeRun queues a keyframe request. It retries at most twice: a
+// retry calls the image model again, which is paid for each time.
+func (c *Client) EnqueueKeyframeRun(ctx context.Context, keyframeID string) error {
+	payload, err := json.Marshal(KeyframeRunPayload{KeyframeID: keyframeID})
+	if err != nil {
+		return err
+	}
+	_, err = c.c.EnqueueContext(ctx, asynq.NewTask(TaskKeyframeRun, payload), asynq.MaxRetry(2))
 	return err
 }

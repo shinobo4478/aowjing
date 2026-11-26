@@ -7,6 +7,7 @@ import { Button, Drawer, Grid, Menu, Space, Typography } from "antd";
 import Stripe from "@/components/Stripe";
 import { INK } from "@/lib/tape";
 import { useAuth } from "./AuthGate";
+import CreditsBadge from "./CreditsBadge";
 
 const links = [
   { key: "/profiles", label: "Profiles" },
@@ -80,6 +81,7 @@ export default function SiteHeader() {
           }}
         />
         <Space size="middle">
+          <CreditsBadge />
           <Typography.Text type="secondary">{user.username}</Typography.Text>
           <Button size="small" onClick={logout}>
             Sign out
@@ -118,6 +120,9 @@ export default function SiteHeader() {
           style={{ borderInlineEnd: "none", fontSize: 18 }}
         />
         <div style={{ padding: 16 }}>
+          <div style={{ marginBottom: 12 }}>
+            <CreditsBadge />
+          </div>
           <Button
             block
             onClick={() => {
