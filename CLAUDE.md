@@ -120,6 +120,56 @@ conversion stats. Also not built because nothing consumes it yet: a Facebook
 caption renderer (sits beside `internal/youtube/block.go` when Facebook is
 connected).
 
+## Phase 4 scope — Video studio (3 styles) — PROPOSED, awaiting owner approval
+
+How a clip actually gets made. A **separate module** (`internal/studio`), not
+tied to Shopee: each Profile picks a **video style** — `3d` (Pixar-like),
+`2d`, `realistic` — and the style decides how its clips are produced.
+Decisions made with the owner:
+
+- **Start with `3d` on Kling, image-to-video.** 2D and realistic come after
+  3D is proven. Style is stored on the Profile (`video_style`) and is
+  separate from `provider` (`text`/`fal`).
+- A style is a **recipe kept in one place** (registry), not scattered
+  conditionals: model ids, the motion-prompt suffix (2D needs "flat shading,
+  no 3D look"), and the audio route. Swapping a model should not touch
+  handlers or the UI. Provider-specific code stays in `internal/generate`;
+  credentials stay in Settings.
+- **Workflow shape** (same for all styles): script/shot list → reference
+  image → one approved keyframe per shot → image-to-video per shot (motion
+  only in the prompt) → join + sound. The first version is **semi-manual**:
+  the owner supplies the image URL (real product photo for Shopee clips, or a
+  keyframe made elsewhere).
+- **Thai voice-over:** none of the models' built-in audio is confirmed for
+  Thai (Veo 3.1's documented languages exclude it). So clips are generated
+  **silent** (`generate_audio: false` — the fal default is `true` and costs
+  more) and Thai narration is added separately by TTS. Voice-over style only:
+  no on-camera talking, there is no Thai lip-sync.
+- Budget (prices are third-party figures, verify on fal.ai first): about
+  $0.48 per 5 s shot and ≈ $2.9 per 30 s video on Kling v3 Standard without
+  retakes; ≈ $4.4–5.8 with retakes. Show an estimate before generating.
+
+Kling v3 image-to-video on fal (read from fal's model pages, 2026-11-26):
+model `fal-ai/kling-video/v3/standard/image-to-video`; the image field is
+`start_image_url` (not `image_url`); also `prompt`, `duration` ("3"–"15"),
+`generate_audio`, `end_image_url`, `negative_prompt`, `cfg_scale`; output
+`{"video":{"url":…}}`. **Not yet confirmed:** whether the queue URL works for
+it like the text-to-video one, and whether the image must be a public URL.
+
+Order of work (each a small PR):
+1. `image_url` on a generation + `FalVideoGenerator` uses the image-to-video
+   model when it is present (`generate_audio:false`). Verify against fal.
+2. `video_style` on Profile + the recipe registry (`3d` only).
+3. Shots: a generation that is a set of ordered clips.
+4. Keyframe generation (image model on fal) instead of pasting URLs.
+5. Thai voice-over (TTS provider chosen after the owner listens to Thai
+   samples from each candidate).
+6. Join clips + audio. **Conflicts with a rule above:** joining makes a full
+   video file, and this project never stores full videos. Until the owner
+   decides (allow it, or keep joining manual in CapCut), this stays manual and
+   needs ffmpeg (a new dependency — ask first).
+7. `2d` and `realistic` recipes.
+
 ## Explicitly OUT of scope for Phase 2 (do not build yet)
 
 - TikTok / Instagram integration — after YouTube is solid
