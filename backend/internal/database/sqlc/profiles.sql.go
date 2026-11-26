@@ -12,9 +12,9 @@ import (
 )
 
 const createProfile = `-- name: CreateProfile :one
-INSERT INTO profiles (name, niche, description, provider)
-VALUES ($1, $2, $3, $4)
-RETURNING id, name, niche, description, provider, created_at, updated_at
+INSERT INTO profiles (name, niche, description, provider, video_style)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, name, niche, description, provider, video_style, created_at, updated_at
 `
 
 type CreateProfileParams struct {
@@ -22,6 +22,7 @@ type CreateProfileParams struct {
 	Niche       string `json:"niche"`
 	Description string `json:"description"`
 	Provider    string `json:"provider"`
+	VideoStyle  string `json:"video_style"`
 }
 
 func (q *Queries) CreateProfile(ctx context.Context, arg CreateProfileParams) (Profile, error) {
@@ -30,6 +31,7 @@ func (q *Queries) CreateProfile(ctx context.Context, arg CreateProfileParams) (P
 		arg.Niche,
 		arg.Description,
 		arg.Provider,
+		arg.VideoStyle,
 	)
 	var i Profile
 	err := row.Scan(
@@ -38,6 +40,7 @@ func (q *Queries) CreateProfile(ctx context.Context, arg CreateProfileParams) (P
 		&i.Niche,
 		&i.Description,
 		&i.Provider,
+		&i.VideoStyle,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -58,7 +61,7 @@ func (q *Queries) DeleteProfile(ctx context.Context, id pgtype.UUID) (int64, err
 }
 
 const getProfile = `-- name: GetProfile :one
-SELECT id, name, niche, description, provider, created_at, updated_at FROM profiles
+SELECT id, name, niche, description, provider, video_style, created_at, updated_at FROM profiles
 WHERE id = $1
 `
 
@@ -71,6 +74,7 @@ func (q *Queries) GetProfile(ctx context.Context, id pgtype.UUID) (Profile, erro
 		&i.Niche,
 		&i.Description,
 		&i.Provider,
+		&i.VideoStyle,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -78,7 +82,7 @@ func (q *Queries) GetProfile(ctx context.Context, id pgtype.UUID) (Profile, erro
 }
 
 const listProfiles = `-- name: ListProfiles :many
-SELECT id, name, niche, description, provider, created_at, updated_at FROM profiles
+SELECT id, name, niche, description, provider, video_style, created_at, updated_at FROM profiles
 ORDER BY created_at DESC
 `
 
@@ -97,6 +101,7 @@ func (q *Queries) ListProfiles(ctx context.Context) ([]Profile, error) {
 			&i.Niche,
 			&i.Description,
 			&i.Provider,
+			&i.VideoStyle,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -116,9 +121,10 @@ SET name = $2,
     niche = $3,
     description = $4,
     provider = $5,
+    video_style = $6,
     updated_at = now()
 WHERE id = $1
-RETURNING id, name, niche, description, provider, created_at, updated_at
+RETURNING id, name, niche, description, provider, video_style, created_at, updated_at
 `
 
 type UpdateProfileParams struct {
@@ -127,6 +133,7 @@ type UpdateProfileParams struct {
 	Niche       string      `json:"niche"`
 	Description string      `json:"description"`
 	Provider    string      `json:"provider"`
+	VideoStyle  string      `json:"video_style"`
 }
 
 func (q *Queries) UpdateProfile(ctx context.Context, arg UpdateProfileParams) (Profile, error) {
@@ -136,6 +143,7 @@ func (q *Queries) UpdateProfile(ctx context.Context, arg UpdateProfileParams) (P
 		arg.Niche,
 		arg.Description,
 		arg.Provider,
+		arg.VideoStyle,
 	)
 	var i Profile
 	err := row.Scan(
@@ -144,6 +152,7 @@ func (q *Queries) UpdateProfile(ctx context.Context, arg UpdateProfileParams) (P
 		&i.Niche,
 		&i.Description,
 		&i.Provider,
+		&i.VideoStyle,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

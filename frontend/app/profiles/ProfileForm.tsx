@@ -3,7 +3,12 @@
 import { useState } from "react";
 import { Alert, Button, Form, Input, Select } from "antd";
 import { ApiError } from "@/lib/api";
-import { PROVIDER_OPTIONS, type ProfileInput } from "@/lib/types";
+import {
+  DEFAULT_VIDEO_STYLE,
+  PROVIDER_OPTIONS,
+  VIDEO_STYLE_OPTIONS,
+  type ProfileInput,
+} from "@/lib/types";
 
 interface Props {
   initial?: ProfileInput;
@@ -16,6 +21,7 @@ const EMPTY: ProfileInput = {
   niche: "",
   description: "",
   provider: "text",
+  videoStyle: DEFAULT_VIDEO_STYLE,
 };
 
 export default function ProfileForm({ initial, submitLabel, onSubmit }: Props) {
@@ -32,6 +38,10 @@ export default function ProfileForm({ initial, submitLabel, onSubmit }: Props) {
         niche: values.niche.trim(),
         description: (values.description ?? "").trim(),
         provider: values.provider,
+        // The style field is only on screen for fal profiles, and onFinish
+        // leaves out fields that are not on screen; read the stored value so a
+        // text profile keeps (and sends) its style.
+        videoStyle: form.getFieldValue("videoStyle") ?? DEFAULT_VIDEO_STYLE,
       });
     } catch (err) {
       if (err instanceof ApiError && err.fieldErrors) {
@@ -104,6 +114,22 @@ export default function ProfileForm({ initial, submitLabel, onSubmit }: Props) {
         extra="What this profile generates with by default."
       >
         <Select options={PROVIDER_OPTIONS} />
+      </Form.Item>
+
+      {/* Only a fal profile makes video, so only it has a video style. */}
+      <Form.Item noStyle dependencies={["provider"]}>
+        {({ getFieldValue }) =>
+          getFieldValue("provider") === "fal" ? (
+            <Form.Item
+              label="Video style"
+              name="videoStyle"
+              rules={[{ required: true, message: "Pick a video style." }]}
+              extra="How this profile's clips look. The style decides the models and the wording added to prompts."
+            >
+              <Select options={VIDEO_STYLE_OPTIONS} />
+            </Form.Item>
+          ) : null
+        }
       </Form.Item>
 
       <Form.Item style={{ marginBottom: 0 }}>

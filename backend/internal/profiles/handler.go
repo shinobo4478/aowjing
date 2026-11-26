@@ -13,6 +13,7 @@ import (
 	"github.com/shinobo4478/aowjing/backend/internal/database/sqlc"
 	"github.com/shinobo4478/aowjing/backend/internal/generate"
 	"github.com/shinobo4478/aowjing/backend/internal/pgconv"
+	"github.com/shinobo4478/aowjing/backend/internal/studio"
 )
 
 // Handler serves /profiles. It depends only on the generated query interface,
@@ -44,6 +45,8 @@ type profileInput struct {
 	Description string `json:"description"`
 	// Which Generator this profile defaults to. Empty means "text".
 	Provider string `json:"provider"`
+	// Which video style its clips use. Empty means the default ("3d").
+	VideoStyle string `json:"videoStyle"`
 }
 
 // normalizeAndValidate trims fields and returns a map of field -> message.
@@ -56,6 +59,10 @@ func (in *profileInput) normalizeAndValidate() map[string]string {
 	in.Provider = strings.TrimSpace(in.Provider)
 	if in.Provider == "" {
 		in.Provider = "text"
+	}
+	in.VideoStyle = strings.TrimSpace(in.VideoStyle)
+	if in.VideoStyle == "" {
+		in.VideoStyle = string(studio.DefaultStyle)
 	}
 
 	errs := map[string]string{}
@@ -73,6 +80,9 @@ func (in *profileInput) normalizeAndValidate() map[string]string {
 	}
 	if !generate.ValidProvider(in.Provider) {
 		errs["provider"] = "Unknown provider."
+	}
+	if !studio.Valid(in.VideoStyle) {
+		errs["videoStyle"] = "Unknown video style."
 	}
 	return errs
 }
@@ -121,6 +131,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		Niche:       in.Niche,
 		Description: in.Description,
 		Provider:    in.Provider,
+		VideoStyle:  in.VideoStyle,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to create profile.")
@@ -150,6 +161,7 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 		Niche:       in.Niche,
 		Description: in.Description,
 		Provider:    in.Provider,
+		VideoStyle:  in.VideoStyle,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		writeError(w, http.StatusNotFound, "Profile not found.")

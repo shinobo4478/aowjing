@@ -13,6 +13,10 @@ CREATE TABLE IF NOT EXISTS profiles (
     -- Which Generator this profile defaults to (see internal/generate).
     -- Stores the setting only — nothing reads it automatically yet.
     provider    text        NOT NULL DEFAULT 'text',
+    -- Which video style its clips use ('3d', later '2d', 'realistic'). The name
+    -- only: what a style means lives in internal/studio. Checked by the API, not
+    -- here, so adding a style needs no schema change. Used by fal profiles.
+    video_style text        NOT NULL DEFAULT '3d',
     created_at  timestamptz NOT NULL DEFAULT now(),
     updated_at  timestamptz NOT NULL DEFAULT now()
 );

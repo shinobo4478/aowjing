@@ -3,7 +3,7 @@ import { Typography } from "antd";
 import Stripe from "@/components/Stripe";
 import { formatDate } from "@/lib/format";
 import { tapeColor } from "@/lib/tape";
-import { providerShort, type Profile } from "@/lib/types";
+import { providerShort, videoStyleLabel, type Profile } from "@/lib/types";
 import { pageTitle } from "@/lib/ui";
 
 function Field({
@@ -60,6 +60,9 @@ export default function ProfileSlate({
       <div className="acmp-slate-fields">
         <Field label="Niche">{profile.niche}</Field>
         <Field label="Generator">{providerShort(profile.provider)}</Field>
+        {profile.provider === "fal" && (
+          <Field label="Video style">{videoStyleLabel(profile.videoStyle)}</Field>
+        )}
         <Field label="Updated">{formatDate(profile.updatedAt)}</Field>
         {profile.description && (
           <Field label="Notes" wide note>
