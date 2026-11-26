@@ -13,11 +13,24 @@ import {
   Typography,
   Upload,
 } from "antd";
-import { ApiError, listProducts, MAX_IMAGE_BYTES, uploadImage } from "@/lib/api";
+import {
+  ApiError,
+  getStudioPricing,
+  listProducts,
+  MAX_IMAGE_BYTES,
+  uploadImage,
+} from "@/lib/api";
+import { formatUsd } from "@/lib/format";
 import { productSlotsNeeded } from "@/lib/template";
-import { MAX_PRODUCTS_PER_CLIP, type Product, type PromptTemplate } from "@/lib/types";
+import {
+  MAX_PRODUCTS_PER_CLIP,
+  type Product,
+  type PromptTemplate,
+  type StudioPricing,
+} from "@/lib/types";
 import { mobileModal } from "@/lib/ui";
 import KeyframePicker from "./KeyframePicker";
+import PastPictures from "./PastPictures";
 
 /** What the owner chose in the dialog. At most one of `imageUrl` (a pasted
  *  link) and `imageId` (a picture already uploaded) is set; both "" means a
@@ -29,8 +42,9 @@ export interface GenerateChoices {
 }
 
 /** Where the starting image comes from: a pasted link, a file from this
- *  computer, or a picture made with an image model ("ai", see KeyframePicker). */
-type ImageSource = "link" | "file" | "ai";
+ *  computer, a picture made with an image model ("ai", see KeyframePicker), or
+ *  one an earlier clip of this profile already used ("past", see PastPictures). */
+type ImageSource = "link" | "file" | "ai" | "past";
 
 /** Checks a picked file before uploading it; null = fine. The backend checks
  *  the same things (and the pixel size, which the browser can't read cheaply). */
@@ -68,12 +82,16 @@ export function imageUrlError(raw: string): string | null {
 export default function GenerateModal({
   template,
   askImage,
+  videoStyle,
   onClose,
   onGenerate,
 }: {
   template: PromptTemplate | null;
-  /** The profile's provider is fal, so an image can be given. */
+  /** The profile's provider is fal, so an image can be given (and the run
+   *  costs money, so it is confirmed first). */
   askImage: boolean;
+  /** The profile's video style, which decides the price of a clip. */
+  videoStyle: string;
   onClose: () => void;
   onGenerate: (choices: GenerateChoices) => Promise<void>;
 }) {
@@ -83,11 +101,17 @@ export default function GenerateModal({
       open={!!template}
       onCancel={onClose}
       footer={null}
+      width={760}
       destroyOnHidden
       {...mobileModal}
     >
       {template && (
-        <Choices template={template} askImage={askImage} onGenerate={onGenerate} />
+        <Choices
+          template={template}
+          askImage={askImage}
+          videoStyle={videoStyle}
+          onGenerate={onGenerate}
+        />
       )}
     </Modal>
   );
@@ -96,13 +120,19 @@ export default function GenerateModal({
 function Choices({
   template,
   askImage,
+  videoStyle,
   onGenerate,
 }: {
   template: PromptTemplate;
   askImage: boolean;
+  videoStyle: string;
   onGenerate: (choices: GenerateChoices) => Promise<void>;
 }) {
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
+  // What a clip costs, for the confirmation. null = not loaded (or not needed).
+  const [pricing, setPricing] = useState<StudioPricing | null>(null);
+  // The picture chosen among those earlier clips of this profile used.
+  const [pastImageId, setPastImageId] = useState("");
   const need = productSlotsNeeded(template.body);
   // null = still loading; stays [] when no products are needed.
   const [catalog, setCatalog] = useState<Product[] | null>(need > 0 ? null : []);
@@ -153,6 +183,23 @@ function Choices({
     };
   }, [need, message]);
 
+  // The clip price for the confirmation. If it cannot be loaded the dialog
+  // still works and says the price is unknown.
+  useEffect(() => {
+    if (!askImage) return;
+    let cancelled = false;
+    getStudioPricing()
+      .then((p) => {
+        if (!cancelled) setPricing(p);
+      })
+      .catch(() => {
+        /* the confirmation says the price is unknown */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [askImage]);
+
   if (catalog === null) {
     return (
       <div style={{ padding: 32, textAlign: "center" }}>
@@ -173,14 +220,58 @@ function Choices({
   const useLink = askImage && source === "link";
   const useFile = askImage && source === "file" && picked !== null;
   const useMade = askImage && source === "ai";
+  const usePast = askImage && source === "past";
   const imageError = useLink ? imageUrlError(imageUrl) : null;
+
+  // Whether the clip will start from a picture, whatever its source.
+  const hasImage =
+    (useLink && imageUrl.trim() !== "") ||
+    useFile ||
+    (useMade && madeImageId !== "") ||
+    (usePast && pastImageId !== "");
+
+  // A fal clip spends credits, so ask first, with the price. A profile that only
+  // makes text (no askImage) costs nothing and goes straight through.
+  function confirmGo() {
+    if (!askImage) {
+      void go();
+      return;
+    }
+    const price = pricing?.imageClipUsd[videoStyle];
+    const seconds = pricing?.clipSeconds ?? 5;
+    modal.confirm({
+      title: "Generate this clip?",
+      content: hasImage ? (
+        <p style={{ margin: 0 }}>
+          A {seconds}-second silent clip from the chosen picture
+          {price !== undefined ? (
+            <>
+              : <strong>≈ {formatUsd(price)}</strong>, charged to your fal.ai
+              credits.
+            </>
+          ) : (
+            ". The price could not be loaded, so it is not shown here; it is charged to your fal.ai credits."
+          )}
+        </p>
+      ) : (
+        <p style={{ margin: 0 }}>
+          A clip from the prompt alone. This is charged to your fal.ai credits,
+          and the price of a clip without a starting picture has not been
+          checked yet, so it may differ from a picture clip.
+        </p>
+      ),
+      okText: hasImage && price !== undefined ? `Generate (≈ ${formatUsd(price)})` : "Generate",
+      cancelText: "Cancel",
+      onOk: () => go(),
+    });
+  }
 
   async function go() {
     setBusy(true);
     try {
       // Upload first, inside the dialog, so a refused picture (too small, …)
       // shows its message here and keeps what was chosen.
-      let imageId = useMade ? madeImageId : "";
+      let imageId = useMade ? madeImageId : usePast ? pastImageId : "";
       if (useFile) {
         try {
           imageId = (await uploadImage(picked!.file)).id;
@@ -239,6 +330,7 @@ function Choices({
                 { value: "link", label: "Link" },
                 { value: "file", label: "From this computer" },
                 { value: "ai", label: "Make with AI" },
+                { value: "past", label: "From an earlier clip" },
               ]}
             />
           </div>
@@ -248,6 +340,12 @@ function Choices({
               profileId={template.profileId}
               value={madeImageId}
               onChange={setMadeImageId}
+            />
+          ) : source === "past" ? (
+            <PastPictures
+              profileId={template.profileId}
+              value={pastImageId}
+              onChange={setPastImageId}
             />
           ) : source === "link" ? (
             <Input
@@ -306,7 +404,9 @@ function Choices({
                 ? "A public link, at least 300×300 px. With an image the clip is silent and 5 seconds long; leave it empty to generate from the prompt alone."
                 : source === "file"
                   ? "A JPG or PNG, at least 300×300 px, up to 8 MB. With an image the clip is silent and 5 seconds long; choose nothing to generate from the prompt alone."
-                  : "Make a picture first, then pick one. The clip is silent and 5 seconds long, and starts from the picture you pick.")}
+                  : source === "past"
+                    ? "Reuse a picture this profile's earlier clips started from: only the prompt changes, and no new picture is paid for. The clip is silent and 5 seconds long."
+                    : "Make a picture first, then pick one. The clip is silent and 5 seconds long, and starts from the picture you pick.")}
           </Typography.Paragraph>
         </div>
       )}
@@ -314,9 +414,14 @@ function Choices({
       <Button
         type="primary"
         style={{ marginTop: 20 }}
-        disabled={chosen.length < need || !!imageError || (useMade && !madeImageId)}
+        disabled={
+          chosen.length < need ||
+          !!imageError ||
+          (useMade && !madeImageId) ||
+          (usePast && !pastImageId)
+        }
         loading={busy}
-        onClick={go}
+        onClick={confirmGo}
       >
         Generate
       </Button>

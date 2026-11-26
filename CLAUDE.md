@@ -236,6 +236,20 @@ Order of work (each a small PR):
      write picture descriptions in English until tried.
    - Existing DBs need the three `CREATE TABLE`s in `db/schema.sql`
      (`profile_reference_images`, `keyframes`, `keyframe_images`).
+   - **Spending guards (owner's request):** every action that spends fal credits
+     asks first with a price — "Make pictures" and fal "Generate" (a text-only
+     profile is free and does not ask). The clip price comes from
+     `GET /studio/pricing` (recipe `ImagePricePerSecondUSD` 0.084 × `ClipSeconds`
+     5 = $0.42, from the first real clip); a text-to-video price is NOT known
+     and the dialog says so.
+   - "From an earlier clip" in the Generate dialog reuses a picture an earlier
+     clip of the *same profile* used (no new picture to pay for; the UI lists
+     only that profile's clips, the API does not otherwise check ownership).
+   - **Credit balance in the menu bar:** `GET /credits/fal` reads
+     `GET api.fal.ai/v1/account/billing?expand=credits`. Per fal's docs that needs
+     the `billing:usage:read` permission (BILLING / READONLY / FULL preset), which
+     an `API`-preset key is not documented to have, so it uses its own optional
+     setting `falBillingKey`. Cached 30 s. **Not yet tried with a real key.**
 5. Thai voice-over (TTS provider chosen after the owner listens to Thai
    samples from each candidate).
 6. Join clips + audio. **Conflicts with a rule above:** joining makes a full

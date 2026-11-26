@@ -11,13 +11,12 @@ import {
   imageSrc,
   listReferences,
 } from "@/lib/api";
+import { formatUsd } from "@/lib/format";
 import type { Keyframe, KeyframeModels } from "@/lib/types";
+import { refreshCredits } from "../../CreditsBadge";
 
 const POLL_EVERY_MS = 3000;
 const POLL_MAX_TRIES = 120; // 6 minutes; an image takes seconds to a minute
-
-/** Dollars to at most 4 decimals, so a price like $0.0398 is not shown as $0.04. */
-const usd = (n: number) => `$${Number(n.toFixed(4))}`;
 
 /**
  * Makes the starting picture of a clip: describe the scene, choose the image
@@ -37,7 +36,7 @@ export default function KeyframePicker({
   value: string;
   onChange: (imageId: string) => void;
 }) {
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const [info, setInfo] = useState<KeyframeModels | null>(null);
   const [refCount, setRefCount] = useState(0);
   const [prompt, setPrompt] = useState("");
@@ -93,7 +92,10 @@ export default function KeyframePicker({
     const iv = setInterval(() => {
       tries += 1;
       getKeyframe(pendingId)
-        .then(setKeyframe)
+        .then((k) => {
+          setKeyframe(k);
+          if (k.status !== "pending") refreshCredits(); // the pictures were paid for
+        })
         .catch(() => clearInterval(iv));
       if (tries >= POLL_MAX_TRIES) clearInterval(iv);
     }, POLL_EVERY_MS);
@@ -103,6 +105,32 @@ export default function KeyframePicker({
   const chosenModel = info?.models.find((m) => m.key === model);
   const effectiveRefs = useRefs ? refCount : 0;
   const promptTooShort = prompt.trim().length < 3;
+
+  // Making pictures spends fal.ai credits, so ask first, with the price.
+  function confirmMake() {
+    if (!chosenModel) return;
+    const total = chosenModel.priceUsd * count;
+    modal.confirm({
+      title: `Make ${count} picture${count === 1 ? "" : "s"}?`,
+      content: (
+        <>
+          <p style={{ margin: "0 0 8px" }}>
+            {chosenModel.label}: {count} × {formatUsd(chosenModel.priceUsd)} ≈{" "}
+            <strong>{formatUsd(total)}</strong>, charged to your fal.ai credits.
+          </p>
+          <p style={{ margin: 0 }}>
+            {effectiveRefs > 0
+              ? `Your ${effectiveRefs} reference picture${effectiveRefs === 1 ? "" : "s"} will be sent along. `
+              : "No reference pictures will be sent. "}
+            {keyframe ? "The pictures below will be replaced." : ""}
+          </p>
+        </>
+      ),
+      okText: `Make pictures (≈ ${formatUsd(total)})`,
+      cancelText: "Cancel",
+      onOk: () => make(),
+    });
+  }
 
   async function make() {
     setBusy(true);
@@ -139,8 +167,9 @@ export default function KeyframePicker({
       <Input.TextArea
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
-        rows={3}
+        autoSize={{ minRows: 5, maxRows: 14 }}
         maxLength={1500}
+        showCount
         placeholder="Describe the scene, in English: who is in it, where, the light, the mood…"
       />
 
@@ -151,7 +180,7 @@ export default function KeyframePicker({
         style={{ width: "100%", marginTop: 8 }}
         options={(info?.models ?? []).map((m) => ({
           value: m.key,
-          label: `${m.label} — ${usd(m.priceUsd)} per picture`,
+          label: `${m.label} — ${formatUsd(m.priceUsd)} per picture`,
         }))}
       />
       <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
@@ -185,7 +214,7 @@ export default function KeyframePicker({
 
       <div style={{ marginTop: 12, display: "flex", gap: 12, alignItems: "center" }}>
         <Button
-          onClick={make}
+          onClick={confirmMake}
           loading={busy || keyframe?.status === "pending"}
           disabled={!chosenModel || promptTooShort}
         >
@@ -193,7 +222,7 @@ export default function KeyframePicker({
         </Button>
         {chosenModel && (
           <Typography.Text type="secondary">
-            ≈ {usd(chosenModel.priceUsd * count)} for {count} picture
+            ≈ {formatUsd(chosenModel.priceUsd * count)} for {count} picture
             {count === 1 ? "" : "s"}
             {effectiveRefs > 0 ? `, using ${effectiveRefs} reference` : ""}
           </Typography.Text>

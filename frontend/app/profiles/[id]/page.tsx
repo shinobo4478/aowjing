@@ -133,6 +133,7 @@ export default function ProfileDetailPage({
               <PromptTemplatesSection
                 profileId={id}
                 provider={profile.provider}
+                videoStyle={profile.videoStyle}
                 onGenerated={() => {
                   setGenTick((t) => t + 1);
                   setTab("generations");

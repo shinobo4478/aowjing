@@ -60,6 +60,14 @@ export default function SettingsPage() {
               <Input.Password autoComplete="off" placeholder="fal-…" />
             </Form.Item>
 
+            <Form.Item
+              label="fal.ai billing key (optional)"
+              name="falBillingKey"
+              extra="Only used to show your remaining credit in the menu bar. Create a separate key with the BILLING preset in your fal.ai dashboard; the key above does not need billing access. Leave empty to hide the balance."
+            >
+              <Input.Password autoComplete="off" placeholder="fal-…" />
+            </Form.Item>
+
             <Form.Item style={{ marginBottom: 0 }}>
               <Button type="primary" htmlType="submit" loading={saving}>
                 Save changes

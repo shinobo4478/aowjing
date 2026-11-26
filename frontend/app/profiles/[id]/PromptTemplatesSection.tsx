@@ -21,11 +21,14 @@ import GenerateModal from "./GenerateModal";
 export default function PromptTemplatesSection({
   profileId,
   provider,
+  videoStyle,
   onGenerated,
 }: {
   profileId: string;
   /** The profile's generator; "fal" lets Generate take a starting image. */
   provider: ProviderKey;
+  /** The profile's video style, which decides what a clip costs. */
+  videoStyle: string;
   /** Called after a template is run, so the Generations list can refresh. */
   onGenerated: () => void;
 }) {
@@ -187,6 +190,7 @@ export default function PromptTemplatesSection({
       <GenerateModal
         template={picking}
         askImage={provider === "fal"}
+        videoStyle={videoStyle}
         onClose={() => setPicking(null)}
         onGenerate={async (choices) => {
           const id = picking!.id;
@@ -200,7 +204,7 @@ export default function PromptTemplatesSection({
         open={creating}
         onCancel={() => setCreating(false)}
         footer={null}
-        width={640}
+        width={760}
         destroyOnHidden
         {...mobileModal}
       >
@@ -220,7 +224,7 @@ export default function PromptTemplatesSection({
         open={!!editing}
         onCancel={() => setEditing(null)}
         footer={null}
-        width={640}
+        width={760}
         destroyOnHidden
         {...mobileModal}
       >

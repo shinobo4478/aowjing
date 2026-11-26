@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { App, Button, Empty, Popconfirm, Space, Table, Typography } from "antd";
 import type { TableColumnsType } from "antd";
 import {
@@ -21,6 +21,7 @@ import type {
   YouTubeAccount,
   YouTubeUpload,
 } from "@/lib/types";
+import { refreshCredits } from "../../CreditsBadge";
 import ClipProducts from "./ClipProducts";
 import PublishYouTubeModal from "./PublishYouTubeModal";
 import StudioChecklist from "./StudioChecklist";
@@ -104,6 +105,15 @@ export default function GenerationsSection({
   // prompt is done in a second, but a real fal video takes several minutes
   // (the first real Kling clip took ~8), so keep going for 20 minutes.
   const hasPending = generations.some((g) => g.status === "pending");
+
+  // When the last pending clip finishes, fal has charged for it: refresh the
+  // balance in the menu bar.
+  const hadPending = useRef(false);
+  useEffect(() => {
+    if (hadPending.current && !hasPending) refreshCredits();
+    hadPending.current = hasPending;
+  }, [hasPending]);
+
   useEffect(() => {
     if (!hasPending) return;
     let tries = 0;

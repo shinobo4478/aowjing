@@ -161,6 +161,26 @@ export interface Keyframe {
 export interface Settings {
   /** fal.ai API key, used by FalVideoGenerator. */
   falApiKey: string;
+  /** Optional second fal key on the BILLING preset, used only to show the
+   *  credit balance in the menu bar. */
+  falBillingKey: string;
+}
+
+/** What the clips cost, from GET /studio/pricing. */
+export interface StudioPricing {
+  clipSeconds: number;
+  /** Price of one image-to-video clip by video style; a style whose price is
+   *  not known is missing. */
+  imageClipUsd: Record<string, number>;
+}
+
+/** The fal.ai credit balance, from GET /credits/fal. `configured` is false until
+ *  a billing key is saved; `error` says why the balance could not be read. */
+export interface FalCredits {
+  configured: boolean;
+  balance?: number;
+  currency?: string;
+  error?: string;
 }
 
 // --- YouTube (Phase 2 item 3) ---

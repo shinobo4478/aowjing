@@ -7,6 +7,7 @@
 import type {
   Channel,
   ChannelInput,
+  FalCredits,
   Generation,
   Keyframe,
   KeyframeModels,
@@ -21,6 +22,7 @@ import type {
   PromptTemplateInput,
   ReferencePicture,
   Settings,
+  StudioPricing,
   YouTubeAccount,
   YouTubePrivacy,
   YouTubeStatus,
@@ -281,6 +283,18 @@ export function deleteKeyframe(id: string) {
 
 export function deleteGeneration(id: string) {
   return request<void>(`/generations/${id}`, { method: "DELETE" });
+}
+
+// --- Prices and credits ---
+
+export function getStudioPricing() {
+  return request<StudioPricing>("/studio/pricing");
+}
+
+/** The fal.ai balance. `refresh` asks again right after spending (the backend
+ *  still keeps a few seconds' pause between asks of fal). */
+export function getFalCredits(refresh = false) {
+  return request<FalCredits>(`/credits/fal${refresh ? "?refresh=1" : ""}`);
 }
 
 // --- Settings (global provider credentials) ---

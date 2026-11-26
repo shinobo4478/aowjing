@@ -83,7 +83,7 @@ export default function PromptTemplateForm({
         extra="To mention a product, write {{product.name}}, {{product.price}} or {{product.note}}; {{product2.name}} is the second one. You choose the products when you press Generate."
       >
         <Input.TextArea
-          rows={8}
+          autoSize={{ minRows: 8, maxRows: 22 }}
           placeholder="Write a 60s script about the arcade cabinet …"
         />
       </Form.Item>
