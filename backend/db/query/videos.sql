@@ -66,14 +66,18 @@ RETURNING *;
 -- Adds a drafted shot (from the script helper) at the end, with its picture
 -- prompt already filled in.
 -- name: CreateShotWithPlan :one
-INSERT INTO video_shots (video_id, position, prompt, seconds, picture_prompt, end_picture_prompt)
+INSERT INTO video_shots (video_id, position, prompt, seconds, picture_prompt, end_picture_prompt,
+                         prompt_th, picture_prompt_th, end_picture_prompt_th)
 VALUES (
     $1,
     (SELECT COALESCE(MAX(position), 0) + 1 FROM video_shots WHERE video_id = $1),
     $2,
     $3,
     $4,
-    $5
+    $5,
+    $6,
+    $7,
+    $8
 )
 RETURNING *;
 
@@ -93,6 +97,9 @@ SET approved = CASE
     end_image_id = sqlc.narg('end_image_id')::uuid,
     picture_prompt = sqlc.arg('picture_prompt')::text,
     end_picture_prompt = sqlc.arg('end_picture_prompt')::text,
+    prompt_th = sqlc.arg('prompt_th')::text,
+    picture_prompt_th = sqlc.arg('picture_prompt_th')::text,
+    end_picture_prompt_th = sqlc.arg('end_picture_prompt_th')::text,
     updated_at = now()
 WHERE id = $1
 RETURNING *;

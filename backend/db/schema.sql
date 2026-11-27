@@ -148,6 +148,14 @@ CREATE TABLE IF NOT EXISTS video_shots (
     -- '' for a shot that has no end picture. Kept so a drafted shot arrives with
     -- it; the same note about the approval applies as for picture_prompt.
     end_picture_prompt text NOT NULL DEFAULT '',
+    -- The owner's Thai versions of the three prompts above. The owner writes and
+    -- edits these; the English ones are what the models receive (their pages do
+    -- not promise Thai), made from the Thai by the translation helper. Kept so
+    -- the owner can always read and change what a shot says in Thai. Not sent to
+    -- any model, so they never affect the approval.
+    prompt_th text NOT NULL DEFAULT '',
+    picture_prompt_th text NOT NULL DEFAULT '',
+    end_picture_prompt_th text NOT NULL DEFAULT '',
     seconds    smallint    NOT NULL DEFAULT 5 CHECK (seconds BETWEEN 3 AND 15),
     -- The picture the shot starts from: a link, or an uploaded/made one (at
     -- most one of the two is set). Both empty = text-to-video.

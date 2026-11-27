@@ -36,9 +36,14 @@ type shotDTO struct {
 	PicturePrompt string `json:"picturePrompt"`
 	// EndPicturePrompt: what changes by the end picture (only a pose or position).
 	EndPicturePrompt string `json:"endPicturePrompt"`
-	Seconds          int    `json:"seconds"`
-	ImageURL         string `json:"imageUrl"`
-	ImageID          string `json:"imageId"`
+	// The Thai versions of the three prompts: what the owner reads and edits. The
+	// English ones above are what the models receive.
+	PromptTh           string `json:"promptTh"`
+	PicturePromptTh    string `json:"picturePromptTh"`
+	EndPicturePromptTh string `json:"endPicturePromptTh"`
+	Seconds            int    `json:"seconds"`
+	ImageURL           string `json:"imageUrl"`
+	ImageID            string `json:"imageId"`
 	// EndImageID is the picture the clip should end on, "" if none.
 	EndImageID string `json:"endImageId"`
 	// Approved: the owner OKed this plan on the storyboard, so it may be made in
@@ -68,17 +73,20 @@ func toVideoDTO(v sqlc.Video, shotCount, totalSeconds int) videoDTO {
 
 func toShotDTO(s sqlc.VideoShot, latest *sqlc.ListShotLatestGenerationsRow, take *sqlc.ListShotTakesRow) shotDTO {
 	d := shotDTO{
-		ID:               pgconv.UUIDString(s.ID),
-		VideoID:          pgconv.UUIDString(s.VideoID),
-		Position:         int(s.Position),
-		Prompt:           s.Prompt,
-		PicturePrompt:    s.PicturePrompt,
-		EndPicturePrompt: s.EndPicturePrompt,
-		Seconds:          int(s.Seconds),
-		ImageURL:         s.ImageUrl,
-		ImageID:          pgconv.UUIDString(s.ImageID),
-		EndImageID:       pgconv.UUIDString(s.EndImageID),
-		Approved:         s.Approved,
+		ID:                 pgconv.UUIDString(s.ID),
+		VideoID:            pgconv.UUIDString(s.VideoID),
+		Position:           int(s.Position),
+		Prompt:             s.Prompt,
+		PicturePrompt:      s.PicturePrompt,
+		EndPicturePrompt:   s.EndPicturePrompt,
+		PromptTh:           s.PromptTh,
+		PicturePromptTh:    s.PicturePromptTh,
+		EndPicturePromptTh: s.EndPicturePromptTh,
+		Seconds:            int(s.Seconds),
+		ImageURL:           s.ImageUrl,
+		ImageID:            pgconv.UUIDString(s.ImageID),
+		EndImageID:         pgconv.UUIDString(s.EndImageID),
+		Approved:           s.Approved,
 	}
 	if latest != nil {
 		d.Attempts = int(latest.Attempts)

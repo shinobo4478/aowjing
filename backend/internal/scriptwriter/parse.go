@@ -34,6 +34,13 @@ type Shot struct {
 	EndPicturePrompt string
 	MotionPrompt     string
 	Seconds          int
+
+	// The same three prompts in Thai, for the owner to read and edit. A
+	// convenience: a missing or unusable one is left empty, not an error, because
+	// it can be made later with the translation helper.
+	PicturePromptTh    string // the Thai scene line, then the Thai picture prompt
+	EndPicturePromptTh string
+	MotionPromptTh     string
 }
 
 // Draft is a drafted video.
@@ -47,12 +54,16 @@ type Draft struct {
 
 // reply is the JSON shape the model was asked for.
 type reply struct {
-	Title string `json:"title"`
-	Scene string `json:"scene"`
-	Shots []struct {
-		PicturePrompt    string `json:"picturePrompt"`
-		EndPicturePrompt string `json:"endPicturePrompt"`
-		MotionPrompt     string `json:"motionPrompt"`
+	Title   string `json:"title"`
+	Scene   string `json:"scene"`
+	SceneTh string `json:"sceneTh"`
+	Shots   []struct {
+		PicturePrompt      string `json:"picturePrompt"`
+		PicturePromptTh    string `json:"picturePromptTh"`
+		EndPicturePrompt   string `json:"endPicturePrompt"`
+		EndPicturePromptTh string `json:"endPicturePromptTh"`
+		MotionPrompt       string `json:"motionPrompt"`
+		MotionPromptTh     string `json:"motionPromptTh"`
 	} `json:"shots"`
 }
 
@@ -98,7 +109,33 @@ func parse(raw string, want, seconds int) (Draft, error) {
 			utf8.RuneCountInString(end) > maxPromptRunes {
 			return Draft{}, fmt.Errorf("shot %d of the draft is too long", i+1)
 		}
-		d.Shots = append(d.Shots, Shot{PicturePrompt: full, EndPicturePrompt: end, MotionPrompt: motion, Seconds: seconds})
+		s := Shot{PicturePrompt: full, EndPicturePrompt: end, MotionPrompt: motion, Seconds: seconds}
+
+		// The Thai versions: kept only if they are usable. The Thai picture prompt
+		// gets the Thai scene line in front, as the English one does, so each Thai
+		// prompt says what its English twin says.
+		sceneTh := strings.TrimSpace(r.SceneTh)
+		picTh := strings.TrimSpace(r.Shots[i].PicturePromptTh)
+		if sceneTh != "" && picTh != "" {
+			s.PicturePromptTh = sceneTh + " " + picTh
+		} else {
+			s.PicturePromptTh = picTh
+		}
+		s.MotionPromptTh = strings.TrimSpace(r.Shots[i].MotionPromptTh)
+		if i != want-1 {
+			s.EndPicturePromptTh = strings.TrimSpace(r.Shots[i].EndPicturePromptTh)
+		}
+		// A Thai prompt with no English twin (a cut shot has no end prompt) is
+		// meaningless; one that is over the length limit is dropped, not fatal.
+		if end == "" {
+			s.EndPicturePromptTh = ""
+		}
+		for _, th := range []*string{&s.PicturePromptTh, &s.EndPicturePromptTh, &s.MotionPromptTh} {
+			if utf8.RuneCountInString(*th) > maxPromptRunes {
+				*th = ""
+			}
+		}
+		d.Shots = append(d.Shots, s)
 	}
 	return d, nil
 }
