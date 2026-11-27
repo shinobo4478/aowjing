@@ -1,7 +1,8 @@
 -- name: ListProducts :many
 -- Optional name search: pass '' for everything.
 SELECT p.*,
-       (SELECT count(*) FROM generation_products gp WHERE gp.product_id = p.id) AS used_count
+       (SELECT count(*) FROM generation_products gp WHERE gp.product_id = p.id) AS used_count,
+       (SELECT count(*) FROM product_images pi WHERE pi.product_id = p.id) AS picture_count
 FROM products p
 WHERE $1::text = '' OR p.name ILIKE '%' || $1::text || '%'
 ORDER BY p.created_at DESC;

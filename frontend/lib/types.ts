@@ -455,6 +455,24 @@ export const MAX_PRODUCTS_PER_CLIP = 2;
 /** A product as listed in the catalog, with how many clips it is pinned to. */
 export interface ProductWithUse extends Product {
   usedCount: number;
+  /** How many pictures of the product itself are kept. */
+  pictureCount: number;
+}
+
+/** One picture of a product as it really looks (an angle or a state). The label
+ *  says which ("cap open", "in hand"): an image model copies the state of its
+ *  reference picture, so a shot that needs an open cap needs one that shows it. */
+export interface ProductPicture {
+  /** Served by GET /images/{id}. */
+  imageId: string;
+  label: string;
+}
+
+/** A product that has pictures, as the picture dialog lists it. */
+export interface PickableProduct {
+  id: string;
+  name: string;
+  pictures: ProductPicture[];
 }
 
 /** One clip a product is pinned to. */

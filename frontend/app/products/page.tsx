@@ -25,6 +25,7 @@ import { INK, STATUS } from "@/lib/tape";
 import type { ProductWithUse } from "@/lib/types";
 import { mobileModal, pageLede, pageTitle } from "@/lib/ui";
 import ProductForm from "./ProductForm";
+import ProductPicturesModal from "./ProductPicturesModal";
 import ProductUsageModal from "./ProductUsageModal";
 
 export default function ProductsPage() {
@@ -34,6 +35,7 @@ export default function ProductsPage() {
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
   const [usageFor, setUsageFor] = useState<ProductWithUse | null>(null);
+  const [picturesFor, setPicturesFor] = useState<ProductWithUse | null>(null);
   const [editing, setEditing] = useState<ProductWithUse | null>(null);
 
   const load = useCallback(
@@ -113,6 +115,17 @@ export default function ProductsPage() {
           />
           {v ? "Added" : "Not added"}
         </span>
+      ),
+    },
+    {
+      title: "Pictures",
+      responsive: ["md"],
+      dataIndex: "pictureCount",
+      width: 120,
+      render: (n: number, row) => (
+        <Button type="link" size="small" onClick={() => setPicturesFor(row)}>
+          {n === 0 ? "Add pictures" : `${n} ${n === 1 ? "picture" : "pictures"}`}
+        </Button>
       ),
     },
     {
@@ -220,6 +233,14 @@ export default function ProductsPage() {
       />
 
       <ProductUsageModal product={usageFor} onClose={() => setUsageFor(null)} />
+      <ProductPicturesModal
+        product={picturesFor}
+        onClose={(id, count) => {
+          setPicturesFor(null);
+          // Update the count in the list without reloading it.
+          setProducts((ps) => ps.map((p) => (p.id === id ? { ...p, pictureCount: count } : p)));
+        }}
+      />
 
       <Modal
         title="New product"

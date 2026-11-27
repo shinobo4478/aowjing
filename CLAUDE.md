@@ -534,7 +534,20 @@ captions added in the editor while voice-over is on hold).
   unless fal accepts the same picture twice). Elements would help when the subject turns or moves in a
   clip and would keep the same person across shots without chaining frames. Plan: one A/B pair of 5 s
   clips from the same start picture, with and without elements (≈ $0.84), before any code.
-- **Next** (agreed order): product pictures on `Product` + a "product" role in the picture dialog; the
+- **Product pictures (built 2026-11-28):** `product_images` (product, image, position 1–4, `label`;
+  removed with the product) — the real product from several angles and STATES (cap closed / open /
+  in hand), because an edit model copies the state of its reference. Products page: a "Pictures"
+  column opens `ProductPicturesModal` (upload with a label, edit label, remove). API:
+  `GET/POST /products/{id}/pictures` (multipart `file` + `label`, JPG/PNG ≤ 4 MB), `PATCH/DELETE
+  …/pictures/{imageId}`, `GET /products/pictures` (products that have pictures, for the dialog).
+  `POST /keyframes` takes `productPictureIds` (image ids; at most 2 different products, counted in
+  the 6-picture cap): they follow the cast's pictures and the prompt names each one — `Picture 4 is
+  "Bottle", the product (cap open).` (`studio.RoleProduct`, not a valid cast role). The picture dialog
+  lists each product's pictures with ticks (none ticked by default). Existing DBs need `CREATE TABLE
+  product_images …` (see `db/schema.sql`). **Verified:** build, unit tests for the prompt wording,
+  the dialog loads a product's (empty) list against Postgres. **Not verified live:** upload, label
+  edit, remove, the product-picture checks on `POST /keyframes`, and any real picture made from them.
+- **Next** (agreed order): ~~product pictures on `Product`~~ (done above) + a "product" role in the picture dialog; the
   script helper learning the product mode and the cast names; a real test (hero + product, ≈ $0.16 per
   picture model); Kling `elements` research for keeping a person/object inside a clip.
 

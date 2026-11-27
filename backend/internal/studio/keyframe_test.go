@@ -134,3 +134,29 @@ func TestValidCastRole(t *testing.T) {
 		}
 	}
 }
+
+func TestKeyframePromptNamesProductPictures(t *testing.T) {
+	bare := Recipe{}
+	cast := []CastRef{
+		{Role: RoleHero, Name: "Bad", Pictures: 2},
+		{Role: RoleProduct, Name: "Bottle", Note: "cap open", Pictures: 1},
+		{Role: RoleProduct, Name: "Bottle", Note: "in hand", Pictures: 1},
+	}
+	got := bare.KeyframePrompt("Bad drinks from the bottle", 1, cast, false)
+	for _, want := range []string{
+		`Pictures 2-3 are "Bad", the lead character.`,
+		`Picture 4 is "Bottle", the product (cap open).`,
+		`Picture 5 is "Bottle", the product (in hand).`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("prompt lacks %q:\n%s", want, got)
+		}
+	}
+}
+
+func TestProductIsNotACastRole(t *testing.T) {
+	// A product's pictures live on the Product; a cast member cannot be one.
+	if ValidCastRole(string(RoleProduct)) {
+		t.Error("product must not be a valid cast_members role (the table's CHECK would refuse it)")
+	}
+}

@@ -90,6 +90,11 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		// ticks in the dialog). Their pictures go with the request, named in the
 		// prompt. Left out or empty makes the picture from the text alone.
 		CastIDs []string `json:"castIds"`
+		// ProductPictureIDs are stored pictures of catalog products (the ticked
+		// pictures in the dialog; each belongs to a product's own pictures). They go
+		// after the cast's, named with the product's name and the picture's label.
+		// At most 2 different products.
+		ProductPictureIDs []string `json:"productPictureIds"`
 		// SceneImageIDs are stored pictures of the SAME scene to keep (the other
 		// shots of a video), so a new shot shows it from another angle. At most
 		// 2; they are sent before the cast's pictures.
@@ -159,6 +164,14 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	productRefs, productImageIDs, ok := h.resolveProducts(w, r, body.ProductPictureIDs, len(sceneIDs)+len(castImageIDs))
+	if !ok {
+		return
+	}
+	// The product pictures are sent after the cast's, and the prompt numbers them
+	// in the same order.
+	cast = append(cast, productRefs...)
+	castImageIDs = append(castImageIDs, productImageIDs...)
 
 	row, err := h.q.CreateKeyframe(r.Context(), sqlc.CreateKeyframeParams{
 		ProfileID: profileID,
@@ -253,6 +266,63 @@ func (h *Handler) resolveCast(w http.ResponseWriter, r *http.Request, profileID 
 		return nil, nil, false
 	}
 	return cast, images, true
+}
+
+// resolveProducts turns the ticked product picture ids into prompt entries (one
+// per picture: the product's name and the picture's label) and the ids in the
+// request's order. It checks every id is a picture of some product, no repeats,
+// at most MaxPictureProducts different products, and that everything stays within
+// the request cap (alreadyUsed = scene + cast pictures). It writes the error
+// response itself.
+func (h *Handler) resolveProducts(w http.ResponseWriter, r *http.Request, raw []string, alreadyUsed int) ([]studio.CastRef, []pgtype.UUID, bool) {
+	if len(raw) == 0 {
+		return nil, nil, true
+	}
+	ids := make([]pgtype.UUID, 0, len(raw))
+	seen := map[string]bool{}
+	for _, s := range raw {
+		id, err := pgconv.ParseUUID(s)
+		if err != nil {
+			writeFieldError(w, "productPictureIds", "Invalid picture id.")
+			return nil, nil, false
+		}
+		key := pgconv.UUIDString(id)
+		if seen[key] {
+			writeFieldError(w, "productPictureIds", "The same picture is listed twice.")
+			return nil, nil, false
+		}
+		seen[key] = true
+		ids = append(ids, id)
+	}
+	rows, err := h.q.ListProductPicturesByImageIDs(r.Context(), ids)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to load the product pictures.")
+		return nil, nil, false
+	}
+	byImage := make(map[string]sqlc.ListProductPicturesByImageIDsRow, len(rows))
+	for _, row := range rows {
+		byImage[pgconv.UUIDString(row.ImageID)] = row
+	}
+	products := map[string]bool{}
+	refs := make([]studio.CastRef, 0, len(ids))
+	for _, id := range ids { // keep the order that was asked for
+		row, ok := byImage[pgconv.UUIDString(id)]
+		if !ok {
+			writeFieldError(w, "productPictureIds", "One of those product pictures no longer exists.")
+			return nil, nil, false
+		}
+		products[pgconv.UUIDString(row.ProductID)] = true
+		refs = append(refs, studio.CastRef{Role: studio.RoleProduct, Name: row.Name, Note: row.Label, Pictures: 1})
+	}
+	if len(products) > studio.MaxPictureProducts {
+		writeFieldError(w, "productPictureIds", "A picture can show at most "+strconv.Itoa(studio.MaxPictureProducts)+" products.")
+		return nil, nil, false
+	}
+	if total := alreadyUsed + len(ids); total > studio.MaxRequestPictures {
+		writeFieldError(w, "productPictureIds", "Too many reference pictures ("+strconv.Itoa(total)+", at most "+strconv.Itoa(studio.MaxRequestPictures)+"). Untick someone or something.")
+		return nil, nil, false
+	}
+	return refs, ids, true
 }
 
 // parseSceneImages checks the same-scene pictures: at most MaxSceneReferences,

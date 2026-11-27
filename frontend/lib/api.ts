@@ -17,6 +17,8 @@ import type {
   Product,
   ProductInput,
   ProductUsage,
+  PickableProduct,
+  ProductPicture,
   ProductWithUse,
   Profile,
   ProfileInput,
@@ -304,6 +306,9 @@ export function createKeyframe(input: {
   count: number;
   /** The profile's cast members that appear in this picture; none = text only. */
   castIds: string[];
+  /** Ticked pictures of catalog products (image ids from the product pictures), at
+   *  most two different products; named in the prompt with product and label. */
+  productPictureIds?: string[];
   /** Stored pictures of the SAME scene to keep (other shots of a video), at most
    *  2, so the new picture shows that scene from another angle or moment. */
   sceneImageIds?: string[];
@@ -568,6 +573,45 @@ export function publishToYouTube(input: {
 }
 
 // --- Products (central Shopee catalog) ---
+
+// --- Product pictures (the real product, for the picture dialog) ---
+
+/** Products that have pictures, with them: what the picture dialog ticks from. */
+export function listPickableProducts() {
+  return request<{ products: PickableProduct[] }>("/products/pictures").then(
+    (r) => r.products,
+  );
+}
+
+export function listProductPictures(productId: string) {
+  return request<{ pictures: ProductPicture[]; max: number }>(
+    `/products/${productId}/pictures`,
+  );
+}
+
+export function addProductPicture(productId: string, file: File, label: string) {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("label", label);
+  return request<{ picture: ProductPicture }>(`/products/${productId}/pictures`, {
+    method: "POST",
+    body: form,
+    headers: {},
+  }).then((r) => r.picture);
+}
+
+export function updateProductPictureLabel(productId: string, imageId: string, label: string) {
+  return request<{ picture: ProductPicture }>(
+    `/products/${productId}/pictures/${imageId}`,
+    { method: "PATCH", body: JSON.stringify({ label }) },
+  ).then((r) => r.picture);
+}
+
+export function removeProductPicture(productId: string, imageId: string) {
+  return request<void>(`/products/${productId}/pictures/${imageId}`, {
+    method: "DELETE",
+  });
+}
 
 export function listProducts(q = "") {
   const term = q.trim();

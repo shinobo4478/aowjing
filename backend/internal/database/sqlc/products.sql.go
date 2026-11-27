@@ -167,7 +167,8 @@ func (q *Queries) ListProductUsage(ctx context.Context, productID pgtype.UUID) (
 
 const listProducts = `-- name: ListProducts :many
 SELECT p.id, p.name, p.shopee_url, p.shopee_shop_id, p.shopee_item_id, p.affiliate_url, p.price_thb, p.note, p.created_at, p.updated_at,
-       (SELECT count(*) FROM generation_products gp WHERE gp.product_id = p.id) AS used_count
+       (SELECT count(*) FROM generation_products gp WHERE gp.product_id = p.id) AS used_count,
+       (SELECT count(*) FROM product_images pi WHERE pi.product_id = p.id) AS picture_count
 FROM products p
 WHERE $1::text = '' OR p.name ILIKE '%' || $1::text || '%'
 ORDER BY p.created_at DESC
@@ -185,6 +186,7 @@ type ListProductsRow struct {
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 	UsedCount    int64              `json:"used_count"`
+	PictureCount int64              `json:"picture_count"`
 }
 
 // Optional name search: pass ” for everything.
@@ -209,6 +211,7 @@ func (q *Queries) ListProducts(ctx context.Context, dollar_1 string) ([]ListProd
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.UsedCount,
+			&i.PictureCount,
 		); err != nil {
 			return nil, err
 		}
