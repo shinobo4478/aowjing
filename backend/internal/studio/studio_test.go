@@ -1,6 +1,9 @@
 package studio
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestValidAndFor(t *testing.T) {
 	tests := []struct {
@@ -78,5 +81,28 @@ func TestCompose(t *testing.T) {
 func TestStyle3DKeepsPicturesAsTheyAre(t *testing.T) {
 	if s := For("3d").ImageSuffix; s != "" {
 		t.Errorf("3d ImageSuffix = %q, want empty", s)
+	}
+}
+
+func TestRealisticKeepsProductsAsTheyAre(t *testing.T) {
+	r := For("realistic")
+	if r.Style != StyleRealistic {
+		t.Fatalf("For(realistic).Style = %q", r.Style)
+	}
+	// A real product photo must never be restyled by a clip.
+	if r.ImageSuffix != "" {
+		t.Errorf("realistic ImageSuffix = %q, want empty", r.ImageSuffix)
+	}
+	// With references, the product wording replaces the "same character" one.
+	got := r.KeyframePrompt("a player holds the bottle", 1, 0, false)
+	if !strings.HasPrefix(got, r.KeepLook) {
+		t.Errorf("prompt does not start with the product wording: %q", got)
+	}
+	if strings.Contains(got, keepLookInstruction) {
+		t.Errorf("prompt still has the character wording: %q", got)
+	}
+	// 3D keeps its old wording.
+	if got := For("3d").KeyframePrompt("x", 1, 0, false); !strings.HasPrefix(got, keepLookInstruction) {
+		t.Errorf("3d prompt lost its wording: %q", got)
 	}
 }

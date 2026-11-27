@@ -18,10 +18,11 @@ export const providerShort = (v: string) =>
 /** How a profile's video clips look. Keep in sync with the recipes in
  *  backend/internal/studio — a new style is added there and here. Only used by
  *  profiles whose generator is fal. */
-export type VideoStyle = "3d";
+export type VideoStyle = "3d" | "realistic";
 
 export const VIDEO_STYLE_OPTIONS: { value: VideoStyle; label: string }[] = [
   { value: "3d", label: "3D (Pixar-like)" },
+  { value: "realistic", label: "Realistic (product / live action)" },
 ];
 
 export const DEFAULT_VIDEO_STYLE: VideoStyle = "3d";

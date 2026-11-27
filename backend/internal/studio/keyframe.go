@@ -123,7 +123,11 @@ func (r Recipe) KeyframePrompt(prompt string, lookRefs, sceneRefs int, sameCamer
 	case sceneRefs > 0:
 		out = keepSceneInstruction + " " + out
 	case lookRefs > 0:
-		out = keepLookInstruction + " " + out
+		keep := keepLookInstruction
+		if r.KeepLook != "" {
+			keep = r.KeepLook
+		}
+		out = keep + " " + out
 	}
 	if r.KeyframeSuffix != "" {
 		out += "\n\n" + r.KeyframeSuffix

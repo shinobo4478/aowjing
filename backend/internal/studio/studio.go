@@ -20,6 +20,11 @@ const (
 	// Style3D is the Pixar-like 3D look, the first style built.
 	Style3D Style = "3d"
 
+	// StyleRealistic is photographic footage. Its first use is product clips
+	// (a Shopee product that must look exactly like the real one); a short-film
+	// mode comes later and may split this recipe.
+	StyleRealistic Style = "realistic"
+
 	// DefaultStyle is what a profile gets when none is given.
 	DefaultStyle = Style3D
 )
@@ -54,6 +59,10 @@ type Recipe struct {
 	// clip that starts from a picture, here the look is being decided, so the
 	// style's wording belongs in the prompt.
 	KeyframeSuffix string
+	// KeepLook replaces the default "keep the same character" wording when the
+	// profile's reference pictures go with a picture request. For a product style
+	// the references are the product, not a character.
+	KeepLook string
 }
 
 // recipes is the registry, in the order shown in the UI. To add a style, add a
@@ -67,6 +76,17 @@ var recipes = []Recipe{
 		// seeing what Kling makes of it.
 		TextSuffix:     "3D animated film style, Pixar-like characters, soft cinematic lighting, smooth natural motion.",
 		KeyframeSuffix: "3D animated film style, Pixar-like characters, soft cinematic lighting.",
+	},
+	{
+		Style: StyleRealistic,
+		Label: "Realistic (product / live action)",
+
+		// Photographic, not cinematic ("cinematic" reads as film and fake).
+		// A starting guess, not tried on real output yet. ImageSuffix stays
+		// empty so a real photo is never restyled.
+		TextSuffix:     "Photorealistic, natural light, shot on a phone camera, realistic motion.",
+		KeyframeSuffix: "Photorealistic photograph, natural light, realistic materials and skin, no illustration, no 3D render look.",
+		KeepLook:       "Keep the product exactly as in the reference pictures: the same shape, proportions, colours, materials, cap, ring and logo, with the logo and any text in the same place and not redrawn. Do not restyle or invent details on it.",
 	},
 }
 
