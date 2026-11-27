@@ -502,9 +502,12 @@ captions added in the editor while voice-over is on hold).
   pictures) and `studio.KeyframePrompt` says which is which ("Pictures 1-2 are "Name", the lead
   character (note). Picture 3 is …") then "each must look exactly as in its own picture(s)…". The
   dialog ticks the hero by default. One request carries at most 6 pictures in all (scene + cast,
-  `studio.MaxRequestPictures`), a cautious cap — **no request with several reference pictures has been
-  sent to fal yet** (unverified that fal accepts that many base64 pictures, and how well either model
-  keeps several people/objects apart).
+  `studio.MaxRequestPictures`), a cautious cap. **First real result (owner, 2026-11-28):** one request
+  with 2 reference pictures (hero "พี่นักแบด" + prop "กระติกเขียว", a green bottle) came back as the hero
+  in a red jersey drinking from the green bottle on a badminton court; the owner judged it about right.
+  So fal accepts two base64 reference pictures in one request and the naming prompt works at that size.
+  **Still unverified:** 3–6 pictures, the bottle's logo/text, how steadily the face matches across
+  shots (a single sample), and which model did it (not recorded).
 - **Lessons from the owner's first bottle test:** an edit model copies the reference's *state* too — a
   closed bottle in the reference stays closed whatever the prompt says, so the pictures given must show
   the state the shot needs (open cap, in hand). One colour per request. A photo whose ratio is under 0.4
