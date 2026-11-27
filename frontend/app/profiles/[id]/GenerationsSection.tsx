@@ -5,6 +5,7 @@ import { App, Button, Empty, Popconfirm, Space, Table, Typography } from "antd";
 import type { TableColumnsType } from "antd";
 import {
   deleteGeneration,
+  fetchFalCosts,
   imageSrc,
   listGenerations,
   listPlacements,
@@ -13,7 +14,7 @@ import {
   listYouTubeUploads,
 } from "@/lib/api";
 import Tally from "@/components/Tally";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, formatUsd } from "@/lib/format";
 import type {
   Generation,
   Placement,
@@ -76,6 +77,38 @@ export default function GenerationsSection({
       });
   }, [profileId]);
 
+  // fal's real bill for each finished fal clip. The server remembers every bill
+  // it finds, so asking again only costs a call when something is still unknown
+  // (fal's billing can trail a clip by a few minutes). A clip with no bill
+  // after this stays "—": older clips never had their request id saved.
+  const [costNote, setCostNote] = useState<string | null>(null);
+  const syncCosts = useCallback(
+    async (list: Generation[]) => {
+      const missing = list
+        .filter((g) => g.provider === "fal" && g.status !== "pending" && g.costUsd == null)
+        .map((g) => g.id)
+        .slice(0, 200);
+      if (missing.length === 0) return;
+      try {
+        const r = await fetchFalCosts(missing);
+        setCostNote(
+          !r.configured
+            ? "Add a fal.ai billing key in Settings to see what each clip really cost."
+            : (r.error ?? null),
+        );
+        const found = r.costs;
+        if (Object.keys(found).length > 0) {
+          setGenerations((gs) =>
+            gs.map((g) => (g.id in found ? { ...g, costUsd: found[g.id] } : g)),
+          );
+        }
+      } catch {
+        /* non-fatal: the column just stays empty */
+      }
+    },
+    [],
+  );
+
   // Re-runs on mount and whenever refreshTick changes (a new generation).
   // `loading` starts true for the first paint; later refetches swap the rows in
   // without a spinner flash, so no synchronous setState here.
@@ -83,7 +116,9 @@ export default function GenerationsSection({
     let cancelled = false;
     listGenerations(profileId)
       .then((g) => {
-        if (!cancelled) setGenerations(g);
+        if (cancelled) return;
+        setGenerations(g);
+        void syncCosts(g);
       })
       .catch((err) => {
         if (!cancelled)
@@ -99,20 +134,31 @@ export default function GenerationsSection({
     return () => {
       cancelled = true;
     };
-  }, [profileId, refreshTick, message, loadYouTube, loadProducts]);
+  }, [profileId, refreshTick, message, loadYouTube, loadProducts, syncCosts]);
 
   // While a generation is pending, poll for the worker to finish it. A text
   // prompt is done in a second, but a real fal video takes several minutes
   // (the first real Kling clip took ~8), so keep going for 20 minutes.
   const hasPending = generations.some((g) => g.status === "pending");
+  const generationsRef = useRef(generations);
+  useEffect(() => {
+    generationsRef.current = generations;
+  }, [generations]);
 
   // When the last pending clip finishes, fal has charged for it: refresh the
   // balance in the menu bar.
   const hadPending = useRef(false);
   useEffect(() => {
-    if (hadPending.current && !hasPending) refreshCredits();
+    if (hadPending.current && !hasPending) {
+      refreshCredits();
+      // The bill usually appears in fal a little after the clip; ask now and
+      // once more a minute later.
+      void syncCosts(generationsRef.current);
+      const t = setTimeout(() => void syncCosts(generationsRef.current), 60_000);
+      return () => clearTimeout(t);
+    }
     hadPending.current = hasPending;
-  }, [hasPending]);
+  }, [hasPending, syncCosts]);
 
   useEffect(() => {
     if (!hasPending) return;
@@ -160,6 +206,10 @@ export default function GenerationsSection({
   const uploadsFor = (genId: string) =>
     uploads.filter((u) => u.generationId === genId);
 
+  const billed = generations.filter((g) => g.costUsd != null);
+  const knownCount = billed.length;
+  const totalCost = billed.reduce((n, g) => n + (g.costUsd ?? 0), 0);
+
   const columns: TableColumnsType<Generation> = [
     {
       title: "Template",
@@ -184,6 +234,14 @@ export default function GenerationsSection({
       render: (v: Generation["status"]) => (
         <Tally status={v} />
       ),
+    },
+    {
+      title: "Cost",
+      dataIndex: "costUsd",
+      width: 90,
+      align: "right",
+      render: (v: number | null) =>
+        v == null ? <Typography.Text type="secondary">—</Typography.Text> : formatUsd(v),
     },
     {
       title: "Created",
@@ -215,7 +273,19 @@ export default function GenerationsSection({
     <section>
       <Typography.Paragraph type="secondary" style={{ marginTop: 0 }}>
         History of running a prompt template through the AI provider.
+        {knownCount > 0 && (
+          <>
+            {" "}
+            Billed by fal so far: <strong>{formatUsd(totalCost)}</strong> over{" "}
+            {knownCount} {knownCount === 1 ? "clip" : "clips"}.
+          </>
+        )}
       </Typography.Paragraph>
+      {costNote && (
+        <Typography.Paragraph type="secondary" style={{ marginTop: -8 }}>
+          {costNote}
+        </Typography.Paragraph>
+      )}
 
       <Table<Generation>
         rowKey="id"

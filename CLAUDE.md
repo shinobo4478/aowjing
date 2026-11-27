@@ -383,6 +383,17 @@ Order of work (each a small PR):
      the `billing:usage:read` permission (BILLING / READONLY / FULL preset), which
      an `API`-preset key is not documented to have, so it uses its own optional
      setting `falBillingKey`. Cached 30 s. **Not yet tried with a real key.**
+   - **Real cost per clip (built 2026-11-27):** the worker saves fal's `request_id`
+     on the generation (`generations.fal_request_id`, kept even when the clip failed
+     after submit); `POST /credits/fal/costs` asks `GET api.fal.ai/v1/models/billing-events`
+     (same `falBillingKey`; needs `billing:usage:read`, `auth:keys:read`,
+     `account:users:read`) for those ids and stores `cost_total` in `generations.cost_usd`.
+     The Generations tab shows a Cost column and a total. Billing can trail a clip by a
+     few minutes, so unknown costs are asked again on the next load. Clips made before
+     this have no request id and stay "—". **Verified:** the billing key is accepted by
+     billing-events (a lookup of an unknown id returned 200, empty); **not yet seen
+     with a real clip's bill.** Existing DBs need `ALTER TABLE generations ADD COLUMN
+     fal_request_id text NOT NULL DEFAULT '', ADD COLUMN cost_usd double precision;`.
 5. Thai voice-over (TTS provider chosen after the owner listens to Thai
    samples from each candidate). **Put on hold by the owner (2026-11-27);**
    it becomes more important again when the 2D educational style (item 7)

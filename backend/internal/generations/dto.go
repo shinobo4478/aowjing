@@ -23,7 +23,10 @@ type generationDTO struct {
 	Error            string `json:"error"`
 	Provider         string `json:"provider"`
 	Model            string `json:"model"`
-	CreatedAt        string `json:"createdAt"`
+	// What fal really charged for this clip, in USD; null until fal's billing
+	// shows it (or for text-only runs and clips made before this was tracked).
+	CostUSD   *float64 `json:"costUsd"`
+	CreatedAt string   `json:"createdAt"`
 }
 
 func modelDTO(g sqlc.Generation, templateName string) generationDTO {
@@ -44,6 +47,7 @@ func modelDTO(g sqlc.Generation, templateName string) generationDTO {
 		Error:            g.Error,
 		Provider:         g.Provider,
 		Model:            g.Model,
+		CostUSD:          g.CostUsd,
 		CreatedAt:        pgconv.TimeString(g.CreatedAt),
 	}
 }
@@ -65,6 +69,7 @@ func listRowDTO(r sqlc.ListGenerationsByProfileRow) generationDTO {
 		Error:            r.Error,
 		Provider:         r.Provider,
 		Model:            r.Model,
+		CostUsd:          r.CostUsd,
 		CreatedAt:        r.CreatedAt,
 	}, deref(r.TemplateName))
 }
@@ -86,6 +91,7 @@ func getRowDTO(r sqlc.GetGenerationRow) generationDTO {
 		Error:            r.Error,
 		Provider:         r.Provider,
 		Model:            r.Model,
+		CostUsd:          r.CostUsd,
 		CreatedAt:        r.CreatedAt,
 	}, deref(r.TemplateName))
 }

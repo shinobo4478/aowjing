@@ -19,6 +19,11 @@ type Result struct {
 	Kind     string
 	Provider string
 	Model    string
+	// RequestID is the provider's id for the job (fal's request_id), the key
+	// for looking up what it really cost. Generators set it as soon as the job
+	// is submitted, so it is also returned alongside an error that happens
+	// later — fal may still bill a job that then timed out.
+	RequestID string
 }
 
 // Request is what a generator is asked to make. It is a struct, not loose

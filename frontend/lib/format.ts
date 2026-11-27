@@ -24,3 +24,4 @@ export const formatDateTime = (iso: string) => dateTimeFmt.format(new Date(iso))
 /** Dollars to at most 4 decimals, so $0.0398 is not shown as $0.04 and $0.42
  *  is not "0.4200". Used for prices shown before spending. */
 export const formatUsd = (n: number) => `$${Number(n.toFixed(4))}`;
+
