@@ -1,6 +1,6 @@
 "use client";
 
-import { Segmented } from "antd";
+import { ConfigProvider, Segmented } from "antd";
 import { useThemeMode } from "./ThemeMode";
 
 // Hand-drawn 16px icons (stroke = currentColor), so there is no icon package
@@ -43,16 +43,42 @@ function MoonIcon() {
   );
 }
 
+// Each icon sits in a 24px box, so the highlight behind the chosen one is a
+// circle that fits the pill around it (see the ConfigProvider below).
+function Dot({ children }: { children: React.ReactNode }) {
+  return (
+    <span
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: 24,
+        height: 24,
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
 const OPTIONS = [
   {
     value: "light",
-    label: <SunIcon />,
+    label: (
+      <Dot>
+        <SunIcon />
+      </Dot>
+    ),
     title: "Light mode",
     "aria-label": "Light mode",
   },
   {
     value: "dark",
-    label: <MoonIcon />,
+    label: (
+      <Dot>
+        <MoonIcon />
+      </Dot>
+    ),
     title: "Dark mode",
     "aria-label": "Dark mode",
   },
@@ -69,14 +95,18 @@ export default function ThemeSwitch({ block }: { block?: boolean }) {
   // switch would otherwise sit on a 60px text baseline, off-centre.
   return (
     <div style={{ display: "flex", alignItems: "center", lineHeight: 1, width: block ? "100%" : undefined }}>
-      <Segmented
-        size="small"
-        block={block}
-        aria-label="Colour theme"
-        options={[...OPTIONS]}
-        value={mode}
-        onChange={(v) => setPreference(v as "light" | "dark")}
-      />
+      {/* antd rounds the chosen item less than the track; both are made round,
+          and the item's side padding is removed so the Dot sets its size. */}
+      <ConfigProvider theme={{ token: { borderRadiusXS: 999, borderRadiusSM: 999, controlPaddingHorizontalSM: 2 } }}>
+        <Segmented
+          size="small"
+          block={block}
+          aria-label="Colour theme"
+          options={[...OPTIONS]}
+          value={mode}
+          onChange={(v) => setPreference(v as "light" | "dark")}
+        />
+      </ConfigProvider>
     </div>
   );
 }
