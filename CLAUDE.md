@@ -450,6 +450,34 @@ Order of work (each a small PR):
    model writes end prompts (small enough changes) on real drafts.
    Existing DBs also need
    `ALTER TABLE video_shots ADD COLUMN end_picture_prompt text NOT NULL DEFAULT '';`.
+   **Thai prompts (built 2026-11-27, the owner reads English poorly).** The owner
+   writes and edits prompts in Thai; the English is what the models receive (fal's
+   pages do not promise Thai for the picture or video models). Each shot keeps the
+   three prompts twice: `video_shots.prompt_th` / `picture_prompt_th` /
+   `end_picture_prompt_th` beside the English columns. `POST /videos/translate`
+   `{kind: motion|picture|endPicture, direction: toEnglish|toThai, text}` →
+   `{text, costUsd, model}`, through the same fal LLM route as the draft, with the
+   rules of each kind (a clip prompt says only what moves; a picture prompt has no
+   style words, text or looks; an end picture prompt starts "Only the …", a pose
+   change only; always "translate, add nothing"). The English answer is checked to
+   hold no Thai letters (retried once if it does; both costs are added). The model
+   is `translateModel` in Settings, else `scriptModel`, else the default. Draft with
+   AI also writes a Thai twin of every prompt (the scene's Thai goes in front of the
+   Thai picture prompt, as the English does). **Screen:** each prompt is a Thai box
+   with "แปลเป็นอังกฤษ" / "ดูความหมายเป็นไทย" and the English folded under it with a
+   preview, never hidden. The English counts as made from the Thai when the page
+   loads; editing the Thai marks it out of date, and Save, Generate, the picture
+   dialogs and "Make pictures" translate any out-of-date Thai first. The Make
+   pictures confirmation and the Generate confirmation show the English that will be
+   sent. A Thai letter in an English box blocks Generate. The cost of a translation
+   is shown after it ("แปลแล้ว ≈ $…"); there is no confirmation for it (a fraction of
+   a cent, owner's choice 2026-11-27). **Not counted** in the daily spending limit or
+   the dashboard's spend (neither the draft nor translation is billed per clip); fal
+   credits still drop. Existing DBs need
+   `ALTER TABLE video_shots ADD COLUMN prompt_th text NOT NULL DEFAULT '', ADD COLUMN
+   picture_prompt_th text NOT NULL DEFAULT '', ADD COLUMN end_picture_prompt_th text
+   NOT NULL DEFAULT '';`. **Unverified against real fal:** how faithful the
+   translations are (the owner can check with "ดูความหมายเป็นไทย").
 9. ~~Video templates~~ **cut by the owner (2026-11-27):** not needed now.
 
 ## Video models (built 2026-11-27)

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Alert, App, Button, Checkbox, Input, Segmented, Select, Typography } from "antd";
+import { Alert, App, Button, Checkbox, Segmented, Select, Typography } from "antd";
 import {
   ApiError,
   createKeyframe,
@@ -12,8 +12,10 @@ import {
   listReferences,
 } from "@/lib/api";
 import { formatUsd } from "@/lib/format";
+import { hasThaiLetters, usePromptPair, type PromptPair, type PromptTexts } from "@/lib/promptPair";
 import type { Keyframe, KeyframeModels } from "@/lib/types";
 import { refreshCredits } from "../../CreditsBadge";
+import PromptPairField from "./PromptPairField";
 
 const POLL_EVERY_MS = 3000;
 const POLL_MAX_TRIES = 120; // 6 minutes; an image takes seconds to a minute
@@ -36,7 +38,7 @@ export default function KeyframePicker({
   onChange,
   scenePictures = [],
   sameCamera = false,
-  initialPrompt = "",
+  initialPrompt,
   onPromptChange,
 }: {
   profileId: string;
@@ -49,15 +51,50 @@ export default function KeyframePicker({
    *  one, so the camera, room and light must stay exactly as they are and only
    *  the pose may change. */
   sameCamera?: boolean;
-  /** The picture prompt to start from (a shot's saved one). */
-  initialPrompt?: string;
-  /** Called as the prompt is typed, so the caller can keep it with the shot. */
-  onPromptChange?: (prompt: string) => void;
+  /** The picture prompt to start from (a shot's saved one): the Thai the owner
+   *  edits and the English the image model receives. */
+  initialPrompt?: PromptTexts;
+  /** Called whenever either text changes (typing or a translation), so the
+   *  caller can keep both with the shot. */
+  onPromptChange?: (prompt: PromptTexts) => void;
 }) {
   const { message, modal } = App.useApp();
   const [info, setInfo] = useState<KeyframeModels | null>(null);
   const [refCount, setRefCount] = useState(0);
-  const [prompt, setPrompt] = useState(initialPrompt);
+  // The prompt is a Thai/English pair: the owner writes Thai; the English is what
+  // the image model receives (translated before pictures are paid for).
+  const raw = usePromptPair(
+    sameCamera ? "endPicture" : "picture",
+    initialPrompt?.thai ?? "",
+    initialPrompt?.english ?? "",
+  );
+  // The same pair, telling the caller about every change.
+  const pair: PromptPair = {
+    ...raw,
+    setTh: (text) => {
+      raw.setTh(text);
+      onPromptChange?.({ english: raw.en, thai: text });
+    },
+    setEn: (text) => {
+      raw.setEn(text);
+      onPromptChange?.({ english: text, thai: raw.th });
+    },
+    toEnglish: async () => {
+      const english = await raw.toEnglish();
+      onPromptChange?.({ english, thai: raw.th });
+      return english;
+    },
+    toThai: async () => {
+      const thai = await raw.toThai();
+      onPromptChange?.({ english: raw.en, thai });
+      return thai;
+    },
+    ensureEnglish: async () => {
+      const english = await raw.ensureEnglish();
+      onPromptChange?.({ english, thai: raw.th });
+      return english;
+    },
+  };
   const [model, setModel] = useState("");
   const [count, setCount] = useState(2);
   const [useRefs, setUseRefs] = useState(true);
@@ -126,7 +163,9 @@ export default function KeyframePicker({
 
   const chosenModel = info?.models.find((m) => m.key === model);
   const effectiveRefs = (useRefs ? refCount : 0) + sceneIds.length;
-  const promptTooShort = prompt.trim().length < 3;
+  // A picture needs a description in either language (the Thai is translated
+  // when the pictures are made).
+  const promptTooShort = Math.max(pair.th.trim().length, pair.en.trim().length) < 3;
 
   function toggleScene(imageId: string, on: boolean) {
     setSceneIds((cur) =>
@@ -134,9 +173,25 @@ export default function KeyframePicker({
     );
   }
 
-  // Making pictures spends fal.ai credits, so ask first, with the price.
-  function confirmMake() {
+  // Making pictures spends fal.ai credits, so ask first, with the price. The
+  // Thai is translated first (a fraction of a cent) so the confirmation can show
+  // the English the image model will receive.
+  async function confirmMake() {
     if (!chosenModel) return;
+    let english = pair.en;
+    if (pair.stale) {
+      try {
+        english = await pair.ensureEnglish();
+      } catch (err) {
+        message.error(err instanceof Error ? err.message : "The translation failed.");
+        return;
+      }
+    }
+    if (english.trim() === "") return;
+    if (hasThaiLetters(english)) {
+      message.error("The English box contains Thai. Press “แปลเป็นอังกฤษ” first.");
+      return;
+    }
     const total = chosenModel.priceUsd * count;
     modal.confirm({
       title: `Make ${count} picture${count === 1 ? "" : "s"}?`,
@@ -145,6 +200,9 @@ export default function KeyframePicker({
           <p style={{ margin: "0 0 8px" }}>
             {chosenModel.label}: {count} × {formatUsd(chosenModel.priceUsd)} ≈{" "}
             <strong>{formatUsd(total)}</strong>, charged to your fal.ai credits.
+          </p>
+          <p style={{ margin: "0 0 8px", fontSize: 13 }}>
+            <strong>English sent to the AI:</strong> {english}
           </p>
           <p style={{ margin: 0 }}>
             {sceneIds.length > 0
@@ -161,11 +219,11 @@ export default function KeyframePicker({
       ),
       okText: `Make pictures (≈ ${formatUsd(total)})`,
       cancelText: "Cancel",
-      onOk: () => make(),
+      onOk: () => make(english),
     });
   }
 
-  async function make() {
+  async function make(english: string) {
     setBusy(true);
     try {
       // A new request replaces the old one; drop the old pictures (the ones no
@@ -175,7 +233,7 @@ export default function KeyframePicker({
       setKeyframe(
         await createKeyframe({
           profileId,
-          prompt: prompt.trim(),
+          prompt: english.trim(),
           model,
           count,
           useReferences: useRefs,
@@ -199,28 +257,28 @@ export default function KeyframePicker({
 
   return (
     <div style={{ marginTop: 8 }}>
-      <Input.TextArea
-        value={prompt}
-        onChange={(e) => {
-          setPrompt(e.target.value);
-          onPromptChange?.(e.target.value);
-        }}
-        autoSize={{ minRows: 5, maxRows: 14 }}
-        maxLength={1500}
-        showCount
+      <PromptPairField
+        pair={pair}
+        title={sameCamera ? "ภาพจบ · End picture" : "ภาพ · Picture"}
+        hint={
+          sameCamera
+            ? "เฉพาะสิ่งที่เปลี่ยน (ท่าหรือตำแหน่ง) กล้อง ห้อง และแสงเหมือนภาพเริ่มต้นทุกอย่าง"
+            : "ใครอยู่ในภาพ อยู่ที่ไหน แสงและบรรยากาศ พิมพ์เป็นภาษาไทยได้ ระบบแปลเป็นอังกฤษให้ตอนกดสร้างภาพ"
+        }
         placeholder={
           sameCamera
-            ? "Describe ONLY what changes, in English: the pose or what the character is doing at the end. The camera, room and light stay exactly as in the starting picture."
-            : "Describe the scene, in English: who is in it, where, the light, the mood…"
+            ? "เช่น เปลี่ยนเฉพาะท่าของแมว: ก้มตัวต่ำ หางตั้ง ถุงยุบอยู่บนพรมตรงหน้าจมูก"
+            : "เช่น แมวนั่งตัวตรงกลางพรมในห้องนั่งเล่นที่แดดส่อง มองกล้อง ถุงพลาสติกสีขาวลอยลงมา"
         }
+        minRows={4}
+        maxRows={12}
       />
 
       <Select
         value={model || undefined}
         onChange={setModel}
         loading={!info}
-        // The character counter sits just below the text box and needs the room.
-        style={{ width: "100%", marginTop: 28 }}
+        style={{ width: "100%", marginTop: 12 }}
         options={(info?.models ?? []).map((m) => ({
           value: m.key,
           label: `${m.label} — ${formatUsd(m.priceUsd)} per picture`,
@@ -296,7 +354,7 @@ export default function KeyframePicker({
       <div style={{ marginTop: 12, display: "flex", gap: 12, alignItems: "center" }}>
         <Button
           onClick={confirmMake}
-          loading={busy || keyframe?.status === "pending"}
+          loading={busy || pair.busy || keyframe?.status === "pending"}
           disabled={!chosenModel || promptTooShort}
         >
           {keyframe ? "Make new pictures" : "Make pictures"}

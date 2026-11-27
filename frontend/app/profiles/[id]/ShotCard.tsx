@@ -1,21 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Card, Input, Popconfirm, Space, Typography } from "antd";
+import { App, Button, Card, Popconfirm, Space, Typography } from "antd";
 import SecondsField from "@/components/SecondsField";
 import Tally from "@/components/Tally";
 import { imageSrc } from "@/lib/api";
 import { formatUsd } from "@/lib/format";
+import { hasThaiLetters, usePromptPair } from "@/lib/promptPair";
 import type { Shot } from "@/lib/types";
+import PromptPairField from "./PromptPairField";
 
 /** The part of a shot's plan typed on the card. The picture is chosen in its
- *  own dialog and saved at once. */
+ *  own dialog and saved at once. Each prompt is a Thai/English pair: the owner
+ *  edits the Thai; the English is what the models receive (translated from the
+ *  Thai before anything is saved or paid for). */
 export interface ShotDraft {
+  /** The clip motion prompt (English) and its Thai. */
   prompt: string;
+  promptTh: string;
   /** What the starting picture should show (Make with AI starts from it). */
   picturePrompt: string;
+  picturePromptTh: string;
   /** What changes by the END picture (a pose or position only). */
   endPicturePrompt: string;
+  endPicturePromptTh: string;
   seconds: number;
 }
 
@@ -71,39 +79,68 @@ export default function ShotCard({
   onMove: (direction: -1 | 1) => void;
   onDelete: () => void;
 }) {
-  const [prompt, setPrompt] = useState(shot.prompt);
-  // The picture prompt can also change outside this card (the picture dialog saves
-  // what was typed there), so an edit made here only counts while the saved
-  // value is still the one it was started from; otherwise the saved value shows.
-  const [typedPicturePrompt, setTypedPicturePrompt] = useState<{
-    text: string;
-    base: string;
-  } | null>(null);
-  const picturePrompt =
-    typedPicturePrompt && typedPicturePrompt.base === shot.picturePrompt
-      ? typedPicturePrompt.text
-      : shot.picturePrompt;
-  // The same for the end picture prompt.
-  const [typedEndPrompt, setTypedEndPrompt] = useState<{
-    text: string;
-    base: string;
-  } | null>(null);
-  const endPicturePrompt =
-    typedEndPrompt && typedEndPrompt.base === shot.endPicturePrompt
-      ? typedEndPrompt.text
-      : shot.endPicturePrompt;
+  const { message } = App.useApp();
+  // Each prompt is a Thai/English pair (see lib/promptPair.ts). They can also
+  // change outside this card (a dialog saves what was typed there), which the
+  // hook handles: what was typed here only counts while the saved value is
+  // still the one it was typed over.
+  const motion = usePromptPair("motion", shot.promptTh, shot.prompt);
+  const picture = usePromptPair("picture", shot.picturePromptTh, shot.picturePrompt);
+  const endPic = usePromptPair("endPicture", shot.endPicturePromptTh, shot.endPicturePrompt);
   const [seconds, setSeconds] = useState(shot.seconds);
-  const draft: ShotDraft = { prompt, picturePrompt, endPicturePrompt, seconds };
+  const translating = motion.busy || picture.busy || endPic.busy;
+
+  const draft: ShotDraft = {
+    prompt: motion.en,
+    promptTh: motion.th,
+    picturePrompt: picture.en,
+    picturePromptTh: picture.th,
+    endPicturePrompt: endPic.en,
+    endPicturePromptTh: endPic.th,
+    seconds,
+  };
   const dirty =
-    prompt.trim() !== shot.prompt ||
-    picturePrompt.trim() !== shot.picturePrompt ||
-    endPicturePrompt.trim() !== shot.endPicturePrompt ||
+    motion.en.trim() !== shot.prompt ||
+    motion.th.trim() !== shot.promptTh ||
+    picture.en.trim() !== shot.picturePrompt ||
+    picture.th.trim() !== shot.picturePromptTh ||
+    endPic.en.trim() !== shot.endPicturePrompt ||
+    endPic.th.trim() !== shot.endPicturePromptTh ||
     seconds !== shot.seconds;
+
+  /** The draft with every English prompt brought up to date: a Thai prompt that
+   *  was edited (or has no English yet) is translated first, one at a time. A
+   *  failed translation stops the action, with the reason shown. */
+  async function fresh(): Promise<ShotDraft | null> {
+    try {
+      const prompt = await motion.ensureEnglish();
+      const picturePrompt = await picture.ensureEnglish();
+      const endPicturePrompt = await endPic.ensureEnglish();
+      return { ...draft, prompt, picturePrompt, endPicturePrompt };
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : "The translation failed.");
+      return null;
+    }
+  }
+  /** Wraps an action that takes the draft so it gets the fresh one. */
+  const withFresh = (fn: (d: ShotDraft) => void | Promise<void>) => async () => {
+    const d = await fresh();
+    if (d) await fn(d);
+  };
 
   const hasPicture = shot.imageId !== "" || shot.imageUrl !== "";
   const pending = shot.latest?.status === "pending";
   const price = perSecond === undefined ? undefined : perSecond * seconds;
-  const canGenerate = prompt.trim() !== "" && hasPicture && !pending && !busy;
+  // A clip needs a prompt (the Thai counts: it is translated when pressed) and
+  // an English box without Thai in it.
+  const englishHasThai = hasThaiLetters(motion.en);
+  const canGenerate =
+    (motion.th.trim() !== "" || motion.en.trim() !== "") &&
+    !englishHasThai &&
+    hasPicture &&
+    !pending &&
+    !busy &&
+    !translating;
 
   return (
     <Card
@@ -177,16 +214,16 @@ export default function ShotCard({
             </div>
           )}
           <Space size={4} style={{ marginTop: 4 }} wrap>
-            <Button size="small" disabled={busy} onClick={() => onChoosePicture(draft)}>
+            <Button size="small" disabled={busy} onClick={() => void withFresh(onChoosePicture)()}>
               {hasPicture ? "Change" : "Choose…"}
             </Button>
             {hasPicture && (
-              <Button size="small" type="text" disabled={busy} onClick={() => void onRemovePicture(draft)}>
+              <Button size="small" type="text" disabled={busy} onClick={() => void withFresh(onRemovePicture)()}>
                 Remove
               </Button>
             )}
             {hasPreviousEnd && (
-              <Button size="small" type="text" disabled={busy} onClick={() => onStartFromPreviousEnd(draft)}>
+              <Button size="small" type="text" disabled={busy} onClick={() => void withFresh(onStartFromPreviousEnd)()}>
                 Use previous end
               </Button>
             )}
@@ -228,7 +265,7 @@ export default function ShotCard({
             <Button
               size="small"
               disabled={busy || !hasPicture}
-              onClick={() => onChooseEnd(draft)}
+              onClick={() => void withFresh(onChooseEnd)()}
             >
               {shot.endImageId ? "Change end" : "End picture…"}
             </Button>
@@ -237,13 +274,13 @@ export default function ShotCard({
                 size="small"
                 type="text"
                 disabled={busy || !hasPicture}
-                onClick={() => onUseNextAsEnd(draft)}
+                onClick={() => void withFresh(onUseNextAsEnd)()}
               >
                 Use next shot&apos;s
               </Button>
             )}
             {shot.endImageId && (
-              <Button size="small" type="text" disabled={busy} onClick={() => void onRemoveEnd(draft)}>
+              <Button size="small" type="text" disabled={busy} onClick={() => void withFresh(onRemoveEnd)()}>
                 Remove
               </Button>
             )}
@@ -252,41 +289,28 @@ export default function ShotCard({
 
         {/* Plan */}
         <div style={{ flex: "1 1 320px", minWidth: 0 }}>
-          <Input.TextArea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            autoSize={{ minRows: 4, maxRows: 12 }}
-            maxLength={2000}
-            placeholder="What moves in this shot, and how the camera moves, in English. The picture already sets how it looks."
+          <PromptPairField
+            pair={motion}
+            title="การเคลื่อนไหวของคลิป · Motion"
+            hint="บอกว่าอะไรขยับ กล้องทำอะไร และจบอย่างไร (ไม่ต้องบรรยายหน้าตา ภาพกำหนดไว้แล้ว)"
+            placeholder="เช่น แมวส่ายก้น กระโจนใส่ถุง ตีลังกาแล้วลุกขึ้น กล้องนิ่ง"
+            minRows={3}
+            maxRows={10}
           />
-          <Typography.Text type="secondary" style={{ display: "block", fontSize: 12, margin: "8px 0 2px" }}>
-            Picture prompt: what the starting picture shows (Make with AI starts from this)
-          </Typography.Text>
-          <Input.TextArea
-            value={picturePrompt}
-            onChange={(e) =>
-              setTypedPicturePrompt({ text: e.target.value, base: shot.picturePrompt })
-            }
-            autoSize={{ minRows: 2, maxRows: 8 }}
-            maxLength={2000}
-            placeholder="Who is in the picture, what they are doing, the framing, the mood, in English."
+          <PromptPairField
+            pair={picture}
+            title="ภาพเริ่มต้น · Picture"
+            hint="ใครอยู่ในภาพ ทำอะไร มุมกล้อง บรรยากาศ (หน้าต่าง Make with AI เริ่มจากข้อความนี้)"
+            placeholder="เช่น ภาพระยะกลางของแมวนั่งตัวตรงกลางพรม มองกล้อง มีถุงพลาสติกสีขาวลอยลงมา"
           />
-          {(hasPicture || endPicturePrompt !== "") && (
-            <>
-              <Typography.Text type="secondary" style={{ display: "block", fontSize: 12, margin: "8px 0 2px" }}>
-                End picture prompt: only what changes by the end (a pose or position;
-                the camera and room stay). Leave empty if this shot has no end picture.
-              </Typography.Text>
-              <Input.TextArea
-                value={endPicturePrompt}
-                onChange={(e) =>
-                  setTypedEndPrompt({ text: e.target.value, base: shot.endPicturePrompt })
-                }
-                autoSize={{ minRows: 2, maxRows: 6 }}
-                maxLength={2000}
-                placeholder="Only the cat's pose changes: it crouches low, tail raised…"
-              />
-            </>
+          {(hasPicture || endPic.th.trim() !== "" || endPic.en.trim() !== "") && (
+            <PromptPairField
+              pair={endPic}
+              title="ภาพจบ · End picture"
+              hint="เฉพาะสิ่งที่เปลี่ยนเมื่อจบช็อต (ท่าหรือตำแหน่ง) กล้องและห้องเหมือนเดิม เว้นว่างถ้าช็อตนี้ไม่มีภาพจบ"
+              placeholder="เช่น เปลี่ยนเฉพาะท่าของแมว: ก้มตัวต่ำ หางตั้ง ถุงยุบอยู่บนพรมตรงหน้าจมูก"
+              maxRows={6}
+            />
           )}
           <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginTop: 8 }}>
             <Typography.Text type="secondary">Length</Typography.Text>
@@ -300,15 +324,16 @@ export default function ShotCard({
 
           <Space style={{ marginTop: 12 }} wrap>
             <Button
-              disabled={!dirty || busy}
-              onClick={() => void onSave(draft)}
+              disabled={!dirty || busy || translating}
+              loading={translating}
+              onClick={() => void withFresh(onSave)()}
             >
               Save{dirty ? "" : "d"}
             </Button>
             <Button
               type="primary"
               disabled={!canGenerate}
-              onClick={() => onGenerate(draft)}
+              onClick={() => void withFresh(onGenerate)()}
             >
               {shot.attempts > 0 ? "Generate again" : "Generate"}
               {price !== undefined ? ` (≈ ${formatUsd(price)})` : ""}

@@ -190,6 +190,11 @@ export interface Shot {
   picturePrompt: string;
   /** What changes by the END picture (a pose or position only); "" for none. */
   endPicturePrompt: string;
+  /** The owner's Thai versions of the three prompts (what is read and edited);
+   *  the English ones are what the models receive. */
+  promptTh: string;
+  picturePromptTh: string;
+  endPicturePromptTh: string;
   seconds: number;
   /** A public link the shot starts from, or "" . */
   imageUrl: string;
@@ -219,6 +224,11 @@ export interface ShotInput {
   prompt: string;
   picturePrompt: string;
   endPicturePrompt: string;
+  /** The owner's Thai versions of the three prompts (what is read and edited);
+   *  the English ones are what the models receive. */
+  promptTh: string;
+  picturePromptTh: string;
+  endPicturePromptTh: string;
   seconds: number;
   imageUrl: string;
   imageId: string;
@@ -278,6 +288,9 @@ export interface Settings {
   /** Optional model id the script helper writes drafts with (e.g.
    *  "anthropic/claude-sonnet-5"); empty means the built-in default. */
   scriptModel: string;
+  /** Optional model id that translates prompts between Thai and English; empty
+   *  means the script model. */
+  translateModel: string;
   /** Daily spending limit in USD as typed ("" = none), and the browser's time
    *  zone, saved with it so "today" starts at the owner's midnight. */
   dailyCapUsd: string;
