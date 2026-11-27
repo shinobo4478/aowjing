@@ -452,6 +452,21 @@ Order of work (each a small PR):
    `ALTER TABLE video_shots ADD COLUMN end_picture_prompt text NOT NULL DEFAULT '';`.
 9. ~~Video templates~~ **cut by the owner (2026-11-27):** not needed now.
 
+## Dashboard (built 2026-11-27)
+
+Two screens read `GET /dashboard?tz=<IANA zone>` (`internal/dashboard`, queries in `db/query/dashboard.sql`):
+**Home** (`/`, the page after sign-in — credits left, spent today, clips rendering, recent failures; the four
+getting-started steps show instead until a profile exists) and **Dashboard** (`/dashboard`, its own menu entry: the
+full picture below). On a phone the tab bar is Home, Dashboard, Profiles, Products, Account (Settings is in the
+Account sheet). One reply holds: spend (this month / all time /
+per day for 30 days / per profile, from `generations.cost_usd`; clips with no bill are counted apart, never as $0),
+clips rendering and the latest failures, production counts (videos, shots OK'd / made, finished clips not
+published), YouTube uploads (7 d / 30 d / total / latest) and Shopee products (pinned or not). Day and month
+boundaries follow the browser's time zone. It only reads existing tables; no schema change. **Not built (slots are
+shown as "Not connected"):** YouTube views/likes (the Data API `videos.list` statistics part may work with the
+`youtube.readonly` scope already granted — to be tried; watch time and revenue need `yt-analytics.readonly`, a new
+consent) and Shopee clicks/orders/commission (Phase 3 B).
+
 ## Explicitly OUT of scope for Phase 2 (do not build yet)
 
 - TikTok / Instagram integration — after YouTube is solid

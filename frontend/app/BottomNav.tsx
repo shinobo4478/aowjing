@@ -19,6 +19,17 @@ const svg = {
   "aria-hidden": true,
 };
 
+const HomeIcon = () => (
+  <svg {...svg}>
+    <path d="M4 11l8-7 8 7" />
+    <path d="M6 10v10h12V10" />
+  </svg>
+);
+const DashboardIcon = () => (
+  <svg {...svg}>
+    <path d="M5 20V11M12 20V4M19 20v-6" />
+  </svg>
+);
 const ProfilesIcon = () => (
   <svg {...svg}>
     <rect x="3" y="4" width="18" height="16" rx="2" />
@@ -31,13 +42,6 @@ const ProductsIcon = () => (
     <path d="M9 7a3 3 0 0 1 6 0" />
   </svg>
 );
-const SettingsIcon = () => (
-  <svg {...svg}>
-    <path d="M4 7h10M18 7h2M4 17h2M10 17h10" />
-    <circle cx="16" cy="7" r="2" />
-    <circle cx="8" cy="17" r="2" />
-  </svg>
-);
 const AccountIcon = () => (
   <svg {...svg}>
     <circle cx="12" cy="8" r="4" />
@@ -46,15 +50,16 @@ const AccountIcon = () => (
 );
 
 const tabs = [
+  { href: "/", label: "Home", icon: <HomeIcon /> },
+  { href: "/dashboard", label: "Dashboard", icon: <DashboardIcon /> },
   { href: "/profiles", label: "Profiles", icon: <ProfilesIcon /> },
   { href: "/products", label: "Products", icon: <ProductsIcon /> },
-  { href: "/settings", label: "Settings", icon: <SettingsIcon /> },
 ];
 
 /**
  * Phone navigation: a tab bar fixed to the bottom of the screen, where a thumb
  * reaches it, instead of a menu behind a button. The last tab is the account
- * (name + sign out). Pads for the home-indicator safe area.
+ * (name, Settings, sign out). Pads for the home-indicator safe area.
  */
 export default function BottomNav() {
   const pathname = usePathname();
@@ -65,7 +70,8 @@ export default function BottomNav() {
     <>
       <nav className="acmp-tabbar" aria-label="Main">
         {tabs.map((t) => {
-          const active = pathname.startsWith(t.href);
+          // "/" would prefix-match every page, so Home is matched exactly.
+          const active = t.href === "/" ? pathname === "/" : pathname.startsWith(t.href);
           return (
             <Link
               key={t.href}
@@ -99,6 +105,11 @@ export default function BottomNav() {
         <Typography.Paragraph type="secondary" style={{ marginTop: 0 }}>
           Signed in as <strong>{user.username}</strong>
         </Typography.Paragraph>
+        <Link href="/settings" onClick={() => setOpen(false)}>
+          <Button block size="large" style={{ marginBottom: 12 }}>
+            Settings
+          </Button>
+        </Link>
         <Button
           block
           size="large"

@@ -261,7 +261,7 @@ export default function KeyframePicker({
                   <img
                     src={imageSrc(p.imageId)}
                     alt={p.label}
-                    style={{ width: 48, height: 85, objectFit: "cover", borderRadius: 3, verticalAlign: "middle", marginRight: 6 }}
+                    style={{ width: 48, height: 85, objectFit: "cover", borderRadius: 8, verticalAlign: "middle", marginRight: 6 }}
                   />
                   {p.label}
                 </Checkbox>
@@ -337,7 +337,7 @@ export default function KeyframePicker({
                     padding: 0,
                     background: "none",
                     cursor: "pointer",
-                    borderRadius: 6,
+                    borderRadius: 14,
                     border: selected
                       ? "3px solid var(--ant-color-primary, #1677ff)"
                       : "3px solid transparent",
@@ -348,7 +348,7 @@ export default function KeyframePicker({
                   <img
                     src={imageSrc(id)}
                     alt="Candidate starting picture"
-                    style={{ width: 120, height: 213, objectFit: "cover", display: "block", borderRadius: 3 }}
+                    style={{ width: 120, height: 213, objectFit: "cover", display: "block", borderRadius: 8 }}
                   />
                 </button>
               );

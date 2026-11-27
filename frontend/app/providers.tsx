@@ -17,7 +17,7 @@ import { ThemeModeProvider, useThemeMode } from "./ThemeMode";
  *   only brand colour in both — reserved for the primary action, the current
  *   page and focus. Colour elsewhere means identity or state (see
  *   lib/tape.ts), never decoration.
- *   Radii differ by role on purpose: 2px structure, 4px controls, 6px overlays.
+ *   Radii go by role: pill buttons, 12px inputs, 8px chips, 16px panels.
  * - App: gives components the static message/notification/modal APIs via
  *   `App.useApp()`.
  */
@@ -70,9 +70,11 @@ function Themed({ children }: { children: React.ReactNode }) {
           colorTextQuaternary: c.faint,
           colorTextPlaceholder: c.dim,
 
-          borderRadius: 4,
-          borderRadiusSM: 2,
-          borderRadiusLG: 6,
+          // Soft all round, to go with the pill buttons: 12 on inputs and
+          // selects, 8 on small chips, 16 on panels (cards, modals, menus).
+          borderRadius: 12,
+          borderRadiusSM: 8,
+          borderRadiusLG: 16,
           controlHeight: phone ? 44 : 40,
           fontFamily: FONT_FAMILY,
           fontSize: phone ? 16 : 15,
@@ -163,6 +165,12 @@ function Themed({ children }: { children: React.ReactNode }) {
             contentBg: c.raised,
             headerBg: c.raised,
             titleFontSize: 19,
+          },
+          // The sun/moon switch is a pill, like the buttons.
+          Segmented: {
+            borderRadius: 999,
+            borderRadiusSM: 999,
+            borderRadiusLG: 999,
           },
           Tag: {
             defaultBg: "transparent",

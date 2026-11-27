@@ -155,7 +155,7 @@ export default function ShotCard({
             <img
               src={shot.imageId ? imageSrc(shot.imageId) : shot.imageUrl}
               alt={`Starting picture of shot ${shot.position}`}
-              style={{ width: 108, height: 192, objectFit: "cover", borderRadius: 4, display: "block" }}
+              style={{ width: 108, height: 192, objectFit: "cover", borderRadius: 10, display: "block" }}
             />
           ) : (
             <div
@@ -163,7 +163,7 @@ export default function ShotCard({
                 width: 108,
                 height: 192,
                 border: "1px dashed var(--acmp-dashed)",
-                borderRadius: 4,
+                borderRadius: 10,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -201,7 +201,7 @@ export default function ShotCard({
             <img
               src={imageSrc(shot.endImageId)}
               alt={`End picture of shot ${shot.position}`}
-              style={{ width: 108, height: 192, objectFit: "cover", borderRadius: 4, display: "block" }}
+              style={{ width: 108, height: 192, objectFit: "cover", borderRadius: 10, display: "block" }}
             />
           ) : (
             <div
@@ -209,7 +209,7 @@ export default function ShotCard({
                 width: 108,
                 height: 192,
                 border: "1px dashed var(--acmp-dashed)",
-                borderRadius: 4,
+                borderRadius: 10,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -348,7 +348,7 @@ export default function ShotCard({
                     controls
                     preload="metadata"
                     src={shot.take.output}
-                    style={{ width: "100%", maxHeight: 260, borderRadius: 4, background: "#000" }}
+                    style={{ width: "100%", maxHeight: 260, borderRadius: 10, background: "#000" }}
                   />
                   <Typography.Text type="secondary" style={{ fontSize: 12, display: "block" }}>
                     {shot.takeChosen ? "Your chosen take" : "Newest take"}

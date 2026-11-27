@@ -24,7 +24,7 @@ export default function LoginPage() {
     setError(null);
     try {
       await login(values.username, values.password);
-      router.replace("/profiles");
+      router.replace("/");
     } catch (err) {
       setError(
         err instanceof ApiError

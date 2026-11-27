@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import AuthGate from "./AuthGate";
+import InlineScript from "@/components/InlineScript";
 import { sukhumvit } from "./fonts";
 import Providers from "./providers";
 import { THEME_INIT_SCRIPT } from "@/lib/themeScript";
@@ -37,7 +38,7 @@ export default function RootLayout({
     // hydrates (see node_modules/next/dist/docs/.../preventing-flash-before-hydration.md).
     <html lang="en" className={sukhumvit.variable} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        <InlineScript html={THEME_INIT_SCRIPT} />
       </head>
       <body>
         <Providers>

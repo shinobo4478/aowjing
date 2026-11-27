@@ -194,7 +194,7 @@ function Chooser({
               <img
                 src={picked.preview}
                 alt="Chosen starting picture"
-                style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 4 }}
+                style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 10 }}
               />
               <Typography.Text type="secondary" ellipsis style={{ minWidth: 0, flex: 1 }}>
                 {picked.file.name}

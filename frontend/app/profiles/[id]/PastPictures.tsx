@@ -86,7 +86,7 @@ export default function PastPictures({
                 padding: 0,
                 background: "none",
                 cursor: "pointer",
-                borderRadius: 6,
+                borderRadius: 14,
                 border: selected
                   ? "3px solid var(--ant-color-primary, #1677ff)"
                   : "3px solid transparent",
@@ -97,7 +97,7 @@ export default function PastPictures({
               <img
                 src={imageSrc(g.imageId)}
                 alt="Picture from an earlier clip"
-                style={{ width: 96, height: 170, objectFit: "cover", display: "block", borderRadius: 3 }}
+                style={{ width: 96, height: 170, objectFit: "cover", display: "block", borderRadius: 8 }}
               />
             </button>
           </Tooltip>

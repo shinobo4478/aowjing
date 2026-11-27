@@ -126,7 +126,7 @@ export default function ReferencesSection({
                   width: 132,
                   height: 176,
                   objectFit: "cover",
-                  borderRadius: 4,
+                  borderRadius: 10,
                   display: "block",
                 }}
               />

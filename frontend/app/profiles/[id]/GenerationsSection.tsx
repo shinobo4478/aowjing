@@ -330,7 +330,7 @@ export default function GenerationsSection({
                     <img
                       src={imageSrc(row.imageId)}
                       alt="Starting image"
-                      style={{ maxWidth: 160, maxHeight: 160, borderRadius: 4 }}
+                      style={{ maxWidth: 160, maxHeight: 160, borderRadius: 10 }}
                     />
                   </a>
                 </div>
