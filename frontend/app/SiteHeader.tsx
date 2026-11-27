@@ -11,6 +11,8 @@ import { useThemeMode } from "./ThemeMode";
 import ThemeSwitch from "./ThemeSwitch";
 
 const links = [
+  { key: "/", label: "Home" },
+  { key: "/dashboard", label: "Dashboard" },
   { key: "/profiles", label: "Profiles" },
   { key: "/products", label: "Products" },
   { key: "/settings", label: "Settings" },
@@ -48,8 +50,9 @@ export default function SiteHeader() {
 
   // Assume desktop until we know otherwise — avoids a menu-button flash on load.
   const isDesktop = screens.md !== false;
+  // "/" would prefix-match every page, so Home is matched exactly.
   const selected = links
-    .filter((l) => pathname.startsWith(l.key))
+    .filter((l) => (l.key === "/" ? pathname === "/" : pathname.startsWith(l.key)))
     .map((l) => l.key);
 
   const menuItems = links.map((l) => ({

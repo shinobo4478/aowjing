@@ -50,6 +50,9 @@ type Response struct {
 }
 
 type spend struct {
+	TodayCost     float64 `json:"todayCost"`
+	TodayBilled   int64   `json:"todayBilled"`   // clips today whose bill is known
+	TodayUnbilled int64   `json:"todayUnbilled"` // fal clips today with no bill yet (fal can trail a clip by minutes)
 	MonthCost     float64 `json:"monthCost"`
 	MonthBilled   int64   `json:"monthBilled"`   // clips this month whose bill is known
 	MonthUnbilled int64   `json:"monthUnbilled"` // fal clips this month with no bill yet
@@ -168,6 +171,7 @@ func (h *Handler) build(ctx context.Context, tz string) (Response, error) {
 		return resp, err
 	}
 	resp.Spend = spend{
+		TodayCost: s.TodayCost, TodayBilled: s.TodayBilled, TodayUnbilled: s.TodayUnbilled,
 		MonthCost: s.MonthCost, MonthBilled: s.MonthBilled, MonthUnbilled: s.MonthUnbilled,
 		TotalCost: s.TotalCost, TotalBilled: s.TotalBilled, TotalUnbilled: s.TotalUnbilled,
 	}

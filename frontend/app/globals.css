@@ -393,7 +393,7 @@ video {
   bottom: 0;
   z-index: 20;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   padding-bottom: env(safe-area-inset-bottom);
   background: color-mix(in srgb, var(--acmp-panel) 88%, transparent);
   -webkit-backdrop-filter: blur(16px);

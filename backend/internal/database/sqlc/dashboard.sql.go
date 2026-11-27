@@ -232,6 +232,9 @@ func (q *Queries) DashRecentUploads(ctx context.Context) ([]DashRecentUploadsRow
 
 const dashSpend = `-- name: DashSpend :one
 SELECT
+    COALESCE(SUM(cost_usd) FILTER (WHERE created_at >= (date_trunc('day', now() AT TIME ZONE $1::text) AT TIME ZONE $1::text)), 0)::float8 AS today_cost,
+    (COUNT(cost_usd) FILTER (WHERE created_at >= (date_trunc('day', now() AT TIME ZONE $1::text) AT TIME ZONE $1::text)))::bigint AS today_billed,
+    (COUNT(*) FILTER (WHERE cost_usd IS NULL AND created_at >= (date_trunc('day', now() AT TIME ZONE $1::text) AT TIME ZONE $1::text)))::bigint AS today_unbilled,
     COALESCE(SUM(cost_usd) FILTER (WHERE created_at >= (date_trunc('month', now() AT TIME ZONE $1::text) AT TIME ZONE $1::text)), 0)::float8 AS month_cost,
     (COUNT(cost_usd) FILTER (WHERE created_at >= (date_trunc('month', now() AT TIME ZONE $1::text) AT TIME ZONE $1::text)))::bigint AS month_billed,
     (COUNT(*) FILTER (WHERE cost_usd IS NULL AND created_at >= (date_trunc('month', now() AT TIME ZONE $1::text) AT TIME ZONE $1::text)))::bigint AS month_unbilled,
@@ -243,6 +246,9 @@ WHERE provider = 'fal' AND status <> 'pending'
 `
 
 type DashSpendRow struct {
+	TodayCost     float64 `json:"today_cost"`
+	TodayBilled   int64   `json:"today_billed"`
+	TodayUnbilled int64   `json:"today_unbilled"`
 	MonthCost     float64 `json:"month_cost"`
 	MonthBilled   int64   `json:"month_billed"`
 	MonthUnbilled int64   `json:"month_unbilled"`
@@ -251,12 +257,15 @@ type DashSpendRow struct {
 	TotalUnbilled int64   `json:"total_unbilled"`
 }
 
-// What fal charged: this month and all time. Clips whose bill fal has not shown
+// What fal charged: today, this month and all time. Clips whose bill fal has not shown
 // yet (or that predate request-id tracking) are counted apart, never as $0.
 func (q *Queries) DashSpend(ctx context.Context, tz string) (DashSpendRow, error) {
 	row := q.db.QueryRow(ctx, dashSpend, tz)
 	var i DashSpendRow
 	err := row.Scan(
+		&i.TodayCost,
+		&i.TodayBilled,
+		&i.TodayUnbilled,
 		&i.MonthCost,
 		&i.MonthBilled,
 		&i.MonthUnbilled,

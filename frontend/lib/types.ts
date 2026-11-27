@@ -374,6 +374,10 @@ export interface Dashboard {
   /** The zone the day/month boundaries were computed in. */
   timezone: string;
   spend: {
+    /** Billed so far today (fal can trail a clip by minutes, so treat it as "at least"). */
+    todayCost: number;
+    todayBilled: number;
+    todayUnbilled: number;
     monthCost: number;
     /** Clips this month whose bill fal has shown. */
     monthBilled: number;

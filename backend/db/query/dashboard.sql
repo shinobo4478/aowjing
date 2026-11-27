@@ -5,10 +5,13 @@
 -- name: DashToday :one
 SELECT (now() AT TIME ZONE sqlc.arg(tz)::text)::date AS today;
 
--- What fal charged: this month and all time. Clips whose bill fal has not shown
+-- What fal charged: today, this month and all time. Clips whose bill fal has not shown
 -- yet (or that predate request-id tracking) are counted apart, never as $0.
 -- name: DashSpend :one
 SELECT
+    COALESCE(SUM(cost_usd) FILTER (WHERE created_at >= (date_trunc('day', now() AT TIME ZONE sqlc.arg(tz)::text) AT TIME ZONE sqlc.arg(tz)::text)), 0)::float8 AS today_cost,
+    (COUNT(cost_usd) FILTER (WHERE created_at >= (date_trunc('day', now() AT TIME ZONE sqlc.arg(tz)::text) AT TIME ZONE sqlc.arg(tz)::text)))::bigint AS today_billed,
+    (COUNT(*) FILTER (WHERE cost_usd IS NULL AND created_at >= (date_trunc('day', now() AT TIME ZONE sqlc.arg(tz)::text) AT TIME ZONE sqlc.arg(tz)::text)))::bigint AS today_unbilled,
     COALESCE(SUM(cost_usd) FILTER (WHERE created_at >= (date_trunc('month', now() AT TIME ZONE sqlc.arg(tz)::text) AT TIME ZONE sqlc.arg(tz)::text)), 0)::float8 AS month_cost,
     (COUNT(cost_usd) FILTER (WHERE created_at >= (date_trunc('month', now() AT TIME ZONE sqlc.arg(tz)::text) AT TIME ZONE sqlc.arg(tz)::text)))::bigint AS month_billed,
     (COUNT(*) FILTER (WHERE cost_usd IS NULL AND created_at >= (date_trunc('month', now() AT TIME ZONE sqlc.arg(tz)::text) AT TIME ZONE sqlc.arg(tz)::text)))::bigint AS month_unbilled,

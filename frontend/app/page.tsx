@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import { Spin } from "antd";
 import { listProfiles } from "@/lib/api";
-import Dashboard from "./Dashboard";
+import Home from "./Home";
 import GettingStarted from "./GettingStarted";
 
 /**
- * Home: the dashboard once there is a profile to report on, the four getting-
+ * Home: the quick summary once there is a profile to report on, the four getting-
  * started steps before that.
  */
 export default function HomePage() {
@@ -27,5 +27,5 @@ export default function HomePage() {
       </div>
     );
   }
-  return hasProfile ? <Dashboard /> : <GettingStarted />;
+  return hasProfile ? <Home /> : <GettingStarted />;
 }
