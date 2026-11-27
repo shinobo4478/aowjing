@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { App, Button, Input, Modal, Segmented, Typography, Upload } from "antd";
 import { ApiError, uploadImage } from "@/lib/api";
 import { mobileModal } from "@/lib/ui";
+import type { PromptTexts } from "@/lib/promptPair";
 import { imageFileError, imageUrlError } from "./GenerateModal";
 import KeyframePicker from "./KeyframePicker";
 import PastPictures from "./PastPictures";
@@ -25,7 +26,7 @@ export default function PictureModal({
   profileId,
   scenePictures,
   end = false,
-  initialPicturePrompt = "",
+  initialPrompt = { english: "", thai: "" },
   onClose,
   onPick,
 }: {
@@ -41,9 +42,9 @@ export default function PictureModal({
   /** The shot's saved picture prompt: Make with AI starts from it, and what is
    *  typed there is handed back with the chosen picture to be saved. (Not used
    *  for an end picture, whose prompt only says what changes.) */
-  initialPicturePrompt?: string;
+  initialPrompt?: PromptTexts;
   onClose: () => void;
-  onPick: (choice: PictureChoice, picturePrompt?: string) => Promise<void>;
+  onPick: (choice: PictureChoice, prompts?: PromptTexts) => Promise<void>;
 }) {
   return (
     <Modal
@@ -60,7 +61,7 @@ export default function PictureModal({
           profileId={profileId}
           scenePictures={scenePictures}
           end={end}
-          initialPicturePrompt={initialPicturePrompt}
+          initialPrompt={initialPrompt}
           onPick={onPick}
         />
       )}
@@ -72,20 +73,20 @@ function Chooser({
   profileId,
   scenePictures,
   end,
-  initialPicturePrompt,
+  initialPrompt,
   onPick,
 }: {
   profileId: string;
   end: boolean;
-  initialPicturePrompt: string;
+  initialPrompt: PromptTexts;
   scenePictures: { imageId: string; label: string }[];
-  onPick: (choice: PictureChoice, picturePrompt?: string) => Promise<void>;
+  onPick: (choice: PictureChoice, prompts?: PromptTexts) => Promise<void>;
 }) {
   const { message } = App.useApp();
   const [source, setSource] = useState<Source>("ai");
   const [madeId, setMadeId] = useState("");
   // The picture prompt as it stands in the box, kept to save with the shot.
-  const [madePrompt, setMadePrompt] = useState(initialPicturePrompt);
+  const [madePrompt, setMadePrompt] = useState<PromptTexts>(initialPrompt);
   const [pastId, setPastId] = useState("");
   const [link, setLink] = useState("");
   const [picked, setPicked] = useState<{ file: File; preview: string } | null>(null);
@@ -165,7 +166,7 @@ function Chooser({
           onChange={setMadeId}
           scenePictures={scenePictures}
           sameCamera={end}
-          initialPrompt={initialPicturePrompt}
+          initialPrompt={initialPrompt}
           onPromptChange={setMadePrompt}
         />
       )}

@@ -106,7 +106,7 @@ func draftFrom(ctx context.Context, llm generate.LLM, model string, b Brief) (Dr
 		Model:       model,
 		System:      systemPrompt,
 		Prompt:      userPrompt(b),
-		MaxTokens:   700 + 450*b.Shots, // room for the JSON, with margin
+		MaxTokens:   1000 + 900*b.Shots, // room for the JSON with its Thai twins (Thai costs more tokens)
 		Temperature: 0.8,
 	}
 	var spent float64
@@ -137,6 +137,15 @@ type fakeLLM struct{}
 var shotsLine = regexp.MustCompile(`Number of shots: (\d+)`)
 
 func (fakeLLM) Complete(_ context.Context, req generate.LLMRequest) (generate.LLMResult, error) {
+	// A translation (see translate.go): answer in the language asked for, so the
+	// checks that a translation holds (no Thai in English, some Thai in Thai) pass.
+	if strings.HasPrefix(req.Prompt, "Direction: toEnglish") {
+		return generate.LLMResult{Text: "Fake English translation."}, nil
+	}
+	if strings.HasPrefix(req.Prompt, "Direction: toThai") {
+		return generate.LLMResult{Text: "คำแปลภาษาไทยจำลอง"}, nil
+	}
+
 	n := 3
 	if m := shotsLine.FindStringSubmatch(req.Prompt); m != nil {
 		n, _ = strconv.Atoi(m[1])
@@ -144,13 +153,15 @@ func (fakeLLM) Complete(_ context.Context, req generate.LLMRequest) (generate.LL
 	var shots []string
 	for i := 1; i <= n; i++ {
 		// Shot 1 chains into shot 2 (it has an end prompt); the rest cut.
-		end := ""
+		end, endTh := "", ""
 		if i == 1 && n > 1 {
 			end = "Only the fake cat's pose changes in fake shot 1."
+			endTh = "เปลี่ยนเฉพาะท่าของแมวจำลองในช็อตจำลองที่ 1"
 		}
 		shots = append(shots, fmt.Sprintf(
-			`{"picturePrompt":"Fake picture prompt for shot %d.","endPicturePrompt":"%s","motionPrompt":"Fake motion for shot %d. Static camera, no zoom."}`, i, end, i))
+			`{"picturePrompt":"Fake picture prompt for shot %d.","picturePromptTh":"พรอมต์ภาพจำลองของช็อต %d","endPicturePrompt":"%s","endPicturePromptTh":"%s","motionPrompt":"Fake motion for shot %d. Static camera, no zoom.","motionPromptTh":"การเคลื่อนไหวจำลองของช็อต %d กล้องนิ่ง ไม่ซูม"}`,
+			i, i, end, endTh, i, i))
 	}
-	text := `{"title":"Fake draft","scene":"A fake sunny room with a sofa and a window.","shots":[` + strings.Join(shots, ",") + `]}`
+	text := `{"title":"Fake draft","scene":"A fake sunny room with a sofa and a window.","sceneTh":"ห้องจำลองที่แดดส่อง มีโซฟาและหน้าต่าง","shots":[` + strings.Join(shots, ",") + `]}`
 	return generate.LLMResult{Text: text}, nil
 }

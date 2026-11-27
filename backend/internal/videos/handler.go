@@ -50,6 +50,7 @@ func (h *Handler) Routes() http.Handler {
 	r.Get("/", h.list)
 	r.Post("/", h.create)
 	r.Post("/draft", h.draft)
+	r.Post("/translate", h.translate)
 	r.Get("/{id}", h.get)
 	r.Patch("/{id}", h.rename)
 	r.Delete("/{id}", h.delete)
@@ -270,11 +271,13 @@ func (h *Handler) addShot(w http.ResponseWriter, r *http.Request) {
 	}
 	// A picture given with the new shot goes on with the update (CreateShot has
 	// no picture columns, to keep its query simple).
-	if in.ImageURL != "" || imageID.Valid || endID.Valid || in.PicturePrompt != "" || in.EndPicturePrompt != "" {
+	if in.ImageURL != "" || imageID.Valid || endID.Valid || in.PicturePrompt != "" || in.EndPicturePrompt != "" ||
+		in.PromptTh != "" || in.PicturePromptTh != "" || in.EndPicturePromptTh != "" {
 		shot, err = h.q.UpdateShot(r.Context(), sqlc.UpdateShotParams{
 			ID: shot.ID, Prompt: shot.Prompt, Seconds: shot.Seconds,
 			ImageUrl: in.ImageURL, ImageID: imageID, EndImageID: endID,
 			PicturePrompt: in.PicturePrompt, EndPicturePrompt: in.EndPicturePrompt,
+			PromptTh: in.PromptTh, PicturePromptTh: in.PicturePromptTh, EndPicturePromptTh: in.EndPicturePromptTh,
 		})
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "The shot was added but its picture was not.")
@@ -310,6 +313,7 @@ func (h *Handler) updateShot(w http.ResponseWriter, r *http.Request) {
 		ID: shot.ID, Prompt: in.Prompt, Seconds: int16(in.Seconds),
 		ImageUrl: in.ImageURL, ImageID: imageID, EndImageID: endID,
 		PicturePrompt: in.PicturePrompt, EndPicturePrompt: in.EndPicturePrompt,
+			PromptTh: in.PromptTh, PicturePromptTh: in.PicturePromptTh, EndPicturePromptTh: in.EndPicturePromptTh,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to update the shot.")
@@ -854,9 +858,47 @@ func writeError(w http.ResponseWriter, code int, msg string) {
 
 // --- drafting a video with the script helper ----------------------------------
 
-// Drafter writes a shot list for a brief (internal/scriptwriter).
+// Drafter writes a shot list for a brief and translates a prompt between Thai
+// and English (internal/scriptwriter): both go through the same LLM route.
 type Drafter interface {
 	Draft(ctx context.Context, b scriptwriter.Brief) (scriptwriter.Draft, error)
+	Translate(ctx context.Context, r scriptwriter.TranslateRequest) (scriptwriter.Translation, error)
+}
+
+// translateTimeout covers one translation (a short text; fal's queue wait is
+// still up to 3 minutes in the worst case).
+const translateTimeout = 4 * time.Minute
+
+// translate turns one prompt from Thai into English (what the models receive) or
+// from English into Thai (so the owner can read what a prompt says). It is
+// stateless: the screen decides where the result goes. The reply carries what the
+// call cost, as fal reported it, so the screen can show it.
+func (h *Handler) translate(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Kind      string `json:"kind"`
+		Direction string `json:"direction"`
+		Text      string `json:"text"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	req := scriptwriter.TranslateRequest{
+		Kind:      scriptwriter.Kind(body.Kind),
+		Direction: scriptwriter.Direction(body.Direction),
+		Text:      body.Text,
+	}
+	if errs := req.Validate(); len(errs) > 0 {
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"errors": errs})
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), translateTimeout)
+	defer cancel()
+	t, err := h.drafter.Translate(ctx, req)
+	if err != nil {
+		writeError(w, http.StatusBadGateway, "The translation failed: "+err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"text": t.Text, "costUsd": t.CostUSD, "model": t.Model})
 }
 
 // draftTimeout covers the model's reply (fal's queue wait is up to 3 minutes).
@@ -942,6 +984,7 @@ func (h *Handler) draft(w http.ResponseWriter, r *http.Request) {
 	for _, s := range d.Shots {
 		if _, err := h.q.CreateShotWithPlan(r.Context(), sqlc.CreateShotWithPlanParams{
 			VideoID: v.ID, Prompt: s.MotionPrompt, Seconds: int16(s.Seconds), PicturePrompt: s.PicturePrompt, EndPicturePrompt: s.EndPicturePrompt,
+			PromptTh: s.MotionPromptTh, PicturePromptTh: s.PicturePromptTh, EndPicturePromptTh: s.EndPicturePromptTh,
 		}); err != nil {
 			_, _ = h.q.DeleteVideo(r.Context(), v.ID) // no half-filled video left behind
 			writeError(w, http.StatusInternalServerError, "The draft was written but its shots were not saved.")

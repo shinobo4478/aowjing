@@ -322,6 +322,25 @@ export function createVideo(profileId: string, title: string) {
   }).then((r) => r.video);
 }
 
+/** What a prompt is for: each kind has its own translation rules (a clip prompt
+ *  says only what moves, a picture prompt has no style words, an end picture
+ *  prompt only what changes). */
+export type PromptKind = "motion" | "picture" | "endPicture";
+
+/** Translates one prompt: Thai -> English ("toEnglish", what the models receive)
+ *  or English -> Thai ("toThai", so the owner can read what a prompt says). It
+ *  returns what the call cost, as fal reported it. */
+export function translatePrompt(input: {
+  kind: PromptKind;
+  direction: "toEnglish" | "toThai";
+  text: string;
+}) {
+  return request<{ text: string; costUsd: number; model: string }>("/videos/translate", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
 /** Asks the script helper to write a shot list and makes a Video from it: the
  *  scene and each shot's picture prompt, motion prompt and length come filled
  *  in. It makes no pictures and no clips; the only cost is the model's reply,

@@ -30,6 +30,11 @@ type shotInput struct {
 	// picture (only a pose or position; camera and room stay). Used by Make with AI
 	// when making the end picture; not sent to the clip model.
 	EndPicturePrompt string `json:"endPicturePrompt"`
+	// The Thai versions of the three prompts, which the owner writes and edits;
+	// the English ones above are what the models receive. Never sent to a model.
+	PromptTh           string `json:"promptTh"`
+	PicturePromptTh    string `json:"picturePromptTh"`
+	EndPicturePromptTh string `json:"endPicturePromptTh"`
 	// ImageURL is a public link the shot starts from; ImageID is a stored
 	// picture (uploaded, or made with AI). Give at most one. Neither means the
 	// shot has no picture yet, which is fine while planning but cannot be
@@ -53,6 +58,17 @@ func (in *shotInput) normalizeAndValidate() map[string]string {
 		errs["prompt"] = "The prompt must be 2000 characters or fewer."
 	}
 
+	// The Thai versions: trimmed and length-checked like the English ones.
+	for name, field := range map[string]*string{
+		"promptTh":           &in.PromptTh,
+		"picturePromptTh":    &in.PicturePromptTh,
+		"endPicturePromptTh": &in.EndPicturePromptTh,
+	} {
+		*field = strings.TrimSpace(*field)
+		if utf8.RuneCountInString(*field) > maxPromptRunes {
+			errs[name] = "The Thai text must be 2000 characters or fewer."
+		}
+	}
 	in.EndPicturePrompt = strings.TrimSpace(in.EndPicturePrompt)
 	if utf8.RuneCountInString(in.EndPicturePrompt) > maxPromptRunes {
 		errs["endPicturePrompt"] = "The end picture prompt must be 2000 characters or fewer."

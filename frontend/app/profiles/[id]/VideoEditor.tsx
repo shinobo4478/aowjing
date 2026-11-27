@@ -17,6 +17,7 @@ import {
   updateShot,
 } from "@/lib/api";
 import { formatUsd } from "@/lib/format";
+import type { PromptTexts } from "@/lib/promptPair";
 import {
   MAX_SHOTS,
   perSecondUsd,
@@ -156,6 +157,16 @@ export default function VideoEditor({
   const replaceShot = (next: Shot) =>
     setShots((all) => all.map((s) => (s.id === next.id ? next : s)));
 
+  /** Whether what is on the card differs from what is saved for the shot. */
+  const planChanged = (shot: Shot, d: ShotDraft) =>
+    d.prompt.trim() !== shot.prompt ||
+    d.promptTh.trim() !== shot.promptTh ||
+    d.picturePrompt.trim() !== shot.picturePrompt ||
+    d.picturePromptTh.trim() !== shot.picturePromptTh ||
+    d.endPicturePrompt.trim() !== shot.endPicturePrompt ||
+    d.endPicturePromptTh.trim() !== shot.endPicturePromptTh ||
+    d.seconds !== shot.seconds;
+
   /** Saves a shot's whole plan: what was typed plus its current picture. */
   function plan(
     shot: Shot,
@@ -185,6 +196,9 @@ export default function VideoEditor({
       prompt: draft.prompt,
       picturePrompt: draft.picturePrompt,
       endPicturePrompt: draft.endPicturePrompt,
+      promptTh: draft.promptTh,
+      picturePromptTh: draft.picturePromptTh,
+      endPicturePromptTh: draft.endPicturePromptTh,
       seconds: draft.seconds,
       imageUrl,
       imageId,
@@ -196,17 +210,17 @@ export default function VideoEditor({
     await run(async () => replaceShot(await plan(shot, draft)), "Failed to save.");
   }
 
-  async function pickPicture(choice: PictureChoice, picturePrompt?: string) {
+  async function pickPicture(choice: PictureChoice, prompts?: PromptTexts) {
     if (!choosing) return;
     const { shot, end } = choosing;
-    // What was typed in the dialog replaces the card's picture prompt (or, for an
-    // end picture, its end picture prompt), so it is kept with the shot.
-    const draft =
-      picturePrompt === undefined
-        ? choosing.draft
-        : end
-          ? { ...choosing.draft, endPicturePrompt: picturePrompt }
-          : { ...choosing.draft, picturePrompt };
+    // What was typed in the dialog (the Thai and the English made from it)
+    // replaces the card's picture prompt (or, for an end picture, its end
+    // picture prompt), so it is kept with the shot.
+    const draft: ShotDraft = !prompts
+      ? choosing.draft
+      : end
+        ? { ...choosing.draft, endPicturePrompt: prompts.english, endPicturePromptTh: prompts.thai }
+        : { ...choosing.draft, picturePrompt: prompts.english, picturePromptTh: prompts.thai };
     const change = end
       ? { end: "imageId" in choice ? choice.imageId : "none" } // an end picture is never a link
       : { start: choice };
@@ -253,31 +267,39 @@ export default function VideoEditor({
       : "from the starting picture";
     modal.confirm({
       title: `Generate shot ${shot.position}?`,
-      content:
-        price !== undefined ? (
-          <p style={{ margin: 0 }}>
-            A {draft.seconds}-second {silent}clip {flow}:{" "}
-            <strong>≈ {formatUsd(price)}</strong>, charged to your fal.ai credits.{caveat}
-            {shot.endImageId
-              ? " (The price with an end picture has not been confirmed against a bill.)"
-              : ""}
-            {shot.attempts > 0
-              ? ` This is attempt ${shot.attempts + 1}; the earlier ones stay in the Generations tab.`
-              : ""}
+      content: (
+        <>
+          {price !== undefined ? (
+            <p style={{ margin: 0 }}>
+              A {draft.seconds}-second {silent}clip {flow}:{" "}
+              <strong>≈ {formatUsd(price)}</strong>, charged to your fal.ai credits.{caveat}
+              {shot.endImageId
+                ? " (The price with an end picture has not been confirmed against a bill.)"
+                : ""}
+              {shot.attempts > 0
+                ? ` This is attempt ${shot.attempts + 1}; the earlier ones stay in the Generations tab.`
+                : ""}
+            </p>
+          ) : (
+            <p style={{ margin: 0 }}>
+              A {draft.seconds}-second {silent}clip. The price of this model with
+              these settings is not known (or could not be loaded), so it is not
+              shown here; it is charged to your fal.ai credits.
+            </p>
+          )}
+          {/* What the clip model will actually receive: the English made from the
+              owner's Thai, shown so it can be checked before the money is spent. */}
+          <p style={{ margin: "12px 0 0", fontSize: 13 }}>
+            <strong>English sent to the AI:</strong> {draft.prompt}
           </p>
-        ) : (
-          <p style={{ margin: 0 }}>
-            A {draft.seconds}-second {silent}clip. The price of this model with
-            these settings is not known (or could not be loaded), so it is not
-            shown here; it is charged to your fal.ai credits.
-          </p>
-        ),
+        </>
+      ),
       okText: price !== undefined ? `Generate (≈ ${formatUsd(price)})` : "Generate",
       cancelText: "Cancel",
       onOk: async () => {
         await run(async () => {
           // Save what was typed first, so the attempt uses exactly what is on screen.
-          if (draft.prompt.trim() !== shot.prompt || draft.seconds !== shot.seconds) {
+          if (planChanged(shot, draft)) {
             replaceShot(await plan(shot, draft));
           }
           await generateShot(videoId, shot.id);
@@ -496,8 +518,12 @@ export default function VideoEditor({
         open={choosing !== null}
         profileId={profileId}
         end={choosing?.end ?? false}
-        initialPicturePrompt={
-          choosing ? (choosing.end ? choosing.draft.endPicturePrompt : choosing.draft.picturePrompt) : ""
+        initialPrompt={
+          choosing
+            ? choosing.end
+              ? { english: choosing.draft.endPicturePrompt, thai: choosing.draft.endPicturePromptTh }
+              : { english: choosing.draft.picturePrompt, thai: choosing.draft.picturePromptTh }
+            : { english: "", thai: "" }
         }
         // A starting picture can match the other shots' scene; an END picture is
         // made from the shot's own starting picture (same camera, only the pose

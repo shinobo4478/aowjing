@@ -79,6 +79,14 @@ export default function SettingsPage() {
             </Form.Item>
 
             <Form.Item
+              label="Translation model (optional)"
+              name="translateModel"
+              extra={'The AI model that translates your Thai prompts into the English the picture and video models receive, and back into Thai so you can read them. It runs through fal with the key above and is billed per token (a fraction of a cent per prompt). A smaller, cheaper model is usually enough, e.g. "google/gemini-2.5-flash". Leave empty to use the script model above.'}
+            >
+              <Input autoComplete="off" placeholder="google/gemini-2.5-flash" />
+            </Form.Item>
+
+            <Form.Item
               label="Daily spending limit (optional)"
               name="dailyCapUsd"
               rules={[

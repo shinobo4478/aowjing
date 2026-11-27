@@ -25,10 +25,13 @@ import (
 //   - scriptModel: optional, the model id the script helper writes drafts with
 //     (OpenRouter style, e.g. "anthropic/claude-sonnet-5"); empty means the
 //     built-in default.
+//   - translateModel: optional, the model id that translates prompts between Thai
+//     and English; empty means the script model (scriptModel), then the built-in
+//     default. A smaller, cheaper model is usually enough for translation.
 //   - dailyCapUsd / dailyCapTz: optional daily spending limit in USD (empty = no
 //     limit) and the owner's IANA time zone, which the screen saves with it so
 //     "today" starts at the owner's midnight (see internal/spendcap).
-var knownKeys = []string{"falApiKey", "falBillingKey", "scriptModel", "dailyCapUsd", "dailyCapTz"}
+var knownKeys = []string{"falApiKey", "falBillingKey", "scriptModel", "translateModel", "dailyCapUsd", "dailyCapTz"}
 
 type Handler struct {
 	q *sqlc.Queries
