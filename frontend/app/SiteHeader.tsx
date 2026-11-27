@@ -7,6 +7,7 @@ import Stripe from "@/components/Stripe";
 import { INK } from "@/lib/tape";
 import { useAuth } from "./AuthGate";
 import CreditsBadge from "./CreditsBadge";
+import RunningBadge from "./RunningBadge";
 import { useThemeMode } from "./ThemeMode";
 import ThemeSwitch from "./ThemeSwitch";
 
@@ -85,6 +86,7 @@ export default function SiteHeader() {
           }}
         />
         <Space size="middle">
+          <RunningBadge />
           <CreditsBadge />
           <ThemeSwitch />
           <Typography.Text type="secondary">{user.username}</Typography.Text>
@@ -110,6 +112,7 @@ export default function SiteHeader() {
     >
       <Brand />
       <Space size={12}>
+        <RunningBadge />
         <CreditsBadge />
         <ThemeSwitch />
       </Space>

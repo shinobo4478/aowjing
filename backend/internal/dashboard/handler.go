@@ -27,6 +27,7 @@ func NewHandler(q *sqlc.Queries) *Handler { return &Handler{q: q} }
 func (h *Handler) Routes() http.Handler {
 	r := chi.NewRouter()
 	r.Get("/", h.get)
+	r.Get("/running", h.running)
 	return r
 }
 

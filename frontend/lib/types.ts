@@ -435,6 +435,21 @@ export interface ProductUsage {
   createdAt: string; // ISO 8601
 }
 
+// --- What is rendering now (GET /dashboard/running) ---
+
+export interface RunningItem {
+  id: string;
+  kind: "clip" | "pictures";
+  profileId: string;
+  profileName: string;
+  /** In words: 'Video "The bag drop", shot 2', "Clip", "3 pictures". */
+  label: string;
+  /** Clips only. */
+  seconds?: number;
+  model?: string;
+  createdAt: string; // ISO 8601
+}
+
 // --- Dashboard (GET /dashboard) ---
 
 export interface Dashboard {

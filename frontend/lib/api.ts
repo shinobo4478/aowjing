@@ -33,6 +33,7 @@ import type {
   YouTubePrivacy,
   YouTubeStatus,
   YouTubeUpload,
+  RunningItem,
 } from "./types";
 
 export const API_BASE =
@@ -83,6 +84,15 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
       res.status,
       data.errors,
     );
+  }
+  // Something may just have been queued (a clip, a shot, pictures): let the
+  // menu bar's "rendering" indicator ask now instead of at its next poll.
+  if (
+    init?.method === "POST" &&
+    /^\/(generations|videos|keyframes)/.test(path) &&
+    typeof window !== "undefined"
+  ) {
+    window.dispatchEvent(new Event("running:refresh"));
   }
   return data as T;
 }
@@ -446,6 +456,11 @@ export function fetchFalCosts(generationIds: string[]) {
 export function getDashboard() {
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
   return request<Dashboard>(`/dashboard?tz=${encodeURIComponent(tz)}`);
+}
+
+/** What is being made right now (clips and picture requests), for the menu bar. */
+export function getRunning() {
+  return request<{ items: RunningItem[] }>("/dashboard/running").then((r) => r.items);
 }
 
 // --- Settings (global provider credentials) ---
