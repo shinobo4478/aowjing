@@ -1,5 +1,10 @@
 package studio
 
+import (
+	"strconv"
+	"strings"
+)
+
 // Keyframes: the picture a clip starts from. An image model makes a few
 // candidates from a prompt (and, when the profile has them, its reference
 // pictures so the character stays the same); the owner picks one; it becomes
@@ -17,9 +22,6 @@ const (
 	// MaxKeyframeImages is how many candidates one request may ask for. Both
 	// models allow 4 or more; more is just more cost.
 	MaxKeyframeImages = 4
-
-	// MaxReferences is how many reference pictures a profile may keep.
-	MaxReferences = 4
 )
 
 // KeyframeModel is one image model the owner can choose.
@@ -86,12 +88,68 @@ func (m KeyframeModel) CostUSD(count int) float64 {
 	return m.PriceUSD * float64(count)
 }
 
-// keepLookInstruction tells an edit model to reuse what is in the reference
-// pictures. A starting guess, not tested on real output yet.
-const keepLookInstruction = "Keep the same character and overall look as in the reference pictures."
+// CastRole says what a cast member is in a picture (profile Look tab).
+type CastRole string
+
+const (
+	// RoleHero is the lead character: the same person or creature in every clip.
+	RoleHero CastRole = "hero"
+	// RoleCostar is another character (a person, an animal) that appears with it.
+	RoleCostar CastRole = "costar"
+	// RoleProp is an object that must look exactly like its pictures.
+	RoleProp CastRole = "prop"
+	// RolePlace is a location to keep.
+	RolePlace CastRole = "place"
+)
+
+// ValidCastRole reports whether s is a known role.
+func ValidCastRole(s string) bool {
+	switch CastRole(s) {
+	case RoleHero, RoleCostar, RoleProp, RolePlace:
+		return true
+	}
+	return false
+}
+
+const (
+	// MaxCastMembers is how many cast members a profile may keep.
+	MaxCastMembers = 8
+	// MaxMemberPictures is how many pictures one member may have (other angles
+	// of the same character or object).
+	MaxMemberPictures = 4
+	// MaxRequestPictures is how many reference pictures one picture request may
+	// carry in all (scene pictures plus the ticked cast). A cautious cap: the
+	// models' own limits are higher but more pictures blur who is who, and no
+	// request with more than this has been tried. Raise it after a real test.
+	MaxRequestPictures = 6
+)
+
+// CastRef is one ticked cast member as the prompt describes it. Pictures is how
+// many of its pictures go along (they follow one another in the request).
+type CastRef struct {
+	Role     CastRole
+	Name     string
+	Note     string
+	Pictures int
+}
+
+// rolePhrase is how a role reads in the prompt.
+func rolePhrase(r CastRole) string {
+	switch r {
+	case RoleHero:
+		return "the lead character"
+	case RoleCostar:
+		return "another character"
+	case RoleProp:
+		return "an object"
+	case RolePlace:
+		return "the location"
+	}
+	return "a subject"
+}
 
 // MaxSceneReferences is how many pictures of the same scene (other shots of a
-// video) one request may carry, on top of the profile's reference pictures.
+// video) one request may carry, on top of the cast's pictures.
 const MaxSceneReferences = 2
 
 // keepSceneInstruction is for a picture that must show the SAME scene as other
@@ -107,27 +165,58 @@ const keepSceneInstruction = "Keep the same scene as in the first reference pict
 // during the clip.
 const keepSceneSameCameraInstruction = "Use the first reference picture as the exact starting frame: the same camera position, framing, lens, room layout, furniture, rug, props and lighting; nothing in the background changes. Change only what is described below, such as the character's pose or what it is doing."
 
+// keepCastInstruction closes the description of the cast pictures: each member
+// must come out as in its own pictures and must not borrow another's looks. A
+// starting guess; whether the models hold a product's logo is being tested.
+const keepCastInstruction = "Each of them must look exactly as in its own picture(s): the same face, hair, body, clothes, colours, shape, materials, logo and text in the same place, none redrawn or restyled, and never mixing one's looks into another."
+
+// castInstruction names the cast pictures, which come after sceneRefs scene
+// pictures: "Picture 3 is "Name", the lead character (note). Pictures 4-5 are …".
+// Without it the image model gets an unordered pile and cannot tell who is who.
+func castInstruction(sceneRefs int, cast []CastRef) string {
+	var parts []string
+	next := sceneRefs + 1
+	for _, c := range cast {
+		if c.Pictures < 1 {
+			continue
+		}
+		var which, verb string
+		if c.Pictures == 1 {
+			which, verb = "Picture "+strconv.Itoa(next), "is"
+		} else {
+			which, verb = "Pictures "+strconv.Itoa(next)+"-"+strconv.Itoa(next+c.Pictures-1), "are"
+		}
+		next += c.Pictures
+		s := which + " " + verb + ` "` + strings.ReplaceAll(c.Name, `"`, "'") + `", ` + rolePhrase(c.Role)
+		if n := strings.TrimSpace(c.Note); n != "" {
+			s += " (" + n + ")"
+		}
+		parts = append(parts, s+".")
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return strings.Join(parts, " ") + " " + keepCastInstruction
+}
+
 // KeyframePrompt is the prompt to send for a keyframe: the owner's scene
-// description, an instruction to reuse the references when there are any, and
-// this style's wording (so the picture already has the look the clip should
+// description, instructions to reuse the reference pictures when there are any,
+// and this style's wording (so the picture already has the look the clip should
 // keep). sceneRefs pictures of the same scene come first among the references,
-// then lookRefs of the profile's own; with scene pictures the "keep the scene"
-// instruction is used, with only the profile's the "keep the look" one.
-// sameCamera (with scene pictures) swaps in the stricter wording that keeps
-// the camera and everything but the pose fixed, for an end picture.
-func (r Recipe) KeyframePrompt(prompt string, lookRefs, sceneRefs int, sameCamera bool) string {
+// then the ticked cast's, each member's pictures together; the cast is named
+// picture by picture. sameCamera (with scene pictures) swaps in the stricter
+// wording that keeps the camera and everything but the pose fixed, for an end
+// picture.
+func (r Recipe) KeyframePrompt(prompt string, sceneRefs int, cast []CastRef, sameCamera bool) string {
 	out := prompt
+	if c := castInstruction(sceneRefs, cast); c != "" {
+		out = c + " " + out
+	}
 	switch {
 	case sceneRefs > 0 && sameCamera:
 		out = keepSceneSameCameraInstruction + " " + out
 	case sceneRefs > 0:
 		out = keepSceneInstruction + " " + out
-	case lookRefs > 0:
-		keep := keepLookInstruction
-		if r.KeepLook != "" {
-			keep = r.KeepLook
-		}
-		out = keep + " " + out
 	}
 	if r.KeyframeSuffix != "" {
 		out += "\n\n" + r.KeyframeSuffix

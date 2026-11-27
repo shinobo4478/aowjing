@@ -8,6 +8,22 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type CastMember struct {
+	ID        pgtype.UUID        `json:"id"`
+	ProfileID pgtype.UUID        `json:"profile_id"`
+	Role      string             `json:"role"`
+	Name      string             `json:"name"`
+	Note      string             `json:"note"`
+	Position  int16              `json:"position"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type CastMemberImage struct {
+	CastID   pgtype.UUID `json:"cast_id"`
+	ImageID  pgtype.UUID `json:"image_id"`
+	Position int16       `json:"position"`
+}
+
 type Channel struct {
 	ID          pgtype.UUID        `json:"id"`
 	ProfileID   pgtype.UUID        `json:"profile_id"`
@@ -62,6 +78,7 @@ type Keyframe struct {
 	Count          int16              `json:"count"`
 	ReferenceCount int16              `json:"reference_count"`
 	ExtraImageIds  []pgtype.UUID      `json:"extra_image_ids"`
+	CastImageIds   []pgtype.UUID      `json:"cast_image_ids"`
 	Status         string             `json:"status"`
 	Error          string             `json:"error"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
@@ -97,12 +114,6 @@ type Profile struct {
 	VideoAudio  bool               `json:"video_audio"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
-}
-
-type ProfileReferenceImage struct {
-	ProfileID pgtype.UUID `json:"profile_id"`
-	ImageID   pgtype.UUID `json:"image_id"`
-	Position  int16       `json:"position"`
 }
 
 type PromptTemplate struct {

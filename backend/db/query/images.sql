@@ -12,15 +12,15 @@ FROM images
 WHERE id = $1;
 
 -- Removes an image once nothing uses it: not a clip's starting or ending image,
--- not a profile's reference picture, not a keyframe candidate, not a shot's
+-- not a cast member picture, not a keyframe candidate, not a shot's
 -- starting or ending picture. Called after the thing that used it is deleted.
--- (The cascades on profile_reference_images and keyframe_images would otherwise
+-- (The cascades on cast_member_images and keyframe_images would otherwise
 -- silently drop those links.)
 -- name: DeleteImageIfUnused :exec
 DELETE FROM images i
 WHERE i.id = $1
   AND NOT EXISTS (SELECT 1 FROM generations g WHERE g.image_id = i.id OR g.end_image_id = i.id)
-  AND NOT EXISTS (SELECT 1 FROM profile_reference_images r WHERE r.image_id = i.id)
+  AND NOT EXISTS (SELECT 1 FROM cast_member_images c WHERE c.image_id = i.id)
   AND NOT EXISTS (SELECT 1 FROM keyframe_images k WHERE k.image_id = i.id)
   AND NOT EXISTS (SELECT 1 FROM video_shots s WHERE s.image_id = i.id OR s.end_image_id = i.id);
 
@@ -33,7 +33,7 @@ UNION
 SELECT g.end_image_id FROM generations g
 WHERE g.profile_id = $1 AND g.end_image_id IS NOT NULL
 UNION
-SELECT r.image_id FROM profile_reference_images r WHERE r.profile_id = $1
+SELECT c.image_id FROM cast_member_images c JOIN cast_members m ON m.id = c.cast_id WHERE m.profile_id = $1
 UNION
 SELECT k.image_id
 FROM keyframe_images k

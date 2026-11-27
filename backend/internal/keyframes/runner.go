@@ -74,28 +74,22 @@ func (rn *Runner) Run(ctx context.Context, keyframeID string) error {
 	// Pictures of the same scene come first (they matter most), then the
 	// profile's own, if the request asked for them.
 	var refs []string
-	if len(row.ExtraImageIds) > 0 {
-		scene, err := rn.q.ListImagesByIDs(ctx, row.ExtraImageIds)
+	// The prompt numbers the pictures in this order (scene, then each ticked cast
+	// member's), so the order is kept exactly.
+	wanted := append(append([]pgtype.UUID(nil), row.ExtraImageIds...), row.CastImageIds...)
+	if len(wanted) > 0 {
+		stored, err := rn.q.ListImagesByIDs(ctx, wanted)
 		if err != nil {
 			return err
 		}
-		byID := make(map[string]sqlc.ListImagesByIDsRow, len(scene))
-		for _, s := range scene {
+		byID := make(map[string]sqlc.ListImagesByIDsRow, len(stored))
+		for _, s := range stored {
 			byID[pgconv.UUIDString(s.ID)] = s
 		}
-		for _, id := range row.ExtraImageIds { // keep the order that was asked for
+		for _, id := range wanted {
 			if s, ok := byID[pgconv.UUIDString(id)]; ok { // one deleted meanwhile is skipped
 				refs = append(refs, images.DataURI(s.ContentType, s.Data))
 			}
-		}
-	}
-	if profileRefs := int(row.ReferenceCount) - len(row.ExtraImageIds); profileRefs > 0 {
-		stored, err := rn.q.ListProfileReferenceData(ctx, row.ProfileID)
-		if err != nil {
-			return err
-		}
-		for _, s := range stored {
-			refs = append(refs, images.DataURI(s.ContentType, s.Data))
 		}
 	}
 

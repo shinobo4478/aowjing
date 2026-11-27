@@ -93,16 +93,7 @@ func TestRealisticKeepsProductsAsTheyAre(t *testing.T) {
 	if r.ImageSuffix != "" {
 		t.Errorf("realistic ImageSuffix = %q, want empty", r.ImageSuffix)
 	}
-	// With references, the product wording replaces the "same character" one.
-	got := r.KeyframePrompt("a player holds the bottle", 1, 0, false)
-	if !strings.HasPrefix(got, r.KeepLook) {
-		t.Errorf("prompt does not start with the product wording: %q", got)
-	}
-	if strings.Contains(got, keepLookInstruction) {
-		t.Errorf("prompt still has the character wording: %q", got)
-	}
-	// 3D keeps its old wording.
-	if got := For("3d").KeyframePrompt("x", 1, 0, false); !strings.HasPrefix(got, keepLookInstruction) {
-		t.Errorf("3d prompt lost its wording: %q", got)
+	if strings.Contains(strings.ToLower(r.KeyframeSuffix), "cinematic") {
+		t.Errorf("realistic pictures should not ask for a cinematic look: %q", r.KeyframeSuffix)
 	}
 }

@@ -35,10 +35,13 @@ func (h *Handler) Routes() http.Handler {
 	r.Patch("/{id}", h.update)
 	r.Delete("/{id}", h.delete)
 
-	// The pictures that give this profile its own look (see references.go).
-	r.Get("/{id}/references", h.listReferences)
-	r.Post("/{id}/references", h.addReference)
-	r.Delete("/{id}/references/{imageId}", h.removeReference)
+	// The cast: recurring characters, objects and places (see cast.go).
+	r.Get("/{id}/cast", h.listCast)
+	r.Post("/{id}/cast", h.createCast)
+	r.Patch("/{id}/cast/{castId}", h.updateCast)
+	r.Delete("/{id}/cast/{castId}", h.deleteCast)
+	r.Post("/{id}/cast/{castId}/images", h.addCastImage)
+	r.Delete("/{id}/cast/{castId}/images/{imageId}", h.removeCastImage)
 	return r
 }
 

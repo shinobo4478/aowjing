@@ -59,10 +59,6 @@ type Recipe struct {
 	// clip that starts from a picture, here the look is being decided, so the
 	// style's wording belongs in the prompt.
 	KeyframeSuffix string
-	// KeepLook replaces the default "keep the same character" wording when the
-	// profile's reference pictures go with a picture request. For a product style
-	// the references are the product, not a character.
-	KeepLook string
 }
 
 // recipes is the registry, in the order shown in the UI. To add a style, add a
@@ -86,7 +82,6 @@ var recipes = []Recipe{
 		// empty so a real photo is never restyled.
 		TextSuffix:     "Photorealistic, natural light, shot on a phone camera, realistic motion.",
 		KeyframeSuffix: "Photorealistic photograph, natural light, realistic materials and skin, no illustration, no 3D render look.",
-		KeepLook:       "Keep the product exactly as in the reference pictures: the same shape, proportions, colours, materials, cap, ring and logo, with the logo and any text in the same place and not redrawn. Do not restyle or invent details on it.",
 	},
 }
 

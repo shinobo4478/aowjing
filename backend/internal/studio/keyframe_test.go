@@ -44,17 +44,50 @@ func TestKeyframeModelIDAndCost(t *testing.T) {
 
 func TestKeyframePrompt(t *testing.T) {
 	r := For("3d")
-	plain := r.KeyframePrompt("a cat on a sofa", 0, 0, false)
+	plain := r.KeyframePrompt("a cat on a sofa", 0, nil, false)
 	if plain == "a cat on a sofa" || len(plain) <= len("a cat on a sofa") {
 		t.Errorf("3d should add its wording, got %q", plain)
 	}
-	withRefs := r.KeyframePrompt("a cat on a sofa", 2, 0, false)
-	if withRefs == plain || withRefs[:len(keepLookInstruction)] != keepLookInstruction {
-		t.Errorf("references should add the keep-the-look instruction first, got %q", withRefs)
-	}
 	bare := Recipe{}
-	if got := bare.KeyframePrompt("x", 0, 0, false); got != "x" {
+	if got := bare.KeyframePrompt("x", 0, nil, false); got != "x" {
 		t.Errorf("no suffix, no refs: want unchanged, got %q", got)
+	}
+}
+
+func TestKeyframePromptCastNamesEachPicture(t *testing.T) {
+	bare := Recipe{}
+	cast := []CastRef{
+		{Role: RoleHero, Name: "Bad", Note: "red kit", Pictures: 2},
+		{Role: RoleProp, Name: `Bottle "X"`, Pictures: 1},
+		{Role: RoleCostar, Name: "Skipped", Pictures: 0}, // no pictures: not described
+	}
+	got := bare.KeyframePrompt("Bad drinks", 0, cast, false)
+	for _, want := range []string{
+		`Pictures 1-2 are "Bad", the lead character (red kit).`,
+		`Picture 3 is "Bottle 'X'", an object.`,
+		keepCastInstruction,
+		"Bad drinks",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("prompt lacks %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "Skipped") {
+		t.Errorf("a member with no pictures must not be described:\n%s", got)
+	}
+	if !strings.HasSuffix(got, "Bad drinks") {
+		t.Errorf("the description should come last, got %q", got)
+	}
+}
+
+func TestKeyframePromptCastFollowsScenePictures(t *testing.T) {
+	bare := Recipe{}
+	got := bare.KeyframePrompt("x", 2, []CastRef{{Role: RoleHero, Name: "Bad", Pictures: 1}}, false)
+	if !strings.HasPrefix(got, keepSceneInstruction) {
+		t.Errorf("scene instruction should come first, got %q", got)
+	}
+	if !strings.Contains(got, `Picture 3 is "Bad"`) {
+		t.Errorf("cast numbering should start after the 2 scene pictures, got %q", got)
 	}
 }
 
@@ -69,23 +102,19 @@ func TestClipSeconds(t *testing.T) {
 
 func TestKeyframePromptScene(t *testing.T) {
 	r := For("3d")
-	scene := r.KeyframePrompt("same room, camera from the left", 2, 1, false)
+	scene := r.KeyframePrompt("same room, camera from the left", 1, nil, false)
 	if scene[:len(keepSceneInstruction)] != keepSceneInstruction {
 		t.Errorf("scene pictures should add the keep-the-scene instruction first, got %q", scene)
 	}
-	// With scene pictures the look instruction is not added on top of it.
-	if strings.Contains(scene, keepLookInstruction) {
-		t.Errorf("scene instruction should replace the look one, got %q", scene)
-	}
-	look := r.KeyframePrompt("x", 2, 0, false)
-	if !strings.HasPrefix(look, keepLookInstruction) {
-		t.Errorf("profile references alone use the look instruction, got %q", look)
+	// No cast ticked: no cast wording at all.
+	if strings.Contains(scene, keepCastInstruction) {
+		t.Errorf("no cast, so no cast instruction, got %q", scene)
 	}
 }
 
 func TestKeyframePromptSameCamera(t *testing.T) {
 	r := For("3d")
-	got := r.KeyframePrompt("the cat crouches", 0, 1, true)
+	got := r.KeyframePrompt("the cat crouches", 1, nil, true)
 	if !strings.HasPrefix(got, keepSceneSameCameraInstruction) {
 		t.Errorf("an end picture should use the same-camera instruction, got %q", got)
 	}
@@ -93,7 +122,15 @@ func TestKeyframePromptSameCamera(t *testing.T) {
 		t.Errorf("same-camera wording must not invite a new camera angle, got %q", got)
 	}
 	// Without scene pictures there is nothing to keep fixed: the flag changes nothing.
-	if a, b := r.KeyframePrompt("x", 2, 0, true), r.KeyframePrompt("x", 2, 0, false); a != b {
+	if a, b := r.KeyframePrompt("x", 0, nil, true), r.KeyframePrompt("x", 0, nil, false); a != b {
 		t.Errorf("same-camera without scene pictures should be ignored:\n%q\n%q", a, b)
+	}
+}
+
+func TestValidCastRole(t *testing.T) {
+	for s, want := range map[string]bool{"hero": true, "costar": true, "prop": true, "place": true, "": false, "Hero": false, "villain": false} {
+		if got := ValidCastRole(s); got != want {
+			t.Errorf("ValidCastRole(%q) = %v, want %v", s, got, want)
+		}
 	}
 }
