@@ -25,7 +25,7 @@ import PromptTemplatesSection from "./PromptTemplatesSection";
 import ReferencesSection from "./ReferencesSection";
 import VideosSection from "./VideosSection";
 
-const DEFAULT_TAB = "templates";
+const DEFAULT_TAB = "generations";
 
 export default function ProfileDetailPage({
   params,
@@ -128,21 +128,6 @@ export default function ProfileDetailPage({
         style={{ marginTop: 32 }}
         items={[
           {
-            key: "templates",
-            label: "Prompt templates",
-            children: (
-              <PromptTemplatesSection
-                profileId={id}
-                provider={profile.provider}
-                videoStyle={profile.videoStyle}
-                onGenerated={() => {
-                  setGenTick((t) => t + 1);
-                  setTab("generations");
-                }}
-              />
-            ),
-          },
-          {
             key: "generations",
             label: "Generations",
             children: <GenerationsSection profileId={id} refreshTick={genTick} />,
@@ -154,7 +139,24 @@ export default function ProfileDetailPage({
               <VideosSection
                 profileId={id}
                 provider={profile.provider}
-                videoStyle={profile.videoStyle}
+                videoModel={profile.videoModel}
+                videoAudio={profile.videoAudio}
+              />
+            ),
+          },
+          {
+            key: "templates",
+            label: "Prompt templates",
+            children: (
+              <PromptTemplatesSection
+                profileId={id}
+                provider={profile.provider}
+                videoModel={profile.videoModel}
+                videoAudio={profile.videoAudio}
+                onGenerated={() => {
+                  setGenTick((t) => t + 1);
+                  setTab("generations");
+                }}
               />
             ),
           },
@@ -188,6 +190,8 @@ export default function ProfileDetailPage({
             description: profile.description,
             provider: profile.provider,
             videoStyle: profile.videoStyle,
+            videoModel: profile.videoModel,
+            videoAudio: profile.videoAudio,
           }}
           submitLabel="Save changes"
           onSubmit={async (input) => {

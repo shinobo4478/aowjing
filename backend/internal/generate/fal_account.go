@@ -112,3 +112,51 @@ func (a *FalAccount) BillingCosts(ctx context.Context, requestIDs []string, sinc
 	}
 	return costs, nil
 }
+
+// ModelPrices returns fal's current list price per SECOND for each of the given
+// model endpoints that are priced per second (GET /models/pricing; any API key
+// works, no billing permission needed). An endpoint missing from the reply, or
+// priced in another unit, is absent.
+//
+// What the number means: fal answers ONE price per endpoint, with no split by
+// option. Checked on 2026-11-27: Veo 3.1 answered 0.40, which is its price with
+// sound (silent is 0.20); Kling answered 0.14 (silent is 0.084). So treat it as
+// the top of the range for that endpoint: a ceiling, not the price of a silent
+// clip.
+func (a *FalAccount) ModelPrices(ctx context.Context, endpointIDs []string) (map[string]float64, error) {
+	if a.fal.apiKey == "" {
+		return nil, errors.New("no api key")
+	}
+	prices := map[string]float64{}
+	for len(endpointIDs) > 0 {
+		n := min(len(endpointIDs), 50) // fal's limit per request
+		batch := endpointIDs[:n]
+		endpointIDs = endpointIDs[n:]
+
+		q := url.Values{}
+		q.Set("endpoint_id", strings.Join(batch, ","))
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, a.baseURL+"/models/pricing?"+q.Encode(), nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", "Key "+a.fal.apiKey)
+
+		var out struct {
+			Prices []struct {
+				EndpointID string  `json:"endpoint_id"`
+				UnitPrice  float64 `json:"unit_price"`
+				Unit       string  `json:"unit"`
+				Currency   string  `json:"currency"`
+			} `json:"prices"`
+		}
+		if err := a.fal.do(req, &out); err != nil {
+			return nil, fmt.Errorf("fal pricing: %w", err)
+		}
+		for _, p := range out.Prices {
+			if p.Unit == "seconds" && p.Currency == "USD" && p.UnitPrice > 0 {
+				prices[p.EndpointID] = p.UnitPrice
+			}
+		}
+	}
+	return prices, nil
+}

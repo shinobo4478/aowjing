@@ -6,7 +6,7 @@ import (
 )
 
 func TestFalPlan(t *testing.T) {
-	g := NewFalVideoGenerator("key", "fal/text-model", "fal/image-model")
+	g := NewFalVideoGenerator("key", FalVideoSpec{Wire: "kling", TextModel: "fal/text-model", ImageModel: "fal/image-model", EndPicture: true})
 
 	tests := []struct {
 		name      string
@@ -66,12 +66,112 @@ func TestFalPlan(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			model, input := g.plan(tt.req)
+			model, input, err := g.plan(tt.req)
+			if err != nil {
+				t.Fatal(err)
+			}
 			if model != tt.wantModel {
 				t.Errorf("model = %q, want %q", model, tt.wantModel)
 			}
 			// Compare as JSON, which is what actually goes over the wire:
 			// it shows duration is a string and generate_audio a real false.
+			got, _ := json.Marshal(input)
+			want, _ := json.Marshal(tt.want)
+			if string(got) != string(want) {
+				t.Errorf("body = %s, want %s", got, want)
+			}
+		})
+	}
+}
+
+func TestFalPlanVeo(t *testing.T) {
+	full := NewFalVideoGenerator("key", FalVideoSpec{
+		Wire: "veo", TextModel: "fal/veo", ImageModel: "fal/veo-i2v", FirstLastModel: "fal/veo-flf",
+		EndPicture: true, DefaultSeconds: 4,
+	})
+	fast := NewFalVideoGenerator("key", FalVideoSpec{Wire: "veo", ImageModel: "fal/veo-fast-i2v", DefaultSeconds: 4})
+	withSound := NewFalVideoGenerator("key", FalVideoSpec{Wire: "veo", ImageModel: "fal/veo-i2v", DefaultSeconds: 4, Audio: true})
+
+	tests := []struct {
+		name      string
+		g         *FalVideoGenerator
+		req       Request
+		wantModel string
+		want      map[string]any
+		wantErr   bool
+	}{
+		{
+			name:      "a picture uses image_url and a length like 4s, 9:16 at 720p, silent",
+			g:         full,
+			req:       Request{Prompt: "slow zoom", ImageURL: "https://example.com/p.jpg", Seconds: 6},
+			wantModel: "fal/veo-i2v",
+			want: map[string]any{
+				"prompt": "slow zoom", "image_url": "https://example.com/p.jpg",
+				"aspect_ratio": "9:16", "duration": "6s", "resolution": "720p", "generate_audio": false,
+			},
+		},
+		{
+			name:      "no length uses the model default",
+			g:         full,
+			req:       Request{Prompt: "x", ImageURL: "https://example.com/p.jpg"},
+			wantModel: "fal/veo-i2v",
+			want: map[string]any{
+				"prompt": "x", "image_url": "https://example.com/p.jpg",
+				"aspect_ratio": "9:16", "duration": "4s", "resolution": "720p", "generate_audio": false,
+			},
+		},
+		{
+			name:      "an end picture switches to the first-last-frame endpoint",
+			g:         full,
+			req:       Request{Prompt: "pounce", ImageURL: "https://example.com/a.jpg", EndImageURL: "https://example.com/b.jpg", Seconds: 8},
+			wantModel: "fal/veo-flf",
+			want: map[string]any{
+				"prompt": "pounce", "first_frame_url": "https://example.com/a.jpg", "last_frame_url": "https://example.com/b.jpg",
+				"aspect_ratio": "9:16", "duration": "8s", "resolution": "720p", "generate_audio": false,
+			},
+		},
+		{
+			name:      "text-only works on a model with a text endpoint",
+			g:         full,
+			req:       Request{Prompt: "a cat", Seconds: 4},
+			wantModel: "fal/veo",
+			want: map[string]any{
+				"prompt": "a cat", "aspect_ratio": "9:16", "duration": "4s", "resolution": "720p", "generate_audio": false,
+			},
+		},
+		{
+			name:      "the sound toggle is passed on",
+			g:         withSound,
+			req:       Request{Prompt: "x", ImageURL: "https://example.com/p.jpg", Seconds: 4},
+			wantModel: "fal/veo-i2v",
+			want: map[string]any{
+				"prompt": "x", "image_url": "https://example.com/p.jpg",
+				"aspect_ratio": "9:16", "duration": "4s", "resolution": "720p", "generate_audio": true,
+			},
+		},
+		{name: "text-only on a model without a text endpoint is refused", g: fast, req: Request{Prompt: "a cat"}, wantErr: true},
+		{
+			name:    "an end picture on a model without the endpoint is refused, not dropped",
+			g:       fast,
+			req:     Request{Prompt: "x", ImageURL: "https://example.com/a.jpg", EndImageURL: "https://example.com/b.jpg"},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			model, input, err := tt.g.plan(tt.req)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("want an error, got model %q", model)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if model != tt.wantModel {
+				t.Errorf("model = %q, want %q", model, tt.wantModel)
+			}
 			got, _ := json.Marshal(input)
 			want, _ := json.Marshal(tt.want)
 			if string(got) != string(want) {

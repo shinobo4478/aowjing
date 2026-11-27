@@ -26,7 +26,9 @@ export default function SettingsPage() {
   async function onFinish(values: Settings) {
     setSaving(true);
     try {
-      const saved = await updateSettings(values);
+      // The limit's "today" starts at this browser's midnight.
+      const dailyCapTz = Intl.DateTimeFormat().resolvedOptions().timeZone ?? "";
+      const saved = await updateSettings({ ...values, dailyCapTz });
       form.setFieldsValue(saved);
       message.success("Settings saved.");
     } catch (err) {
@@ -74,6 +76,22 @@ export default function SettingsPage() {
               extra={'The AI model that drafts shot lists, as an OpenRouter-style id, e.g. "anthropic/claude-sonnet-5" or "google/gemini-2.5-flash". It runs through fal with the key above and is billed per token. Leave empty for the built-in default.'}
             >
               <Input autoComplete="off" placeholder="anthropic/claude-sonnet-5" />
+            </Form.Item>
+
+            <Form.Item
+              label="Daily spending limit (optional)"
+              name="dailyCapUsd"
+              rules={[
+                {
+                  validator: (_, v: string | undefined) =>
+                    !v?.trim() || Number(v) > 0
+                      ? Promise.resolve()
+                      : Promise.reject(new Error("Enter an amount above 0, or leave it empty.")),
+                },
+              ]}
+              extra="Stops clips and pictures from being started once today's fal.ai spend (real bills, plus the estimated price of anything still rendering or not billed yet) would pass this amount. The day starts at midnight in this browser's time zone. Leave empty for no limit."
+            >
+              <Input addonBefore="$" inputMode="decimal" autoComplete="off" placeholder="e.g. 10" />
             </Form.Item>
 
             <Form.Item style={{ marginBottom: 0 }}>

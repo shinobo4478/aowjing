@@ -58,25 +58,12 @@ func TestKeyframePrompt(t *testing.T) {
 	}
 }
 
-func TestImageClipUSD(t *testing.T) {
-	// 5 s at $0.084/s is $0.42 (the first real clip); float rounding must not leak.
-	if got := For("3d").ImageClipUSD(5); got != 0.42 {
-		t.Errorf("3d image clip = %v, want 0.42", got)
-	}
-	if got := (Recipe{}).ImageClipUSD(5); got != 0 {
-		t.Errorf("unknown price should be 0, got %v", got)
-	}
-}
-
 func TestClipSeconds(t *testing.T) {
+	// The outer bound: any model's range.
 	for n, want := range map[int]bool{2: false, 3: true, 5: true, 15: true, 16: false, 0: false, -1: false} {
 		if got := ValidClipSeconds(n); got != want {
 			t.Errorf("ValidClipSeconds(%d) = %v, want %v", n, got, want)
 		}
-	}
-	// Price scales with the length (assumed linear, see ImageClipUSD).
-	if got := For("3d").ImageClipUSD(10); got != 0.84 {
-		t.Errorf("10 s = %v, want 0.84", got)
 	}
 }
 

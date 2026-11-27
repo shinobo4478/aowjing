@@ -15,6 +15,8 @@ type profileDTO struct {
 	Description string `json:"description"`
 	Provider    string `json:"provider"`
 	VideoStyle  string `json:"videoStyle"`
+	VideoModel  string `json:"videoModel"`
+	VideoAudio  bool   `json:"videoAudio"`
 	CreatedAt   string `json:"createdAt"`
 	UpdatedAt   string `json:"updatedAt"`
 }
@@ -27,6 +29,8 @@ func toDTO(p sqlc.Profile) profileDTO {
 		Description: p.Description,
 		Provider:    p.Provider,
 		VideoStyle:  p.VideoStyle,
+		VideoModel:  p.VideoModel,
+		VideoAudio:  p.VideoAudio,
 		CreatedAt:   pgconv.TimeString(p.CreatedAt),
 		UpdatedAt:   pgconv.TimeString(p.UpdatedAt),
 	}

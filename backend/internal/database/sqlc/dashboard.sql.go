@@ -406,3 +406,101 @@ func (q *Queries) DashUnpinnedProducts(ctx context.Context) ([]DashUnpinnedProdu
 	}
 	return items, nil
 }
+
+const runningClips = `-- name: RunningClips :many
+SELECT g.id, g.seconds, g.created_at, p.id AS profile_id, p.name AS profile_name, p.video_model,
+       COALESCE(v.title, '')::text AS video_title, COALESCE(s.position, 0)::smallint AS shot_position
+FROM generations g
+JOIN profiles p ON p.id = g.profile_id
+LEFT JOIN video_shots s ON s.id = g.shot_id
+LEFT JOIN videos v ON v.id = s.video_id
+WHERE g.status = 'pending'
+ORDER BY g.created_at
+LIMIT 20
+`
+
+type RunningClipsRow struct {
+	ID           pgtype.UUID        `json:"id"`
+	Seconds      int16              `json:"seconds"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	ProfileID    pgtype.UUID        `json:"profile_id"`
+	ProfileName  string             `json:"profile_name"`
+	VideoModel   string             `json:"video_model"`
+	VideoTitle   string             `json:"video_title"`
+	ShotPosition int16              `json:"shot_position"`
+}
+
+// Everything being made right now, for the menu bar: clips (with the video and
+// shot they belong to, if any) and picture requests. Cheap enough to ask every
+// few seconds.
+func (q *Queries) RunningClips(ctx context.Context) ([]RunningClipsRow, error) {
+	rows, err := q.db.Query(ctx, runningClips)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RunningClipsRow
+	for rows.Next() {
+		var i RunningClipsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Seconds,
+			&i.CreatedAt,
+			&i.ProfileID,
+			&i.ProfileName,
+			&i.VideoModel,
+			&i.VideoTitle,
+			&i.ShotPosition,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const runningKeyframes = `-- name: RunningKeyframes :many
+SELECT k.id, k.count, k.created_at, p.id AS profile_id, p.name AS profile_name
+FROM keyframes k
+JOIN profiles p ON p.id = k.profile_id
+WHERE k.status = 'pending'
+ORDER BY k.created_at
+LIMIT 20
+`
+
+type RunningKeyframesRow struct {
+	ID          pgtype.UUID        `json:"id"`
+	Count       int16              `json:"count"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	ProfileID   pgtype.UUID        `json:"profile_id"`
+	ProfileName string             `json:"profile_name"`
+}
+
+func (q *Queries) RunningKeyframes(ctx context.Context) ([]RunningKeyframesRow, error) {
+	rows, err := q.db.Query(ctx, runningKeyframes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RunningKeyframesRow
+	for rows.Next() {
+		var i RunningKeyframesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Count,
+			&i.CreatedAt,
+			&i.ProfileID,
+			&i.ProfileName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

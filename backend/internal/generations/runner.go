@@ -27,8 +27,9 @@ func NewRunner(q *sqlc.Queries, fakeFal bool) *Runner {
 
 // generatorFor maps a profile's provider key to a Generator. "fal" reads the
 // API key from the settings store each time (it may have just been set); which
-// fal models it uses comes from the profile's video style (the recipe).
-func (rn *Runner) generatorFor(ctx context.Context, provider string, recipe studio.Recipe) (generate.Generator, error) {
+// fal models it calls, and whether the clip has sound, come from the profile's
+// video model and sound setting (see studio.VideoModel).
+func (rn *Runner) generatorFor(ctx context.Context, provider string, profile sqlc.Profile) (generate.Generator, error) {
 	if provider == "fal" {
 		if rn.fakeFal {
 			return generate.FakeFalGenerator{}, nil
@@ -39,9 +40,24 @@ func (rn *Runner) generatorFor(ctx context.Context, provider string, recipe stud
 		} else if err != nil {
 			return nil, err
 		}
-		return generate.NewFalVideoGenerator(key, recipe.TextModel, recipe.ImageModel), nil
+		return generate.NewFalVideoGenerator(key, falSpec(profile)), nil
 	}
 	return generate.TextGenerator{}, nil
+}
+
+// falSpec turns a profile's video model and sound setting into the fal models
+// and input shape the generator uses.
+func falSpec(profile sqlc.Profile) generate.FalVideoSpec {
+	m := studio.ModelFor(profile.VideoModel)
+	return generate.FalVideoSpec{
+		Wire:           string(m.Wire),
+		TextModel:      m.TextModel,
+		ImageModel:     m.ImageModel,
+		FirstLastModel: m.FirstLastModel,
+		EndPicture:     m.EndPicture,
+		DefaultSeconds: m.DefaultSeconds,
+		Audio:          profile.VideoAudio,
+	}
 }
 
 // imageFor returns the starting image to hand the generator: the pasted link,
@@ -75,7 +91,7 @@ func (rn *Runner) Run(ctx context.Context, generationID string) error {
 	if err != nil {
 		return err
 	}
-	gen, err := rn.generatorFor(ctx, row.Provider, studio.For(profile.VideoStyle))
+	gen, err := rn.generatorFor(ctx, row.Provider, profile)
 	if err != nil {
 		return err
 	}

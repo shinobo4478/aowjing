@@ -91,19 +91,40 @@ body {
 }
 
 /* --- Tally light ------------------------------------------------------ */
+/* A glowing dot in a translucent capsule tinted with the status colour. The
+   colour comes in as --tally (set by Tally.tsx), so the capsule, border and
+   glow always match the dot. */
 .acmp-tally {
+  --tally-bg: 12%;
+  --tally-line: 38%;
+  --tally-glow: 70%;
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  padding: 3px 12px 3px 9px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--tally) var(--tally-line), transparent);
+  background: color-mix(in srgb, var(--tally) var(--tally-bg), transparent);
   font-weight: 500;
   white-space: nowrap;
+}
+/* Cream is a poor background for a glow: a stronger capsule and glow there. */
+:root[data-theme="light"] .acmp-tally {
+  --tally-bg: 16%;
+  --tally-line: 55%;
+  --tally-glow: 90%;
 }
 .acmp-tally-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   flex: none;
+  background: var(--tally);
+  box-shadow:
+    0 0 3px 0 color-mix(in srgb, var(--tally) var(--tally-glow), transparent),
+    0 0 9px 2px color-mix(in srgb, var(--tally) calc(var(--tally-glow) / 2), transparent);
 }
+/* Rendering keeps its pulse: the dot dims while a ring spreads and fades. */
 .acmp-tally-dot.is-live {
   animation: acmp-pulse 1.6s ease-in-out infinite;
 }
@@ -111,11 +132,17 @@ body {
   0%,
   100% {
     opacity: 1;
-    box-shadow: 0 0 0 0 rgba(255, 201, 51, 0.5);
+    box-shadow:
+      0 0 3px 0 color-mix(in srgb, var(--tally) var(--tally-glow), transparent),
+      0 0 9px 2px color-mix(in srgb, var(--tally) calc(var(--tally-glow) / 2), transparent),
+      0 0 0 0 color-mix(in srgb, var(--tally) 50%, transparent);
   }
   50% {
     opacity: 0.6;
-    box-shadow: 0 0 0 5px rgba(255, 201, 51, 0);
+    box-shadow:
+      0 0 3px 0 color-mix(in srgb, var(--tally) var(--tally-glow), transparent),
+      0 0 9px 2px color-mix(in srgb, var(--tally) calc(var(--tally-glow) / 2), transparent),
+      0 0 0 5px color-mix(in srgb, var(--tally) 0%, transparent);
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -144,6 +171,7 @@ body {
   color: inherit;
   text-decoration: none;
   overflow: hidden;
+  cursor: pointer;
   transition: background-color 0.18s ease;
 }
 .acmp-roster-row:hover {
@@ -157,6 +185,8 @@ body {
   min-width: 0;
 }
 .acmp-roster-name {
+  display: block;
+  text-decoration: none;
   font-size: 26px;
   font-weight: 600;
   line-height: 1.3;

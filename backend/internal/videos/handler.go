@@ -9,7 +9,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -22,6 +24,7 @@ import (
 	"github.com/shinobo4478/aowjing/backend/internal/database/sqlc"
 	"github.com/shinobo4478/aowjing/backend/internal/pgconv"
 	"github.com/shinobo4478/aowjing/backend/internal/scriptwriter"
+	"github.com/shinobo4478/aowjing/backend/internal/spendcap"
 	"github.com/shinobo4478/aowjing/backend/internal/studio"
 )
 
@@ -131,13 +134,14 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "Failed to create the video.")
 		return
 	}
+	firstSeconds := studio.ModelFor(profile.VideoModel).DefaultSeconds
 	if _, err := h.q.CreateShot(r.Context(), sqlc.CreateShotParams{
-		VideoID: v.ID, Seconds: studio.DefaultClipSeconds,
+		VideoID: v.ID, Seconds: int16(firstSeconds),
 	}); err != nil {
 		writeError(w, http.StatusInternalServerError, "The video was created but its first shot was not.")
 		return
 	}
-	writeJSON(w, http.StatusCreated, map[string]any{"video": toVideoDTO(v, 1, studio.DefaultClipSeconds)})
+	writeJSON(w, http.StatusCreated, map[string]any{"video": toVideoDTO(v, 1, firstSeconds)})
 }
 
 // get returns a video with its shots in order, each with its newest attempt.
@@ -232,6 +236,12 @@ func (h *Handler) addShot(w http.ResponseWriter, r *http.Request) {
 	var in shotInput
 	if !decodeOptional(w, r, &in) {
 		return
+	}
+	if in.Seconds == 0 {
+		// No length given: the model's own default (Veo's is not 5).
+		if p, err := h.q.GetProfile(r.Context(), v.ProfileID); err == nil {
+			in.Seconds = studio.ModelFor(p.VideoModel).DefaultSeconds
+		}
 	}
 	if errs := in.normalizeAndValidate(); len(errs) > 0 {
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"errors": errs})
@@ -458,8 +468,24 @@ func (h *Handler) queueShot(ctx context.Context, v sqlc.Video, profile sqlc.Prof
 	if shot.ImageUrl == "" && !shot.ImageID.Valid {
 		return attemptDTO{}, &queueError{field: "imageId", msg: "Give the shot a starting picture first: make one, reuse one or upload one."}
 	}
+	// The video model decides which lengths exist (Veo: 4, 6 or 8) and whether an
+	// end picture can be used. Checked here, before anything is paid for, so a
+	// shot kept from before the model was switched says what to change.
+	if m := studio.ModelFor(profile.VideoModel); !m.ValidSeconds(int(shot.Seconds)) {
+		return attemptDTO{}, &queueError{field: "seconds", msg: m.Label + " makes shots of " + m.SecondsList() + " seconds; this shot is " + strconv.Itoa(int(shot.Seconds)) + " s. Change its length."}
+	} else if shot.EndImageID.Valid && !m.EndPicture {
+		return attemptDTO{}, &queueError{field: "endImageId", msg: m.Label + " cannot use an end picture. Remove the shot's end picture, or switch the profile's video model."}
+	}
 	if latest != nil && latest.Status == "pending" {
 		return attemptDTO{}, &queueError{code: http.StatusConflict, msg: "This shot is already being made."}
+	}
+	// The daily spending limit (Settings). In "generate all" the shots queued
+	// before this one already count (they are pending rows), so the total is held.
+	m := studio.ModelFor(profile.VideoModel)
+	if over, err := spendcap.Check(ctx, h.q, spendcap.ClipUSD(m, int(shot.Seconds), profile.VideoAudio), time.Now()); err != nil {
+		log.Printf("spendcap: %v", err)
+	} else if over != nil {
+		return attemptDTO{}, &queueError{code: http.StatusPaymentRequired, msg: over.Error()}
 	}
 
 	row, err := h.q.CreateGeneration(ctx, sqlc.CreateGenerationParams{
@@ -869,14 +895,19 @@ func (h *Handler) draft(w http.ResponseWriter, r *http.Request) {
 		writeFieldError(w, "profileId", "Videos are for fal.ai video profiles; this profile uses "+profile.Provider+".")
 		return
 	}
+	model := studio.ModelFor(profile.VideoModel)
 	if body.Seconds == 0 {
-		body.Seconds = studio.DefaultClipSeconds
+		body.Seconds = model.DefaultSeconds
 	}
 	brief := scriptwriter.Brief{
 		Topic: body.Topic, Shots: body.Shots, Seconds: body.Seconds,
 		ProfileName: profile.Name, Niche: profile.Niche, Description: profile.Description,
 	}
-	if errs := brief.Validate(); len(errs) > 0 {
+	errs := brief.Validate()
+	if _, bad := errs["seconds"]; !bad && !model.ValidSeconds(body.Seconds) {
+		errs["seconds"] = model.Label + " makes shots of " + model.SecondsList() + " seconds."
+	}
+	if len(errs) > 0 {
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"errors": errs})
 		return
 	}

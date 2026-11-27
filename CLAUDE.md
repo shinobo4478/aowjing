@@ -452,6 +452,64 @@ Order of work (each a small PR):
    `ALTER TABLE video_shots ADD COLUMN end_picture_prompt text NOT NULL DEFAULT '';`.
 9. ~~Video templates~~ **cut by the owner (2026-11-27):** not needed now.
 
+## Video models (built 2026-11-27)
+
+A Profile now picks its **video model** (`profiles.video_model`: `kling-v3` default, `veo-3.1`, `veo-3.1-fast`) and
+whether clips have **sound** (`profiles.video_audio`, off by default; a switch on the profile form). Registry:
+`internal/studio/models.go` (fal ids, allowed lengths, default length, price per second, whether text-only clips and an
+end picture are possible). `internal/generate/fal.go` builds the input per model family: Kling as before; **Veo**
+(read from fal's pages 2026-11-27): `image_url`, `duration` "4s"/"6s"/"8s", `aspect_ratio` "9:16", `resolution` "720p",
+`generate_audio`; an end picture needs the separate `first-last-frame-to-video` endpoint (`first_frame_url` +
+`last_frame_url`). Veo takes only 4, 6 or 8 s, so lengths are checked against the profile's model when a clip or shot is
+made (a shot kept from before a switch says what to change), the length box becomes a list for Veo, and
+`GET /studio/pricing` now returns `{models:[…]}` (per model: lengths, default, USD/s silent and with sound, whether
+the silent / with-sound price was confirmed on a bill). **Verified with a real clip (2026-11-27):** one Veo 3.1 clip, 6 s,
+sound ON, was billed **$2.40** (= $0.40/s, so Veo with sound is twice the silent $0.20/s); the request shape worked. The clip
+did NOT follow the prompt: the starting picture already had the bag on the floor and the cat looking at the camera, while the
+prompt said "the bag drops" and "eyes on the bag", so Veo kept the picture's pose (cat looks at camera), then improvised
+(looked down, turned, pushed the bag out of frame). A second try whose prompt began from what the picture shows ("the cat,
+staring at the camera, slowly turns its head down to the bag; ears tilt forward; the bag does not move") was followed.
+**Write a clip prompt as the next move from the picture, never as something the picture already contradicts.** The
+owner kept Veo as a second option for its speed (faster than Kling's ~8 min) and for sound without narration; Kling stays
+the default for controlled motion and is ~5x cheaper. Veo Fast offers only image-to-video (its text and first-last endpoints
+were not read) and its with-sound price is not seen on a bill. Existing DBs need `ALTER TABLE profiles ADD COLUMN video_model text NOT NULL DEFAULT 'kling-v3',
+ADD COLUMN video_audio boolean NOT NULL DEFAULT false;`.
+
+## Price check, daily limit and the rendering indicator (built 2026-11-27)
+
+- **Live prices.** `GET /studio/pricing` also asks fal's pricing API (`GET api.fal.ai/v1/models/pricing?endpoint_id=…`,
+  any API key, no billing permission; cached 10 min, 1 min after a failure) and adds `liveUsdPerSecond` /
+  `priceChanged` per model. **What the number is (probed 2026-11-27):** fal answers ONE `unit_price` per endpoint, unit
+  "seconds", with no split by option, and it is the top of the range: Veo 3.1 0.40 (with sound; silent 0.20), Veo Fast
+  0.15, Kling 0.14 (silent 0.084 on a real bill). So it is a **ceiling**, not the price of a silent clip, and it
+  cannot confirm silent prices. The table in `studio/models.go` holds the with-sound price (Kling 0.14, Veo 0.40, Fast
+  0.15; an earlier read said Kling 0.126); `priceChanged` is true when fal's number differs from it. The confirm
+  dialogs then add a warning, and with sound they use fal's live number. Real cost still arrives after the clip
+  (billing-events, Cost column); nothing yet compares estimate to bill automatically.
+- **Daily spending limit.** Settings has "Daily spending limit" (`dailyCapUsd`, empty = none) and the browser's time
+  zone is saved with it (`dailyCapTz`) so the day starts at the owner's midnight. `internal/spendcap` is checked before
+  anything is saved or queued: a clip from a template (`POST /generations`), a shot (`queueShot`, so "generate all"
+  counts the shots already queued), and a picture request (`POST /keyframes`). Over the limit → **402** with the
+  message. Spent today = the real bill where known, else the model's list price (clips still rendering or not billed
+  yet; a failed clip with no bill counts 0; pictures at the image model's list price). If the guard cannot read its
+  numbers it lets the spend through and logs it. Verified live: a 1-cent limit refused a picture request with 402 and
+  created nothing. Not covered: the script helper (a few cents) and anything started outside the API.
+- **Rendering indicator.** The menu bar shows a pill "N rendering" only while something is being made; click opens a
+  popover (a bottom sheet on a phone) listing each clip and picture request with what it is, profile, model, length
+  and a live elapsed time, linking to the profile. Source: `GET /dashboard/running` (clips + picture requests with
+  status pending), polled every 5 s while busy, 20 s idle, and at once after any POST to /generations, /videos or
+  /keyframes; the credit balance refreshes when the list shrinks.
+- The sun/moon theme switch's chosen item is now a circle (antd rounds it less than the track by default).
+- **Status tag (`components/Tally.tsx`):** a glowing dot in a capsule tinted with the status colour (`--tally`); Rendering
+  still pulses, Done and Failed are still. Stronger capsule/glow in light mode.
+- **Profiles page:** a List / Cards switch and a sort (Recently updated, Newest first, Name A–Z, Rendering first), both
+  remembered in the browser (`localStorage` `acmp.profiles.view` / `.sort`). A profile with clips rendering shows a pulsing
+  "N rendering" tag that links to its Generations tab (from the shared poll `app/useRunning.ts`; picture requests are not
+  counted). The card has a cover for the profile's picture: profiles have no picture yet, so it shows the tape stripe;
+  `Cover` in `app/profiles/page.tsx` already takes an `imageUrl` (upload + a `profiles` column are still to do).
+  A profile's tabs are now Generations, Videos, Prompt templates, Look, Channels, and Generations is the default.
+- No schema change for any of this.
+
 ## Dashboard (built 2026-11-27)
 
 Two screens read `GET /dashboard?tz=<IANA zone>` (`internal/dashboard`, queries in `db/query/dashboard.sql`):

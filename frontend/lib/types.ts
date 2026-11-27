@@ -8,12 +8,12 @@ export type ProviderKey = "text" | "fal";
 
 export const PROVIDER_OPTIONS: { value: ProviderKey; label: string }[] = [
   { value: "text", label: "Text — prompt only, no cost" },
-  { value: "fal", label: "fal.ai video — Kling 3.0" },
+  { value: "fal", label: "fal.ai video (Kling, Veo)" },
 ];
 
 /** Short form of a generator for tight places (roster rows, slate fields). */
 export const providerShort = (v: string) =>
-  v === "fal" ? "Kling 3.0 video" : v === "text" ? "Text only" : v;
+  v === "fal" ? "fal.ai video" : v === "text" ? "Text only" : v;
 
 /** How a profile's video clips look. Keep in sync with the recipes in
  *  backend/internal/studio — a new style is added there and here. Only used by
@@ -25,6 +25,21 @@ export const VIDEO_STYLE_OPTIONS: { value: VideoStyle; label: string }[] = [
 ];
 
 export const DEFAULT_VIDEO_STYLE: VideoStyle = "3d";
+
+/** Which model makes a profile's clips. Keep in sync with the registry in
+ *  backend/internal/studio/models.go — a new model is added there and here. */
+export type VideoModel = "kling-v3" | "veo-3.1" | "veo-3.1-fast";
+
+export const VIDEO_MODEL_OPTIONS: { value: VideoModel; label: string }[] = [
+  { value: "kling-v3", label: "Kling v3 Standard" },
+  { value: "veo-3.1", label: "Veo 3.1" },
+  { value: "veo-3.1-fast", label: "Veo 3.1 Fast" },
+];
+
+export const DEFAULT_VIDEO_MODEL: VideoModel = "kling-v3";
+
+export const videoModelLabel = (v: string) =>
+  VIDEO_MODEL_OPTIONS.find((o) => o.value === v)?.label ?? v;
 
 export const videoStyleLabel = (v: string) =>
   VIDEO_STYLE_OPTIONS.find((o) => o.value === v)?.label ?? v;
@@ -41,6 +56,10 @@ export interface Profile {
   provider: ProviderKey;
   /** Which video style its clips use (fal profiles). */
   videoStyle: VideoStyle;
+  /** Which video model makes its clips (fal profiles). */
+  videoModel: VideoModel;
+  /** Whether its clips are made with sound (fal profiles). Off by default. */
+  videoAudio: boolean;
   createdAt: string; // ISO 8601
   updatedAt: string; // ISO 8601
 }
@@ -48,7 +67,7 @@ export interface Profile {
 /** Fields the client sends when creating or editing a Profile. */
 export type ProfileInput = Pick<
   Profile,
-  "name" | "niche" | "description" | "provider" | "videoStyle"
+  "name" | "niche" | "description" | "provider" | "videoStyle" | "videoModel" | "videoAudio"
 >;
 
 export interface Channel {
@@ -259,18 +278,66 @@ export interface Settings {
   /** Optional model id the script helper writes drafts with (e.g.
    *  "anthropic/claude-sonnet-5"); empty means the built-in default. */
   scriptModel: string;
+  /** Daily spending limit in USD as typed ("" = none), and the browser's time
+   *  zone, saved with it so "today" starts at the owner's midnight. */
+  dailyCapUsd: string;
+  dailyCapTz: string;
+}
+
+/** One video model as GET /studio/pricing describes it. */
+export interface PricingModel {
+  key: string;
+  label: string;
+  /** The clip lengths it accepts, in seconds, and the one used when none is chosen. */
+  seconds: number[];
+  defaultSeconds: number;
+  /** USD per second of a silent clip / one with sound; null = not known. Multiply
+   *  by the clip's length (assumed to scale linearly; only checked at 5 s). */
+  usdPerSecond: number | null;
+  usdPerSecondAudio: number | null;
+  /** A real bill matched the silent price; otherwise it is fal's list price. */
+  confirmedSilent: boolean;
+  /** The same for the price with sound. */
+  confirmedAudio: boolean;
+  /** What fal's pricing API lists for the model right now: one number, the top of
+   *  its range (the price with sound). null when fal could not be asked. */
+  liveUsdPerSecond: number | null;
+  /** That live price differs from the one in our table: estimates may be off. */
+  priceChanged: boolean;
+  /** A clip can be made from a prompt alone / given an end picture. */
+  supportsText: boolean;
+  endPicture: boolean;
 }
 
 /** What the clips cost, from GET /studio/pricing. */
 export interface StudioPricing {
-  /** The length a clip gets when none is chosen, and the range fal accepts. */
-  defaultSeconds: number;
-  minSeconds: number;
-  maxSeconds: number;
-  /** Price per second of an image-to-video clip by video style; a style whose
-   *  price is not known is missing. Multiply by the clip's length (assumed to
-   *  scale linearly; only checked at 5 s). */
-  imageUsdPerSecond: Record<string, number>;
+  models: PricingModel[];
+}
+
+/** The pricing entry for a video model key, if the list has loaded. */
+export const pricingFor = (p: StudioPricing | null, model: string): PricingModel | undefined =>
+  p?.models.find((m) => m.key === model);
+
+/** USD per second for a model with or without sound; undefined when not known. */
+export function perSecondUsd(m: PricingModel | undefined, audio: boolean): number | undefined {
+  // With sound, fal's live number IS the price with sound, so when it has moved
+  // away from our table the live one is the better estimate.
+  if (audio && m?.priceChanged && m.liveUsdPerSecond != null) return m.liveUsdPerSecond;
+  const v = audio ? m?.usdPerSecondAudio : m?.usdPerSecond;
+  return v == null ? undefined : v;
+}
+
+/** A short caveat to put after a price that has not been seen on a bill. */
+export function priceCaveat(m: PricingModel | undefined, audio: boolean): string {
+  const seen = m && (audio ? m.confirmedAudio : m.confirmedSilent);
+  let text = seen ? "" : " This is fal's list price, not yet seen on a bill.";
+  if (m?.priceChanged && m.liveUsdPerSecond != null) {
+    text +=
+      ` fal now lists up to ${m.liveUsdPerSecond.toFixed(2)}/s for this model, which is not the price this estimate was built on${
+        audio ? "" : " (a silent clip costs less than that, but the table may be out of date)"
+      }; the real cost may differ.`;
+  }
+  return text;
 }
 
 /** The fal.ai credit balance, from GET /credits/fal. `configured` is false until
@@ -365,6 +432,21 @@ export interface ProductUsage {
   templateName: string;
   /** 1 or 2: which pin the product is on that clip. */
   position: 1 | 2;
+  createdAt: string; // ISO 8601
+}
+
+// --- What is rendering now (GET /dashboard/running) ---
+
+export interface RunningItem {
+  id: string;
+  kind: "clip" | "pictures";
+  profileId: string;
+  profileName: string;
+  /** In words: 'Video "The bag drop", shot 2', "Clip", "3 pictures". */
+  label: string;
+  /** Clips only. */
+  seconds?: number;
+  model?: string;
   createdAt: string; // ISO 8601
 }
 

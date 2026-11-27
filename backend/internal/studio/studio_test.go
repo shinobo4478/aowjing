@@ -26,13 +26,13 @@ func TestValidAndFor(t *testing.T) {
 	}
 }
 
-// Every registered recipe must be usable: named, with both models set, and
-// reachable through its own name. Catches a half-filled entry when a style is
+// Every registered recipe must be usable: named and reachable through its own
+// name. Catches a half-filled entry when a style is
 // added.
 func TestRegistryIsComplete(t *testing.T) {
 	seen := map[Style]bool{}
 	for _, r := range Recipes() {
-		if r.Style == "" || r.Label == "" || r.TextModel == "" || r.ImageModel == "" {
+		if r.Style == "" || r.Label == "" {
 			t.Errorf("recipe %+v has an empty required field", r)
 		}
 		if seen[r.Style] {

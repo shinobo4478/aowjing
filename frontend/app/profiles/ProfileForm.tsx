@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Alert, Button, Form, Input, Select } from "antd";
+import { Alert, Button, Form, Input, Select, Switch } from "antd";
 import { ApiError } from "@/lib/api";
 import {
+  DEFAULT_VIDEO_MODEL,
   DEFAULT_VIDEO_STYLE,
   PROVIDER_OPTIONS,
+  VIDEO_MODEL_OPTIONS,
   VIDEO_STYLE_OPTIONS,
   type ProfileInput,
 } from "@/lib/types";
@@ -22,6 +24,8 @@ const EMPTY: ProfileInput = {
   description: "",
   provider: "text",
   videoStyle: DEFAULT_VIDEO_STYLE,
+  videoModel: DEFAULT_VIDEO_MODEL,
+  videoAudio: false,
 };
 
 export default function ProfileForm({ initial, submitLabel, onSubmit }: Props) {
@@ -42,6 +46,8 @@ export default function ProfileForm({ initial, submitLabel, onSubmit }: Props) {
         // leaves out fields that are not on screen; read the stored value so a
         // text profile keeps (and sends) its style.
         videoStyle: form.getFieldValue("videoStyle") ?? DEFAULT_VIDEO_STYLE,
+        videoModel: form.getFieldValue("videoModel") ?? DEFAULT_VIDEO_MODEL,
+        videoAudio: !!form.getFieldValue("videoAudio"),
       });
     } catch (err) {
       if (err instanceof ApiError && err.fieldErrors) {
@@ -124,10 +130,35 @@ export default function ProfileForm({ initial, submitLabel, onSubmit }: Props) {
               label="Video style"
               name="videoStyle"
               rules={[{ required: true, message: "Pick a video style." }]}
-              extra="How this profile's clips look. The style decides the models and the wording added to prompts."
+              extra="How this profile's clips look. The style decides the wording added to prompts; the video model is chosen below."
             >
               <Select options={VIDEO_STYLE_OPTIONS} />
             </Form.Item>
+          ) : null
+        }
+      </Form.Item>
+
+      <Form.Item noStyle dependencies={["provider"]}>
+        {({ getFieldValue }) =>
+          getFieldValue("provider") === "fal" ? (
+            <>
+              <Form.Item
+                label="Video model"
+                name="videoModel"
+                rules={[{ required: true, message: "Pick a video model." }]}
+                extra="Which model makes this profile's clips. Models differ in price, in the clip lengths they take (Veo: 4, 6 or 8 seconds) and in how realistic they look."
+              >
+                <Select options={VIDEO_MODEL_OPTIONS} />
+              </Form.Item>
+              <Form.Item
+                label="Sound"
+                name="videoAudio"
+                valuePropName="checked"
+                extra="Ask the model to make sound too. Off by default: narration is added separately, and clips with sound cost more."
+              >
+                <Switch checkedChildren="On" unCheckedChildren="Off" />
+              </Form.Item>
+            </>
           ) : null
         }
       </Form.Item>

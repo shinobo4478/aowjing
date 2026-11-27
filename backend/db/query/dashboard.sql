@@ -102,3 +102,25 @@ FROM products
 WHERE NOT EXISTS (SELECT 1 FROM generation_products gp WHERE gp.product_id = products.id)
 ORDER BY created_at DESC
 LIMIT 5;
+
+-- Everything being made right now, for the menu bar: clips (with the video and
+-- shot they belong to, if any) and picture requests. Cheap enough to ask every
+-- few seconds.
+-- name: RunningClips :many
+SELECT g.id, g.seconds, g.created_at, p.id AS profile_id, p.name AS profile_name, p.video_model,
+       COALESCE(v.title, '')::text AS video_title, COALESCE(s.position, 0)::smallint AS shot_position
+FROM generations g
+JOIN profiles p ON p.id = g.profile_id
+LEFT JOIN video_shots s ON s.id = g.shot_id
+LEFT JOIN videos v ON v.id = s.video_id
+WHERE g.status = 'pending'
+ORDER BY g.created_at
+LIMIT 20;
+
+-- name: RunningKeyframes :many
+SELECT k.id, k.count, k.created_at, p.id AS profile_id, p.name AS profile_name
+FROM keyframes k
+JOIN profiles p ON p.id = k.profile_id
+WHERE k.status = 'pending'
+ORDER BY k.created_at
+LIMIT 20;
