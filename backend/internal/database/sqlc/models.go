@@ -103,6 +103,13 @@ type Product struct {
 	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 }
 
+type ProductImage struct {
+	ProductID pgtype.UUID `json:"product_id"`
+	ImageID   pgtype.UUID `json:"image_id"`
+	Position  int16       `json:"position"`
+	Label     string      `json:"label"`
+}
+
 type Profile struct {
 	ID          pgtype.UUID        `json:"id"`
 	Name        string             `json:"name"`

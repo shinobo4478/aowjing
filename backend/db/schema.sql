@@ -308,6 +308,21 @@ CREATE UNIQUE INDEX IF NOT EXISTS products_shopee_ids_idx
     ON products (shopee_shop_id, shopee_item_id)
     WHERE shopee_shop_id IS NOT NULL AND shopee_item_id IS NOT NULL;
 
+-- Pictures of a product, as it really looks: several angles and states (cap
+-- closed, cap open, in a hand). They go to the image model as reference pictures
+-- when a shot's picture is made, so the product on screen is the real one. A
+-- label says what state the picture shows ("cap open"): an edit model copies the
+-- state of its reference, so a shot that needs an open cap needs a picture with
+-- one. At most 4 (position 1-4). Removed with the product.
+CREATE TABLE IF NOT EXISTS product_images (
+    product_id uuid     NOT NULL REFERENCES products (id) ON DELETE CASCADE,
+    image_id   uuid     NOT NULL REFERENCES images (id) ON DELETE CASCADE,
+    position   smallint NOT NULL CHECK (position BETWEEN 1 AND 4),
+    label      text     NOT NULL DEFAULT '',
+    PRIMARY KEY (product_id, position),
+    UNIQUE (product_id, image_id)
+);
+
 -- Products pinned to a clip (a generation) — at most two. `position` (1 or 2)
 -- is the pin order and, with the primary key, is what enforces the cap in the
 -- database: a third product has no free position. A product that is pinned

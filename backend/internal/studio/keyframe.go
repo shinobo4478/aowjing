@@ -98,6 +98,10 @@ const (
 	RoleCostar CastRole = "costar"
 	// RoleProp is an object that must look exactly like its pictures.
 	RoleProp CastRole = "prop"
+	// RoleProduct is a catalog product (its pictures live on the Product, not in
+	// a profile's cast): the one thing that must look exactly like the real one.
+	// Not a valid cast_members role, see ValidCastRole.
+	RoleProduct CastRole = "product"
 	// RolePlace is a location to keep.
 	RolePlace CastRole = "place"
 )
@@ -117,6 +121,12 @@ const (
 	// MaxMemberPictures is how many pictures one member may have (other angles
 	// of the same character or object).
 	MaxMemberPictures = 4
+	// MaxProductPictures is how many pictures one product may have (its angles and
+	// states: cap closed, cap open, in a hand).
+	MaxProductPictures = 4
+	// MaxPictureProducts is how many different products one picture may show,
+	// the same cap as the products pinned to a clip.
+	MaxPictureProducts = 2
 	// MaxRequestPictures is how many reference pictures one picture request may
 	// carry in all (scene pictures plus the ticked cast). A cautious cap: the
 	// models' own limits are higher but more pictures blur who is who, and no
@@ -142,6 +152,8 @@ func rolePhrase(r CastRole) string {
 		return "another character"
 	case RoleProp:
 		return "an object"
+	case RoleProduct:
+		return "the product"
 	case RolePlace:
 		return "the location"
 	}

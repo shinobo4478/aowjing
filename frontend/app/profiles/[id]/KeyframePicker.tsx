@@ -10,10 +10,11 @@ import {
   getKeyframeModels,
   imageSrc,
   listCast,
+  listPickableProducts,
 } from "@/lib/api";
 import { formatUsd } from "@/lib/format";
 import { hasThaiLetters, usePromptPair, type PromptPair, type PromptTexts } from "@/lib/promptPair";
-import { CAST_ROLES, type CastMember, type Keyframe, type KeyframeModels } from "@/lib/types";
+import { CAST_ROLES, type CastMember, type Keyframe, type KeyframeModels, type PickableProduct } from "@/lib/types";
 import { refreshCredits } from "../../CreditsBadge";
 import PromptPairField from "./PromptPairField";
 
@@ -22,6 +23,9 @@ const POLL_MAX_TRIES = 120; // 6 minutes; an image takes seconds to a minute
 
 /** Most same-scene pictures one request may carry. Mirrors studio.MaxSceneReferences. */
 const MAX_SCENE_PICTURES = 2;
+
+/** Most different products one picture may show. Mirrors studio.MaxPictureProducts. */
+const MAX_PICTURE_PRODUCTS = 2;
 
 /**
  * Makes the starting picture of a clip: describe the scene, choose the image
@@ -64,6 +68,10 @@ export default function KeyframePicker({
   // What the owner ticked or unticked by hand; a member not in here follows the
   // default (the hero is ticked, everyone else is not).
   const [ticks, setTicks] = useState<Record<string, boolean>>({});
+  // Products that have pictures, and which of those pictures are ticked (by image
+  // id). Nothing is ticked by default: the owner picks the state a shot needs.
+  const [products, setProducts] = useState<PickableProduct[]>([]);
+  const [productTicks, setProductTicks] = useState<Record<string, boolean>>({});
   // The prompt is a Thai/English pair: the owner writes Thai; the English is what
   // the image model receives (translated before pictures are paid for).
   const raw = usePromptPair(
@@ -140,6 +148,13 @@ export default function KeyframePicker({
       .catch(() => {
         /* non-fatal: the cast list just stays empty */
       });
+    listPickableProducts()
+      .then((p) => {
+        if (!cancelled) setProducts(p);
+      })
+      .catch(() => {
+        /* non-fatal: no product ticks */
+      });
     return () => {
       cancelled = true;
     };
@@ -169,7 +184,12 @@ export default function KeyframePicker({
     m.imageIds.length > 0 && (ticks[m.id] ?? m.role === "hero");
   const tickedCast = cast.filter(isTicked);
   const castPictures = tickedCast.reduce((n, m) => n + m.imageIds.length, 0);
-  const effectiveRefs = castPictures + sceneIds.length;
+  // The ticked product pictures, in the list's order (the order they are sent).
+  const tickedProductPictures = products.flatMap((p) =>
+    p.pictures.filter((pic) => productTicks[pic.imageId]).map((pic) => ({ ...pic, product: p })),
+  );
+  const tickedProductIds = new Set(tickedProductPictures.map((x) => x.product.id));
+  const effectiveRefs = castPictures + sceneIds.length + tickedProductPictures.length;
   const maxPictures = info?.maxPictures ?? 6;
   const tooManyPictures = effectiveRefs > maxPictures;
   // A picture needs a description in either language (the Thai is translated
@@ -220,7 +240,7 @@ export default function KeyframePicker({
                 : `The scene of ${sceneIds.length} other shot${sceneIds.length === 1 ? "" : "s"} will be kept. `
               : ""}
             {effectiveRefs > 0
-              ? `${effectiveRefs} reference picture${effectiveRefs === 1 ? "" : "s"} in all will be sent along${tickedCast.length > 0 ? ` (${tickedCast.map((m) => m.name).join(", ")})` : ""}. `
+              ? `${effectiveRefs} reference picture${effectiveRefs === 1 ? "" : "s"} in all will be sent along${tickedCast.length + tickedProductIds.size > 0 ? ` (${[...tickedCast.map((m) => m.name), ...products.filter((p) => tickedProductIds.has(p.id)).map((p) => p.name)].join(", ")})` : ""}. `
               : "No reference pictures will be sent. "}
             {keyframe ? "The pictures below will be replaced." : ""}
           </p>
@@ -246,6 +266,7 @@ export default function KeyframePicker({
           model,
           count,
           castIds: tickedCast.map((m) => m.id),
+          productPictureIds: tickedProductPictures.map((x) => x.imageId),
           sceneImageIds: sceneIds,
           sameCamera: sameCamera && sceneIds.length > 0,
         }),
@@ -387,6 +408,51 @@ export default function KeyframePicker({
           alone. Add the hero, a co-star or a prop on the profile&apos;s Cast tab to keep
           them the same.
         </Typography.Paragraph>
+      )}
+
+      {products.length > 0 && (
+        <div style={{ marginTop: 12 }}>
+          <Typography.Text>สินค้าในภาพนี้ · Product in this picture:</Typography.Text>
+          {products.map((p) => (
+            <div key={p.id} style={{ marginTop: 6 }}>
+              <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+                {p.name}
+              </Typography.Text>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 4 }}>
+                {p.pictures.map((pic) => {
+                  const on = !!productTicks[pic.imageId];
+                  // Cannot tick what would pass the request's cap, or add a third product.
+                  const overCap = !on && effectiveRefs + 1 > maxPictures;
+                  const thirdProduct =
+                    !on && !tickedProductIds.has(p.id) && tickedProductIds.size >= MAX_PICTURE_PRODUCTS;
+                  return (
+                    <Checkbox
+                      key={pic.imageId}
+                      checked={on}
+                      disabled={overCap || thirdProduct}
+                      onChange={(e) =>
+                        setProductTicks((t) => ({ ...t, [pic.imageId]: e.target.checked }))
+                      }
+                    >
+                      {/* Served by the API with the session cookie, so next/image cannot optimize it. */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={imageSrc(pic.imageId)}
+                        alt={pic.label || p.name}
+                        style={{ width: 36, height: 48, objectFit: "contain", borderRadius: 6, verticalAlign: "middle", marginRight: 6 }}
+                      />
+                      {pic.label || "ไม่มีชื่อสภาพ"}
+                    </Checkbox>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            เลือกรูปที่ตรงกับสภาพที่ช็อตต้องการ (เช่น ฝาเปิด) โมเดลคัดลอกสภาพจากรูปด้วย
+            และไม่ควรเลือกรูปสินค้าคนละสีพร้อมกัน
+          </Typography.Text>
+        </div>
       )}
 
       <div style={{ marginTop: 12, display: "flex", gap: 12, alignItems: "center" }}>

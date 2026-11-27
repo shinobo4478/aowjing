@@ -34,7 +34,14 @@ func (h *Handler) Routes() http.Handler {
 	r := chi.NewRouter()
 	r.Get("/", h.list)
 	r.Post("/", h.create)
+	// Products that have pictures, for the picture dialog. A fixed path, so it is
+	// matched before /{id}.
+	r.Get("/pictures", h.pickable)
 	r.Get("/{id}", h.get)
+	r.Get("/{id}/pictures", h.listPictures)
+	r.Post("/{id}/pictures", h.addPicture)
+	r.Patch("/{id}/pictures/{imageId}", h.updatePictureLabel)
+	r.Delete("/{id}/pictures/{imageId}", h.removePicture)
 	r.Get("/{id}/usage", h.usage)
 	r.Patch("/{id}", h.update)
 	r.Delete("/{id}", h.delete)
@@ -273,6 +280,13 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 			"This product is pinned to %d clip(s). Unpin it from them before deleting it.", used))
 		return
 	}
+	// Collected first: the cascade drops the links, and then nothing says which
+	// pictures to clean up.
+	imageIDs, err := h.q.ListProductImageIDs(r.Context(), id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to delete product.")
+		return
+	}
 	n, err := h.q.DeleteProduct(r.Context(), id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to delete product.")
@@ -281,6 +295,9 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 	if n == 0 {
 		writeError(w, http.StatusNotFound, "Product not found.")
 		return
+	}
+	for _, imageID := range imageIDs {
+		_ = h.q.DeleteImageIfUnused(r.Context(), imageID)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

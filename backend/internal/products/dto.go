@@ -39,6 +39,8 @@ func toDTO(p sqlc.Product) productDTO {
 type listItemDTO struct {
 	productDTO
 	UsedCount int `json:"usedCount"`
+	// PictureCount is how many pictures of the product itself are kept.
+	PictureCount int `json:"pictureCount"`
 }
 
 func listRowDTOs(rows []sqlc.ListProductsRow) []listItemDTO {
@@ -51,7 +53,8 @@ func listRowDTOs(rows []sqlc.ListProductsRow) []listItemDTO {
 				AffiliateUrl: r.AffiliateUrl, PriceThb: r.PriceThb, Note: r.Note,
 				CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt,
 			}),
-			UsedCount: int(r.UsedCount),
+			UsedCount:    int(r.UsedCount),
+			PictureCount: int(r.PictureCount),
 		}
 	}
 	return out

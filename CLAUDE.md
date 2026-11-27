@@ -502,9 +502,12 @@ captions added in the editor while voice-over is on hold).
   pictures) and `studio.KeyframePrompt` says which is which ("Pictures 1-2 are "Name", the lead
   character (note). Picture 3 is …") then "each must look exactly as in its own picture(s)…". The
   dialog ticks the hero by default. One request carries at most 6 pictures in all (scene + cast,
-  `studio.MaxRequestPictures`), a cautious cap — **no request with several reference pictures has been
-  sent to fal yet** (unverified that fal accepts that many base64 pictures, and how well either model
-  keeps several people/objects apart).
+  `studio.MaxRequestPictures`), a cautious cap. **First real result (owner, 2026-11-28):** one request
+  with 2 reference pictures (hero "พี่นักแบด" + prop "กระติกเขียว", a green bottle) came back as the hero
+  in a red jersey drinking from the green bottle on a badminton court; the owner judged it about right.
+  So fal accepts two base64 reference pictures in one request and the naming prompt works at that size.
+  **Still unverified:** 3–6 pictures, the bottle's logo/text, how steadily the face matches across
+  shots (a single sample), and which model did it (not recorded).
 - **Lessons from the owner's first bottle test:** an edit model copies the reference's *state* too — a
   closed bottle in the reference stays closed whatever the prompt says, so the pictures given must show
   the state the shot needs (open cap, in hand). One colour per request. A photo whose ratio is under 0.4
@@ -534,7 +537,20 @@ captions added in the editor while voice-over is on hold).
   unless fal accepts the same picture twice). Elements would help when the subject turns or moves in a
   clip and would keep the same person across shots without chaining frames. Plan: one A/B pair of 5 s
   clips from the same start picture, with and without elements (≈ $0.84), before any code.
-- **Next** (agreed order): product pictures on `Product` + a "product" role in the picture dialog; the
+- **Product pictures (built 2026-11-28):** `product_images` (product, image, position 1–4, `label`;
+  removed with the product) — the real product from several angles and STATES (cap closed / open /
+  in hand), because an edit model copies the state of its reference. Products page: a "Pictures"
+  column opens `ProductPicturesModal` (upload with a label, edit label, remove). API:
+  `GET/POST /products/{id}/pictures` (multipart `file` + `label`, JPG/PNG ≤ 4 MB), `PATCH/DELETE
+  …/pictures/{imageId}`, `GET /products/pictures` (products that have pictures, for the dialog).
+  `POST /keyframes` takes `productPictureIds` (image ids; at most 2 different products, counted in
+  the 6-picture cap): they follow the cast's pictures and the prompt names each one — `Picture 4 is
+  "Bottle", the product (cap open).` (`studio.RoleProduct`, not a valid cast role). The picture dialog
+  lists each product's pictures with ticks (none ticked by default). Existing DBs need `CREATE TABLE
+  product_images …` (see `db/schema.sql`). **Verified:** build, unit tests for the prompt wording,
+  the dialog loads a product's (empty) list against Postgres. **Not verified live:** upload, label
+  edit, remove, the product-picture checks on `POST /keyframes`, and any real picture made from them.
+- **Next** (agreed order): ~~product pictures on `Product`~~ (done above) + a "product" role in the picture dialog; the
   script helper learning the product mode and the cast names; a real test (hero + product, ≈ $0.16 per
   picture model); Kling `elements` research for keeping a person/object inside a clip.
 
