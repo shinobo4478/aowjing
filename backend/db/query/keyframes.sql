@@ -1,6 +1,6 @@
 -- name: CreateKeyframe :one
-INSERT INTO keyframes (profile_id, prompt, model, count, reference_count, extra_image_ids, status)
-VALUES ($1, $2, $3, $4, $5, $6, 'pending')
+INSERT INTO keyframes (profile_id, prompt, model, count, reference_count, extra_image_ids, cast_image_ids, status)
+VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending')
 RETURNING *;
 
 -- Pictures by id, for the worker to send as references. Order is the caller's
@@ -32,11 +32,3 @@ ORDER BY position;
 -- name: DeleteKeyframe :execrows
 DELETE FROM keyframes
 WHERE id = $1;
-
--- The reference pictures of a profile as stored data, for the worker to send.
--- name: ListProfileReferenceData :many
-SELECT i.content_type, i.data
-FROM profile_reference_images r
-JOIN images i ON i.id = r.image_id
-WHERE r.profile_id = $1
-ORDER BY r.position;

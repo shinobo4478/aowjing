@@ -22,7 +22,9 @@ import type {
   ProfileInput,
   PromptTemplate,
   PromptTemplateInput,
-  ReferencePicture,
+  CastList,
+  CastMember,
+  CastRole,
   Settings,
   Shot,
   ShotAttempt,
@@ -238,28 +240,50 @@ export function imageSrc(imageId: string) {
 /** Mirrors images.MaxBytes on the backend. */
 export const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
-/** Mirrors maxReferenceBytes on the backend (profiles/references.go). */
+/** Mirrors maxReferenceBytes on the backend (profiles/cast.go). */
 export const MAX_REFERENCE_BYTES = 4 * 1024 * 1024;
 
-// --- Reference pictures (give a profile its own look) ---
+// --- Cast (a profile's recurring characters, objects and places) ---
 
-export function listReferences(profileId: string) {
-  return request<{ references: ReferencePicture[] }>(
-    `/profiles/${profileId}/references`,
-  ).then((r) => r.references);
+export function listCast(profileId: string) {
+  return request<CastList>(`/profiles/${profileId}/cast`);
 }
 
-export function addReference(profileId: string, file: File) {
+export interface CastInput {
+  role: CastRole;
+  name: string;
+  note: string;
+}
+
+export function createCastMember(profileId: string, input: CastInput) {
+  return request<{ member: CastMember }>(`/profiles/${profileId}/cast`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  }).then((r) => r.member);
+}
+
+export function updateCastMember(profileId: string, castId: string, input: CastInput) {
+  return request<{ member: CastMember }>(`/profiles/${profileId}/cast/${castId}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  }).then((r) => r.member);
+}
+
+export function deleteCastMember(profileId: string, castId: string) {
+  return request<void>(`/profiles/${profileId}/cast/${castId}`, { method: "DELETE" });
+}
+
+export function addCastImage(profileId: string, castId: string, file: File) {
   const form = new FormData();
   form.append("file", file);
-  return request<{ reference: ReferencePicture }>(
-    `/profiles/${profileId}/references`,
+  return request<{ imageId: string }>(
+    `/profiles/${profileId}/cast/${castId}/images`,
     { method: "POST", body: form, headers: {} },
-  ).then((r) => r.reference);
+  ).then((r) => r.imageId);
 }
 
-export function removeReference(profileId: string, imageId: string) {
-  return request<void>(`/profiles/${profileId}/references/${imageId}`, {
+export function removeCastImage(profileId: string, castId: string, imageId: string) {
+  return request<void>(`/profiles/${profileId}/cast/${castId}/images/${imageId}`, {
     method: "DELETE",
   });
 }
@@ -270,15 +294,16 @@ export function getKeyframeModels() {
   return request<KeyframeModels>("/keyframes/models");
 }
 
-/** Asks for `count` pictures. With `useReferences` (the default) the profile's
- *  reference pictures go along so its character stays the same. Returns the
+/** Asks for `count` pictures. The ticked cast members (`castIds`) go along, with
+ *  their pictures named in the prompt, so they stay the same. Returns the
  *  pending request; poll getKeyframe until it has finished. */
 export function createKeyframe(input: {
   profileId: string;
   prompt: string;
   model: string;
   count: number;
-  useReferences: boolean;
+  /** The profile's cast members that appear in this picture; none = text only. */
+  castIds: string[];
   /** Stored pictures of the SAME scene to keep (other shots of a video), at most
    *  2, so the new picture shows that scene from another angle or moment. */
   sceneImageIds?: string[];

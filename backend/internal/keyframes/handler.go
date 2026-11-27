@@ -12,6 +12,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -72,7 +73,7 @@ func (h *Handler) models(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"models":        out,
 		"maxImages":     studio.MaxKeyframeImages,
-		"maxReferences": studio.MaxReferences,
+		"maxPictures":   studio.MaxRequestPictures,
 		"aspect":        studio.KeyframeAspect,
 	})
 }
@@ -85,12 +86,13 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		Prompt    string `json:"prompt"`
 		Model     string `json:"model"`
 		Count     int    `json:"count"`
-		// UseReferences: send the profile's reference pictures with the request.
-		// Left out means yes; false makes the picture from the text alone.
-		UseReferences *bool `json:"useReferences"`
+		// CastIDs are the profile's cast members that appear in this picture (the
+		// ticks in the dialog). Their pictures go with the request, named in the
+		// prompt. Left out or empty makes the picture from the text alone.
+		CastIDs []string `json:"castIds"`
 		// SceneImageIDs are stored pictures of the SAME scene to keep (the other
 		// shots of a video), so a new shot shows it from another angle. At most
-		// 2; they are sent before the profile's reference pictures.
+		// 2; they are sent before the cast's pictures.
 		SceneImageIDs []string `json:"sceneImageIds"`
 		// SameCamera, with scene pictures, asks for the strict wording that keeps the
 		// camera, room and everything but the pose fixed: for an END picture, since a
@@ -149,16 +151,11 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	lookRefs := 0
-	if body.UseReferences == nil || *body.UseReferences {
-		refs, err := h.q.ListProfileReferences(r.Context(), profileID)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "Failed to load the reference pictures.")
-			return
-		}
-		lookRefs = len(refs)
-	}
 	sceneIDs, ok := h.parseSceneImages(w, r, body.SceneImageIDs)
+	if !ok {
+		return
+	}
+	cast, castImageIDs, ok := h.resolveCast(w, r, profileID, body.CastIDs, len(sceneIDs))
 	if !ok {
 		return
 	}
@@ -167,11 +164,12 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		ProfileID: profileID,
 		// The style's wording is added here, not in the worker, so the stored
 		// prompt is exactly what the image model receives.
-		Prompt:         studio.For(profile.VideoStyle).KeyframePrompt(prompt, lookRefs, len(sceneIDs), body.SameCamera),
+		Prompt:         studio.For(profile.VideoStyle).KeyframePrompt(prompt, len(sceneIDs), cast, body.SameCamera),
 		Model:          model.Key,
 		Count:          int16(body.Count),
-		ReferenceCount: int16(lookRefs + len(sceneIDs)),
+		ReferenceCount: int16(len(sceneIDs) + len(castImageIDs)),
 		ExtraImageIds:  sceneIDs,
+		CastImageIds:   castImageIDs,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to save the request.")
@@ -188,6 +186,73 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusAccepted, map[string]any{"keyframe": toDTO(row, nil)})
+}
+
+// resolveCast turns the ticked cast ids into what the prompt and the worker
+// need: each member described (role, name, note, how many pictures) and the
+// pictures themselves in the request's order (the cast's own order, each
+// member's pictures together). It checks the members belong to this profile,
+// have a picture, and that scene + cast pictures stay within the cap. It writes
+// the error response itself.
+func (h *Handler) resolveCast(w http.ResponseWriter, r *http.Request, profileID pgtype.UUID, raw []string, sceneRefs int) ([]studio.CastRef, []pgtype.UUID, bool) {
+	if len(raw) == 0 {
+		return nil, nil, true
+	}
+	if len(raw) > studio.MaxCastMembers {
+		writeFieldError(w, "castIds", "Too many cast members ticked.")
+		return nil, nil, false
+	}
+	ids := make([]pgtype.UUID, 0, len(raw))
+	seen := map[string]bool{}
+	for _, s := range raw {
+		id, err := pgconv.ParseUUID(s)
+		if err != nil {
+			writeFieldError(w, "castIds", "Invalid cast member id.")
+			return nil, nil, false
+		}
+		if key := pgconv.UUIDString(id); !seen[key] {
+			seen[key] = true
+			ids = append(ids, id)
+		}
+	}
+	members, err := h.q.ListCastMembersByIDs(r.Context(), sqlc.ListCastMembersByIDsParams{ProfileID: profileID, Column2: ids})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to load the cast.")
+		return nil, nil, false
+	}
+	if len(members) != len(ids) {
+		// Not found, or belongs to another profile: the same answer for both.
+		writeFieldError(w, "castIds", "One of those cast members no longer exists.")
+		return nil, nil, false
+	}
+	pics, err := h.q.ListCastPicturesByCast(r.Context(), ids)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to load the cast pictures.")
+		return nil, nil, false
+	}
+	byCast := map[string][]pgtype.UUID{}
+	for _, p := range pics { // already ordered by cast, then position
+		k := pgconv.UUIDString(p.CastID)
+		byCast[k] = append(byCast[k], p.ImageID)
+	}
+	var (
+		cast   []studio.CastRef
+		images []pgtype.UUID
+	)
+	for _, m := range members {
+		mp := byCast[pgconv.UUIDString(m.ID)]
+		if len(mp) == 0 {
+			writeFieldError(w, "castIds", m.Name+" has no pictures yet. Add one in the Cast tab or untick it.")
+			return nil, nil, false
+		}
+		cast = append(cast, studio.CastRef{Role: studio.CastRole(m.Role), Name: m.Name, Note: m.Note, Pictures: len(mp)})
+		images = append(images, mp...)
+	}
+	if sceneRefs+len(images) > studio.MaxRequestPictures {
+		writeFieldError(w, "castIds", "Too many reference pictures ("+strconv.Itoa(sceneRefs+len(images))+", at most "+strconv.Itoa(studio.MaxRequestPictures)+"). Untick someone or remove a scene picture.")
+		return nil, nil, false
+	}
+	return cast, images, true
 }
 
 // parseSceneImages checks the same-scene pictures: at most MaxSceneReferences,

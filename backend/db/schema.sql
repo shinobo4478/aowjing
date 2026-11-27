@@ -69,16 +69,32 @@ CREATE TABLE IF NOT EXISTS images (
     created_at   timestamptz NOT NULL DEFAULT now()
 );
 
--- The pictures that give a profile its own look (its character, mascot or
--- style), sent to the image model as reference images whenever the profile
--- makes a keyframe. At most 4 (position 1-4; with the primary key the database
--- itself enforces the cap). Removed with the profile.
-CREATE TABLE IF NOT EXISTS profile_reference_images (
-    profile_id uuid     NOT NULL REFERENCES profiles (id) ON DELETE CASCADE,
-    image_id   uuid     NOT NULL REFERENCES images (id) ON DELETE CASCADE,
-    position   smallint NOT NULL CHECK (position BETWEEN 1 AND 4),
-    PRIMARY KEY (profile_id, position),
-    UNIQUE (profile_id, image_id)
+-- A profile's cast: the recurring characters, objects and places its pictures
+-- keep the same (the "Look" tab). Each member has a role, a name (used in the
+-- prompt so the image model knows which picture is who), an optional note
+-- ("red kit", "cap open") and 1-4 pictures of itself. The owner ticks which
+-- members appear when a picture is made. Removed with the profile. (This
+-- replaced profile_reference_images, where the pictures were one flat list.)
+CREATE TABLE IF NOT EXISTS cast_members (
+    id         uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    profile_id uuid        NOT NULL REFERENCES profiles (id) ON DELETE CASCADE,
+    -- hero = the lead character, costar = another character (person, animal),
+    -- prop = an object, place = a location.
+    role       text        NOT NULL CHECK (role IN ('hero', 'costar', 'prop', 'place')),
+    name       text        NOT NULL,
+    note       text        NOT NULL DEFAULT '',
+    position   smallint    NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS cast_members_profile_id_idx ON cast_members (profile_id);
+
+CREATE TABLE IF NOT EXISTS cast_member_images (
+    cast_id  uuid     NOT NULL REFERENCES cast_members (id) ON DELETE CASCADE,
+    image_id uuid     NOT NULL REFERENCES images (id) ON DELETE CASCADE,
+    position smallint NOT NULL CHECK (position BETWEEN 1 AND 4),
+    PRIMARY KEY (cast_id, position),
+    UNIQUE (cast_id, image_id)
 );
 
 -- One request to make keyframe pictures (the starting image of a clip) with an
@@ -99,6 +115,11 @@ CREATE TABLE IF NOT EXISTS keyframes (
     -- before the profile's reference pictures; reference_count includes them.
     -- Not a foreign key: a picture deleted meanwhile is just skipped.
     extra_image_ids uuid[] NOT NULL DEFAULT '{}',
+    -- The cast members' pictures that went with the request (the ones the owner
+    -- ticked), sent after the scene pictures, in this order. Stored so the worker
+    -- sends exactly what the prompt describes even if the cast changes meanwhile.
+    -- Not a foreign key, like extra_image_ids. reference_count includes them.
+    cast_image_ids uuid[] NOT NULL DEFAULT '{}',
     status     text        NOT NULL,
     error      text        NOT NULL DEFAULT '',
     created_at timestamptz NOT NULL DEFAULT now()

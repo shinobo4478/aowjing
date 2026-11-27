@@ -18,10 +18,11 @@ export const providerShort = (v: string) =>
 /** How a profile's video clips look. Keep in sync with the recipes in
  *  backend/internal/studio — a new style is added there and here. Only used by
  *  profiles whose generator is fal. */
-export type VideoStyle = "3d";
+export type VideoStyle = "3d" | "realistic";
 
 export const VIDEO_STYLE_OPTIONS: { value: VideoStyle; label: string }[] = [
   { value: "3d", label: "3D (Pixar-like)" },
+  { value: "realistic", label: "Realistic (product / live action)" },
 ];
 
 export const DEFAULT_VIDEO_STYLE: VideoStyle = "3d";
@@ -236,12 +237,32 @@ export interface ShotInput {
   endImageId: string;
 }
 
-/** A picture that gives a profile its own look (character, mascot, style). It
- *  goes to the image model with every keyframe request. */
-export interface ReferencePicture {
+/** What a cast member is in a picture. Mirrors studio.CastRole. */
+export type CastRole = "hero" | "costar" | "prop" | "place";
+
+export const CAST_ROLES: { value: CastRole; label: string; hint: string }[] = [
+  { value: "hero", label: "พระเอก · Hero", hint: "ตัวเอกของช่อง คนหรือตัวละครเดิมในทุกคลิป" },
+  { value: "costar", label: "ตัวประกอบ · Co-star", hint: "ตัวละครอื่นที่อยู่ในภาพด้วย เช่น อีกคน สัตว์เลี้ยง" },
+  { value: "prop", label: "ของประกอบ · Prop", hint: "สิ่งของที่ต้องหน้าตาเหมือนเดิมทุกครั้ง" },
+  { value: "place", label: "สถานที่ · Place", hint: "ฉากหรือสถานที่ที่ต้องคงไว้" },
+];
+
+/** One recurring character, object or place of a profile (the Cast tab), with
+ *  1-4 pictures of itself. The owner ticks which ones appear in a picture. */
+export interface CastMember {
+  id: string;
+  role: CastRole;
+  name: string;
+  /** Optional, e.g. "red kit" or "cap open"; goes into the prompt. */
+  note: string;
   /** Served by GET /images/{id}. */
-  imageId: string;
-  position: number;
+  imageIds: string[];
+}
+
+export interface CastList {
+  cast: CastMember[];
+  maxMembers: number;
+  maxMemberPictures: number;
 }
 
 /** An image model the owner can choose for keyframes (from GET /keyframes/models). */
@@ -256,8 +277,8 @@ export interface KeyframeModels {
   models: KeyframeModel[];
   /** The most pictures one request may ask for. */
   maxImages: number;
-  /** The most reference pictures a profile keeps. */
-  maxReferences: number;
+  /** The most reference pictures one request may carry (scene + cast). */
+  maxPictures: number;
   aspect: string;
 }
 

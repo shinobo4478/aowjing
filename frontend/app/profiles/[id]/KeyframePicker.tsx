@@ -9,11 +9,11 @@ import {
   getKeyframe,
   getKeyframeModels,
   imageSrc,
-  listReferences,
+  listCast,
 } from "@/lib/api";
 import { formatUsd } from "@/lib/format";
 import { hasThaiLetters, usePromptPair, type PromptPair, type PromptTexts } from "@/lib/promptPair";
-import type { Keyframe, KeyframeModels } from "@/lib/types";
+import { CAST_ROLES, type CastMember, type Keyframe, type KeyframeModels } from "@/lib/types";
 import { refreshCredits } from "../../CreditsBadge";
 import PromptPairField from "./PromptPairField";
 
@@ -60,7 +60,10 @@ export default function KeyframePicker({
 }) {
   const { message, modal } = App.useApp();
   const [info, setInfo] = useState<KeyframeModels | null>(null);
-  const [refCount, setRefCount] = useState(0);
+  const [cast, setCast] = useState<CastMember[]>([]);
+  // What the owner ticked or unticked by hand; a member not in here follows the
+  // default (the hero is ticked, everyone else is not).
+  const [ticks, setTicks] = useState<Record<string, boolean>>({});
   // The prompt is a Thai/English pair: the owner writes Thai; the English is what
   // the image model receives (translated before pictures are paid for).
   const raw = usePromptPair(
@@ -97,7 +100,6 @@ export default function KeyframePicker({
   };
   const [model, setModel] = useState("");
   const [count, setCount] = useState(2);
-  const [useRefs, setUseRefs] = useState(true);
   // The same-scene pictures to send along. Starts with the first (the master).
   const [sceneIds, setSceneIds] = useState<string[]>(() =>
     scenePictures.slice(0, 1).map((p) => p.imageId),
@@ -131,12 +133,12 @@ export default function KeyframePicker({
           err instanceof Error ? err.message : "Failed to load the picture models.",
         ),
       );
-    listReferences(profileId)
+    listCast(profileId)
       .then((r) => {
-        if (!cancelled) setRefCount(r.length);
+        if (!cancelled) setCast(r.cast);
       })
       .catch(() => {
-        /* non-fatal: the checkbox just stays hidden */
+        /* non-fatal: the cast list just stays empty */
       });
     return () => {
       cancelled = true;
@@ -162,7 +164,14 @@ export default function KeyframePicker({
   }, [pendingId]);
 
   const chosenModel = info?.models.find((m) => m.key === model);
-  const effectiveRefs = (useRefs ? refCount : 0) + sceneIds.length;
+  // Who appears: the hero by default (if it has a picture), or what was ticked.
+  const isTicked = (m: CastMember) =>
+    m.imageIds.length > 0 && (ticks[m.id] ?? m.role === "hero");
+  const tickedCast = cast.filter(isTicked);
+  const castPictures = tickedCast.reduce((n, m) => n + m.imageIds.length, 0);
+  const effectiveRefs = castPictures + sceneIds.length;
+  const maxPictures = info?.maxPictures ?? 6;
+  const tooManyPictures = effectiveRefs > maxPictures;
   // A picture needs a description in either language (the Thai is translated
   // when the pictures are made).
   const promptTooShort = Math.max(pair.th.trim().length, pair.en.trim().length) < 3;
@@ -211,7 +220,7 @@ export default function KeyframePicker({
                 : `The scene of ${sceneIds.length} other shot${sceneIds.length === 1 ? "" : "s"} will be kept. `
               : ""}
             {effectiveRefs > 0
-              ? `${effectiveRefs} reference picture${effectiveRefs === 1 ? "" : "s"} in all will be sent along. `
+              ? `${effectiveRefs} reference picture${effectiveRefs === 1 ? "" : "s"} in all will be sent along${tickedCast.length > 0 ? ` (${tickedCast.map((m) => m.name).join(", ")})` : ""}. `
               : "No reference pictures will be sent. "}
             {keyframe ? "The pictures below will be replaced." : ""}
           </p>
@@ -236,7 +245,7 @@ export default function KeyframePicker({
           prompt: english.trim(),
           model,
           count,
-          useReferences: useRefs,
+          castIds: tickedCast.map((m) => m.id),
           sceneImageIds: sceneIds,
           sameCamera: sameCamera && sceneIds.length > 0,
         }),
@@ -334,20 +343,49 @@ export default function KeyframePicker({
         </div>
       )}
 
-      {refCount > 0 ? (
-        <Checkbox
-          checked={useRefs}
-          onChange={(e) => setUseRefs(e.target.checked)}
-          style={{ marginTop: 8 }}
-        >
-          Keep this profile&apos;s look ({refCount} reference picture
-          {refCount === 1 ? "" : "s"})
-        </Checkbox>
+      {cast.length > 0 ? (
+        <div style={{ marginTop: 12 }}>
+          <Typography.Text>ใครอยู่ในภาพนี้ · Who is in this picture:</Typography.Text>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 6 }}>
+            {cast.map((m) => {
+              const on = isTicked(m);
+              const noPictures = m.imageIds.length === 0;
+              // Cannot tick someone whose pictures would pass the request's cap.
+              const overCap = !on && effectiveRefs + m.imageIds.length > maxPictures;
+              return (
+                <Checkbox
+                  key={m.id}
+                  checked={on}
+                  disabled={noPictures || overCap}
+                  onChange={(e) => setTicks((t) => ({ ...t, [m.id]: e.target.checked }))}
+                >
+                  {m.imageIds[0] && (
+                    // Served by the API with the session cookie, so next/image cannot optimize it.
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={imageSrc(m.imageIds[0])}
+                      alt={m.name}
+                      style={{ width: 36, height: 48, objectFit: "cover", borderRadius: 6, verticalAlign: "middle", marginRight: 6 }}
+                    />
+                  )}
+                  {m.name}{" "}
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    {CAST_ROLES.find((r) => r.value === m.role)?.label.split(" · ")[0]} ·{" "}
+                    {noPictures ? "ไม่มีรูป" : `${m.imageIds.length} รูป`}
+                  </Typography.Text>
+                </Checkbox>
+              );
+            })}
+          </div>
+          <Typography.Text type={tooManyPictures ? "danger" : "secondary"} style={{ fontSize: 12 }}>
+            {`ส่งรูปอ้างอิง ${effectiveRefs} จากสูงสุด ${maxPictures} รูป (รวมรูปฉากด้านบน)`}
+          </Typography.Text>
+        </div>
       ) : (
         <Typography.Paragraph type="secondary" style={{ margin: "8px 0 0" }}>
-          This profile has no reference pictures, so the picture is made from the
-          description alone. Add some on the profile&apos;s Look tab to keep the
-          same character.
+          This profile has no cast yet, so the picture is made from the description
+          alone. Add the hero, a co-star or a prop on the profile&apos;s Cast tab to keep
+          them the same.
         </Typography.Paragraph>
       )}
 
@@ -355,7 +393,7 @@ export default function KeyframePicker({
         <Button
           onClick={confirmMake}
           loading={busy || pair.busy || keyframe?.status === "pending"}
-          disabled={!chosenModel || promptTooShort}
+          disabled={!chosenModel || promptTooShort || tooManyPictures}
         >
           {keyframe ? "Make new pictures" : "Make pictures"}
         </Button>

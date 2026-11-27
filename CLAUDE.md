@@ -480,6 +480,64 @@ Order of work (each a small PR):
    translations are (the owner can check with "ดูความหมายเป็นไทย").
 9. ~~Video templates~~ **cut by the owner (2026-11-27):** not needed now.
 
+## Realistic style and the Cast (built 2026-11-27)
+
+The owner's `realistic` style has two uses, built one at a time: **product clips** first (a Shopee
+product that must look like the real one, in every shot — owner's choice, riskier than ending on the
+real photo; to be measured), then **short films** (≈30 s, satirical humour, visual gags with Thai
+captions added in the editor while voice-over is on hold).
+
+- **`realistic` recipe** (`studio.StyleRealistic`): pictures get "Photorealistic photograph, natural light,
+  realistic materials and skin…" (never "cinematic"), `ImageSuffix` is empty so a real photo is never
+  restyled. Wording is a first guess, not tried on real output.
+- **The Look tab became the Cast tab.** `cast_members` (role `hero|costar|prop|place`, name, note,
+  position; max 8 per profile) + `cast_member_images` (1–4 pictures per member) replace
+  `profile_reference_images`. API: `GET/POST /profiles/{id}/cast`, `PATCH/DELETE …/cast/{castId}`,
+  `POST …/cast/{castId}/images`, `DELETE …/images/{imageId}`. A profile's hero is one recurring
+  person/character; co-stars, props and places are optional. **Product pictures do NOT live here** — the
+  decision is that they belong to the catalog `Product` (photos with a state label: closed / open / in
+  hand), not built yet.
+- **Picture requests name the pictures.** `POST /keyframes` takes `castIds` (replacing `useReferences`):
+  the ticked members' pictures are stored on the request (`keyframes.cast_image_ids`, after the scene
+  pictures) and `studio.KeyframePrompt` says which is which ("Pictures 1-2 are "Name", the lead
+  character (note). Picture 3 is …") then "each must look exactly as in its own picture(s)…". The
+  dialog ticks the hero by default. One request carries at most 6 pictures in all (scene + cast,
+  `studio.MaxRequestPictures`), a cautious cap — **no request with several reference pictures has been
+  sent to fal yet** (unverified that fal accepts that many base64 pictures, and how well either model
+  keeps several people/objects apart).
+- **Lessons from the owner's first bottle test:** an edit model copies the reference's *state* too — a
+  closed bottle in the reference stays closed whatever the prompt says, so the pictures given must show
+  the state the shot needs (open cap, in hand). One colour per request. A photo whose ratio is under 0.4
+  (e.g. 311×788) is rejected by `images.Check`; pad it.
+- Existing DBs need the migration: `CREATE TABLE cast_members`, `cast_member_images` (see
+  `db/schema.sql`), `ALTER TABLE keyframes ADD COLUMN cast_image_ids uuid[] NOT NULL DEFAULT '{}';`, then
+  `INSERT INTO cast_members (profile_id, role, name, position) SELECT DISTINCT profile_id, 'hero',
+  'Look', 1 FROM profile_reference_images;` and `INSERT INTO cast_member_images (cast_id, image_id,
+  position) SELECT c.id, r.image_id, r.position FROM profile_reference_images r JOIN cast_members c ON
+  c.profile_id = r.profile_id AND c.name = 'Look';` then `DROP TABLE profile_reference_images;`. The worker
+  must be restarted with the api (it reads `cast_image_ids`).
+- **Kling `elements` (read from fal's pages and OpenAPI, 2026-11-27; not tried):** our endpoint
+  `fal-ai/kling-video/v3/standard/image-to-video` already takes an optional `elements` list, no new
+  model. Each element is `{frontal_image_url, reference_image_urls (1–3, at least one is required),
+  video_url, voice_id}`; the prompt refers to them as `@Element1`, `@Element2`; `start_image_url` stays
+  required and `end_image_url` still works; images 50 MB, ≥ 300×300, ratio 0.4–2.5. Price is listed as
+  the same $0.084/s silent (0.126 with audio, 0.154 with voice control) — **check the first bill for an
+  extra charge**. A request may hold only one element with a video. **Not stated:** a maximum element
+  count, whether base64 data URIs are accepted for element pictures (they work for the start picture),
+  and whether elements hold a *product's* logo as well as a face (the page says "characters/objects").
+  `generate_audio` knows only Chinese and English (other languages are translated to English), so the
+  silent-clip + Thai-TTS decision stands. A sibling endpoint `…/o3/standard/reference-to-video` takes
+  `image_urls` (`@Image1`), an optional start picture and `aspect_ratio` incl. 9:16, same $0.084/s
+  silent, `generate_audio` default false; its combined cap is stated only as "Maximum 4 total (elements
+  + reference images)" when a video is used. Fit with the cast: a member with 2–4 pictures maps to one
+  element (first = frontal, the rest = references; a member with one picture cannot be an element
+  unless fal accepts the same picture twice). Elements would help when the subject turns or moves in a
+  clip and would keep the same person across shots without chaining frames. Plan: one A/B pair of 5 s
+  clips from the same start picture, with and without elements (≈ $0.84), before any code.
+- **Next** (agreed order): product pictures on `Product` + a "product" role in the picture dialog; the
+  script helper learning the product mode and the cast names; a real test (hero + product, ≈ $0.16 per
+  picture model); Kling `elements` research for keeping a person/object inside a clip.
+
 ## Video models (built 2026-11-27)
 
 A Profile now picks its **video model** (`profiles.video_model`: `kling-v3` default, `veo-3.1`, `veo-3.1-fast`) and

@@ -1,6 +1,9 @@
 package studio
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestValidAndFor(t *testing.T) {
 	tests := []struct {
@@ -78,5 +81,19 @@ func TestCompose(t *testing.T) {
 func TestStyle3DKeepsPicturesAsTheyAre(t *testing.T) {
 	if s := For("3d").ImageSuffix; s != "" {
 		t.Errorf("3d ImageSuffix = %q, want empty", s)
+	}
+}
+
+func TestRealisticKeepsProductsAsTheyAre(t *testing.T) {
+	r := For("realistic")
+	if r.Style != StyleRealistic {
+		t.Fatalf("For(realistic).Style = %q", r.Style)
+	}
+	// A real product photo must never be restyled by a clip.
+	if r.ImageSuffix != "" {
+		t.Errorf("realistic ImageSuffix = %q, want empty", r.ImageSuffix)
+	}
+	if strings.Contains(strings.ToLower(r.KeyframeSuffix), "cinematic") {
+		t.Errorf("realistic pictures should not ask for a cinematic look: %q", r.KeyframeSuffix)
 	}
 }
