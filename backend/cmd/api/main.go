@@ -48,7 +48,7 @@ func run() error {
 	defer q.Close()
 
 	srv := &http.Server{
-		Addr:              ":" + cfg.Port,
+		Addr:              cfg.ListenHost + ":" + cfg.Port,
 		Handler:           server.New(db, cfg, q),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
