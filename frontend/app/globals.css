@@ -140,7 +140,7 @@ body {
   padding-right: 24px;
   min-height: 84px;
   background: var(--acmp-panel);
-  border-radius: 2px;
+  border-radius: 16px;
   color: inherit;
   text-decoration: none;
   overflow: hidden;
@@ -202,7 +202,7 @@ body {
    label/value fields. */
 .acmp-slate {
   border: 1px solid var(--acmp-rule);
-  border-radius: 2px;
+  border-radius: 16px;
   background: var(--acmp-inset);
   overflow: hidden;
 }
@@ -343,7 +343,7 @@ body {
 /* A faint frame so a bright first frame doesn't slam against true black. */
 img,
 video {
-  border-radius: 2px;
+  border-radius: 12px;
 }
 video {
   background: var(--acmp-panel);

@@ -379,7 +379,7 @@ function Choices({
                   <img
                     src={picked.preview}
                     alt="Chosen starting image"
-                    style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 4 }}
+                    style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 10 }}
                   />
                   <Typography.Text
                     type="secondary"

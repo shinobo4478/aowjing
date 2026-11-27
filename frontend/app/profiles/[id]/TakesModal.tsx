@@ -127,14 +127,14 @@ function Takes({
                 controls
                 preload="metadata"
                 src={a.output}
-                style={{ width: "100%", maxHeight: 340, borderRadius: 4, background: "#000" }}
+                style={{ width: "100%", maxHeight: 340, borderRadius: 10, background: "#000" }}
               />
             ) : (
               <div
                 style={{
                   height: 120,
                   border: "1px dashed var(--acmp-dashed)",
-                  borderRadius: 4,
+                  borderRadius: 10,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",

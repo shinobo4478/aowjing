@@ -55,7 +55,7 @@ export default function Storyboard({
                   padding: 0,
                   background: "none",
                   border: s.approved ? "2px solid var(--acmp-succeeded)" : "2px solid transparent",
-                  borderRadius: 5,
+                  borderRadius: 14,
                   cursor: "pointer",
                   display: "block",
                 }}
@@ -67,7 +67,7 @@ export default function Storyboard({
                   <img
                     src={s.imageId ? imageSrc(s.imageId) : s.imageUrl}
                     alt={`Shot ${s.position}`}
-                    style={{ width: 80, height: 142, objectFit: "cover", display: "block", borderRadius: 3 }}
+                    style={{ width: 80, height: 142, objectFit: "cover", display: "block", borderRadius: 8 }}
                   />
                 ) : (
                   <div
@@ -75,7 +75,7 @@ export default function Storyboard({
                       width: 80,
                       height: 142,
                       border: "1px dashed var(--acmp-dashed)",
-                      borderRadius: 3,
+                      borderRadius: 8,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
