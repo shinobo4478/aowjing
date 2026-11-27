@@ -367,3 +367,71 @@ export interface ProductUsage {
   position: 1 | 2;
   createdAt: string; // ISO 8601
 }
+
+// --- Dashboard (GET /dashboard) ---
+
+export interface Dashboard {
+  /** The zone the day/month boundaries were computed in. */
+  timezone: string;
+  spend: {
+    monthCost: number;
+    /** Clips this month whose bill fal has shown. */
+    monthBilled: number;
+    /** fal clips this month with no bill yet (still waiting, or made before bills were tracked). */
+    monthUnbilled: number;
+    totalCost: number;
+    totalBilled: number;
+    totalUnbilled: number;
+    /** null when nothing is billed yet. */
+    avgPerClip: number | null;
+    /** 30 days ending today, oldest first, empty days included. */
+    days: { date: string; cost: number; clips: number }[];
+    byProfile: { profileId: string; name: string; cost: number; clips: number }[];
+  };
+  active: {
+    pending: {
+      id: string;
+      profileId: string;
+      profileName: string;
+      seconds: number;
+      fromShot: boolean;
+      createdAt: string;
+    }[];
+    failed: {
+      id: string;
+      profileId: string;
+      profileName: string;
+      error: string;
+      costUsd: number | null;
+      createdAt: string;
+    }[];
+  };
+  pipeline: {
+    videos: number;
+    shots: number;
+    shotsApproved: number;
+    approvedNotMade: number;
+    shotsMade: number;
+    unpublishedClips: number;
+  };
+  published: {
+    last7Days: number;
+    last30Days: number;
+    total: number;
+    recent: {
+      id: string;
+      title: string;
+      privacy: string;
+      url: string;
+      channelName: string;
+      profileId: string;
+      profileName: string;
+      createdAt: string;
+    }[];
+  };
+  products: {
+    total: number;
+    pinned: number;
+    unpinned: { id: string; name: string; createdAt: string }[];
+  };
+}

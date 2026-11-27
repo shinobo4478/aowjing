@@ -7,6 +7,7 @@
 import type {
   Channel,
   ChannelInput,
+  Dashboard,
   FalCosts,
   FalCredits,
   Generation,
@@ -438,6 +439,13 @@ export function fetchFalCosts(generationIds: string[]) {
     method: "POST",
     body: JSON.stringify({ generationIds }),
   });
+}
+
+/** Everything on the home dashboard in one request. Day and month boundaries
+ *  follow the browser's time zone. */
+export function getDashboard() {
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return request<Dashboard>(`/dashboard?tz=${encodeURIComponent(tz)}`);
 }
 
 // --- Settings (global provider credentials) ---
