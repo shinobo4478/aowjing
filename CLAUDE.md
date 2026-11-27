@@ -516,6 +516,24 @@ captions added in the editor while voice-over is on hold).
   position) SELECT c.id, r.image_id, r.position FROM profile_reference_images r JOIN cast_members c ON
   c.profile_id = r.profile_id AND c.name = 'Look';` then `DROP TABLE profile_reference_images;`. The worker
   must be restarted with the api (it reads `cast_image_ids`).
+- **Kling `elements` (read from fal's pages and OpenAPI, 2026-11-27; not tried):** our endpoint
+  `fal-ai/kling-video/v3/standard/image-to-video` already takes an optional `elements` list, no new
+  model. Each element is `{frontal_image_url, reference_image_urls (1–3, at least one is required),
+  video_url, voice_id}`; the prompt refers to them as `@Element1`, `@Element2`; `start_image_url` stays
+  required and `end_image_url` still works; images 50 MB, ≥ 300×300, ratio 0.4–2.5. Price is listed as
+  the same $0.084/s silent (0.126 with audio, 0.154 with voice control) — **check the first bill for an
+  extra charge**. A request may hold only one element with a video. **Not stated:** a maximum element
+  count, whether base64 data URIs are accepted for element pictures (they work for the start picture),
+  and whether elements hold a *product's* logo as well as a face (the page says "characters/objects").
+  `generate_audio` knows only Chinese and English (other languages are translated to English), so the
+  silent-clip + Thai-TTS decision stands. A sibling endpoint `…/o3/standard/reference-to-video` takes
+  `image_urls` (`@Image1`), an optional start picture and `aspect_ratio` incl. 9:16, same $0.084/s
+  silent, `generate_audio` default false; its combined cap is stated only as "Maximum 4 total (elements
+  + reference images)" when a video is used. Fit with the cast: a member with 2–4 pictures maps to one
+  element (first = frontal, the rest = references; a member with one picture cannot be an element
+  unless fal accepts the same picture twice). Elements would help when the subject turns or moves in a
+  clip and would keep the same person across shots without chaining frames. Plan: one A/B pair of 5 s
+  clips from the same start picture, with and without elements (≈ $0.84), before any code.
 - **Next** (agreed order): product pictures on `Product` + a "product" role in the picture dialog; the
   script helper learning the product mode and the cast names; a real test (hero + product, ≈ $0.16 per
   picture model); Kling `elements` research for keeping a person/object inside a clip.
