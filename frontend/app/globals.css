@@ -232,15 +232,43 @@ body {
   border-top: 1px solid var(--acmp-rule);
 }
 @media (max-width: 720px) {
-  .acmp-slate-fields {
-    grid-template-columns: minmax(0, 1fr);
+  /* Two compact columns instead of one tall stack, so the header does not
+     take the whole first screen of a phone. */
+  .acmp-slate-head {
+    padding: 16px 16px 14px;
   }
-  .acmp-slate-fields > .acmp-slate-field:nth-child(n) {
+  .acmp-slate-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .acmp-slate-field {
+    padding: 10px 16px 12px;
+  }
+  .acmp-slate-field:nth-child(3n + 2),
+  .acmp-slate-field:nth-child(3n + 3) {
     border-left: 0;
+  }
+  .acmp-slate-fields > .acmp-slate-field {
     border-top: 1px solid var(--acmp-rule);
   }
-  .acmp-slate-fields > .acmp-slate-field:first-child {
+  .acmp-slate-fields > .acmp-slate-field:nth-child(-n + 2) {
     border-top: 0;
+  }
+  .acmp-slate-fields > .acmp-slate-field:nth-child(2n) {
+    border-left: 1px solid var(--acmp-rule);
+  }
+  .acmp-slate-field.is-wide {
+    grid-column: 1 / -1;
+    border-left: 0 !important;
+  }
+  .acmp-field-value {
+    font-size: 15px;
+  }
+  /* Long notes show two lines; the full text is on the Edit form. */
+  .acmp-field-value.is-note {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 }
 .acmp-field-label {
@@ -413,6 +441,13 @@ video {
     /* Under the status bar / notch in a standalone or full-screen view. */
     padding-top: env(safe-area-inset-top);
     height: calc(60px + env(safe-area-inset-top));
+  }
+  /* Small buttons (row actions, move up/down) are 40px tall on a phone: a
+     thumb-sized target without making the rows look heavy. */
+  .ant-btn.ant-btn-sm {
+    min-height: 40px;
+    min-width: 40px;
+    font-size: 14px;
   }
   /* Taps respond at once (no double-tap-zoom wait). */
   a,

@@ -140,6 +140,12 @@ function Themed({ children }: { children: React.ReactNode }) {
             defaultBg: "transparent",
             defaultBorderColor: c.ruleStrong,
             defaultColor: c.chalk,
+            // Pills: fully rounded ends at every size.
+            borderRadius: 999,
+            borderRadiusSM: 999,
+            borderRadiusLG: 999,
+            paddingInline: 22,
+            paddingInlineSM: 16,
           },
           Input: {
             activeBorderColor: dark ? c.tungsten : "#D99A00",
