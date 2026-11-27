@@ -242,7 +242,7 @@ func (h *Handler) resolveCast(w http.ResponseWriter, r *http.Request, profileID 
 	for _, m := range members {
 		mp := byCast[pgconv.UUIDString(m.ID)]
 		if len(mp) == 0 {
-			writeFieldError(w, "castIds", m.Name+" has no pictures yet. Add one in the Look tab or untick it.")
+			writeFieldError(w, "castIds", m.Name+" has no pictures yet. Add one in the Cast tab or untick it.")
 			return nil, nil, false
 		}
 		cast = append(cast, studio.CastRef{Role: studio.CastRole(m.Role), Name: m.Name, Note: m.Note, Pictures: len(mp)})

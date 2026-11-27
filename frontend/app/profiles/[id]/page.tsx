@@ -22,7 +22,7 @@ import ChannelsSection from "./ChannelsSection";
 import GenerationsSection from "./GenerationsSection";
 import ProfileSlate from "./ProfileSlate";
 import PromptTemplatesSection from "./PromptTemplatesSection";
-import ReferencesSection from "./ReferencesSection";
+import CastSection from "./CastSection";
 import VideosSection from "./VideosSection";
 
 const DEFAULT_TAB = "generations";
@@ -161,10 +161,10 @@ export default function ProfileDetailPage({
             ),
           },
           {
-            key: "look",
-            label: "Look",
+            key: "cast",
+            label: "Cast",
             children: (
-              <ReferencesSection profileId={id} provider={profile.provider} />
+              <CastSection profileId={id} provider={profile.provider} />
             ),
           },
           {
