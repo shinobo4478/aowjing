@@ -133,7 +133,7 @@ function Takes({
               <div
                 style={{
                   height: 120,
-                  border: "1px dashed rgba(255,255,255,0.25)",
+                  border: "1px dashed var(--acmp-dashed)",
                   borderRadius: 4,
                   display: "flex",
                   alignItems: "center",

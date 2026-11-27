@@ -8,6 +8,8 @@ import Stripe from "@/components/Stripe";
 import { INK } from "@/lib/tape";
 import { useAuth } from "./AuthGate";
 import CreditsBadge from "./CreditsBadge";
+import { useThemeMode } from "./ThemeMode";
+import ThemeSwitch from "./ThemeSwitch";
 
 const links = [
   { key: "/profiles", label: "Profiles" },
@@ -43,6 +45,7 @@ export default function SiteHeader() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const screens = Grid.useBreakpoint();
+  const { mode } = useThemeMode();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Assume desktop until we know otherwise — avoids a menu-button flash on load.
@@ -69,7 +72,7 @@ export default function SiteHeader() {
         <Brand />
         <Menu
           mode="horizontal"
-          theme="dark"
+          theme={mode}
           selectedKeys={selected}
           items={menuItems}
           style={{
@@ -82,6 +85,7 @@ export default function SiteHeader() {
         />
         <Space size="middle">
           <CreditsBadge />
+          <ThemeSwitch />
           <Typography.Text type="secondary">{user.username}</Typography.Text>
           <Button size="small" onClick={logout}>
             Sign out
@@ -122,6 +126,9 @@ export default function SiteHeader() {
         <div style={{ padding: 16 }}>
           <div style={{ marginBottom: 12 }}>
             <CreditsBadge />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <ThemeSwitch block />
           </div>
           <Button
             block

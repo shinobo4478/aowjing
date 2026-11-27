@@ -12,6 +12,7 @@ import {
   DEV_LOGIN_USERNAME,
 } from "@/lib/devLogin";
 import { INK } from "@/lib/tape";
+import ThemeSwitch from "../ThemeSwitch";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -42,6 +43,13 @@ export default function LoginPage() {
         style={{ position: "absolute", top: 0, left: 0, right: 0, height: 20 }}
       />
 
+      <div style={{ position: "absolute", top: 32, right: 16, zIndex: 1 }}>
+
+        <ThemeSwitch />
+
+      </div>
+
+
       <div className="acmp-login">
         <div
           style={{
@@ -66,7 +74,7 @@ export default function LoginPage() {
             display: "flex",
             alignItems: "center",
             padding: "clamp(24px, 5vw, 64px)",
-            borderLeft: "1px solid #1c1c20",
+            borderLeft: "1px solid var(--acmp-rule-soft)",
           }}
         >
           <div style={{ width: "100%", maxWidth: 380 }}>

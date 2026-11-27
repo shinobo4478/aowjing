@@ -54,7 +54,7 @@ export default function Storyboard({
                 style={{
                   padding: 0,
                   background: "none",
-                  border: s.approved ? "2px solid #4caf7a" : "2px solid transparent",
+                  border: s.approved ? "2px solid var(--acmp-succeeded)" : "2px solid transparent",
                   borderRadius: 5,
                   cursor: "pointer",
                   display: "block",
@@ -74,7 +74,7 @@ export default function Storyboard({
                     style={{
                       width: 80,
                       height: 142,
-                      border: "1px dashed rgba(255,255,255,0.25)",
+                      border: "1px dashed var(--acmp-dashed)",
                       borderRadius: 3,
                       display: "flex",
                       alignItems: "center",
