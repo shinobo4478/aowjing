@@ -171,6 +171,7 @@ body {
   color: inherit;
   text-decoration: none;
   overflow: hidden;
+  cursor: pointer;
   transition: background-color 0.18s ease;
 }
 .acmp-roster-row:hover {
@@ -184,6 +185,8 @@ body {
   min-width: 0;
 }
 .acmp-roster-name {
+  display: block;
+  text-decoration: none;
   font-size: 26px;
   font-weight: 600;
   line-height: 1.3;
