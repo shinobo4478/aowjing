@@ -1,13 +1,34 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { App, Button, Input, InputNumber, Modal, Typography } from "antd";
+import { Alert, App, Button, Input, InputNumber, Modal, Segmented, Select, Typography } from "antd";
 import SecondsField from "@/components/SecondsField";
-import { ApiError, draftVideo, getStudioPricing } from "@/lib/api";
+import { ApiError, draftVideo, getStudioPricing, listCast, listPickableProducts } from "@/lib/api";
 import { formatUsd } from "@/lib/format";
-import { pricingFor, type StudioPricing, type Video } from "@/lib/types";
+import { CAST_ROLES, pricingFor, type CastMember, type PickableProduct, type StudioPricing, type Video } from "@/lib/types";
 import { mobileModal } from "@/lib/ui";
 import { refreshCredits } from "../../CreditsBadge";
+
+/** The kinds of video the AI can draft. Mirrors scriptwriter.Mode. */
+type DraftMode = "general" | "product" | "film";
+
+const MODE_OPTIONS: { value: DraftMode; label: string; hint: string }[] = [
+  {
+    value: "general",
+    label: "ทั่วไป · General",
+    hint: "เรื่องสั้นจากหัวข้อที่ให้ (เหมือนเดิม)",
+  },
+  {
+    value: "product",
+    label: "สินค้า · Product",
+    hint: "คลิปเกี่ยวกับสินค้าจริงที่ต้องเหมือนของจริง: ฮุก → ใช้งานในชีวิตจริง → ช็อตสินค้านิ่งๆ ตอนจบ ไม่ซูมโลโก้ ไม่อ้างอะไรเกินโน้ตที่คุณเขียน",
+  },
+  {
+    value: "film",
+    label: "หนังสั้น · Film",
+    hint: "เรื่องสั้นตลกเสียดสี เล่าด้วยภาพ ไม่มีบทพูด: ตั้งเรื่อง → ตึงขึ้น → ตบมุก → ปิดท้าย (ใส่คำบรรยายภายหลังในโปรแกรมตัดต่อ)",
+  },
+];
 
 /**
  * Asks the script helper to draft a whole video: the owner gives the topic and
@@ -58,6 +79,12 @@ function DraftForm({
   const [shots, setShots] = useState(4);
   const [seconds, setSeconds] = useState(4);
   const [title, setTitle] = useState("");
+  // What kind of video: the structure the AI is told to follow. Product needs a
+  // catalog product that has pictures (so its real look can be kept).
+  const [mode, setMode] = useState<DraftMode>("general");
+  const [productId, setProductId] = useState("");
+  const [products, setProducts] = useState<PickableProduct[] | null>(null);
+  const [cast, setCast] = useState<CastMember[]>([]);
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -73,6 +100,32 @@ function DraftForm({
       });
   }, []);
   const secondsOptions = pricingFor(pricing, videoModel)?.seconds ?? Array.from({ length: 13 }, (_, i) => i + 3);
+
+  // The profile's cast (the AI is told who exists) and the products that have
+  // pictures (a product video is about one of them).
+  useEffect(() => {
+    let cancelled = false;
+    listCast(profileId)
+      .then((r) => {
+        if (!cancelled) setCast(r.cast);
+      })
+      .catch(() => {
+        /* non-fatal: the note about the cast just stays hidden */
+      });
+    listPickableProducts()
+      .then((p) => {
+        if (!cancelled) setProducts(p);
+      })
+      .catch(() => {
+        if (!cancelled) setProducts([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [profileId]);
+  const chosenProduct = products?.find((p) => p.id === productId);
+  const modeHint = MODE_OPTIONS.find((m) => m.value === mode)?.hint ?? "";
+  const needsProduct = mode === "product" && !chosenProduct;
 
   // The draft costs a few cents (fal bills per token), so ask first.
   function confirmDraft() {
@@ -107,6 +160,8 @@ function DraftForm({
         shots,
         seconds,
         title: title.trim() || undefined,
+        mode,
+        productId: mode === "product" ? productId : undefined,
       });
       refreshCredits();
       message.success(`Drafted with ${r.model}. It cost ${formatUsd(r.costUsd)}.`);
@@ -129,6 +184,65 @@ function DraftForm({
         the starting picture shows and how the clip moves. You can write the topic in
         Thai or English; the prompts it writes are in English.
       </Typography.Paragraph>
+
+      <Typography.Text>แบบวิดีโอ · Format</Typography.Text>
+      <div style={{ marginTop: 4 }}>
+        <Segmented<DraftMode>
+          value={mode}
+          onChange={setMode}
+          options={MODE_OPTIONS.map((m) => ({ value: m.value, label: m.label }))}
+        />
+      </div>
+      <Typography.Paragraph type="secondary" style={{ margin: "6px 0 16px", fontSize: 13 }}>
+        {modeHint}
+      </Typography.Paragraph>
+
+      {mode === "product" && (
+        <div style={{ marginBottom: 16 }}>
+          <Typography.Text>สินค้า · Product</Typography.Text>
+          {products !== null && products.length === 0 ? (
+            <Alert
+              type="warning"
+              showIcon
+              style={{ marginTop: 4 }}
+              title="ยังไม่มีสินค้าที่มีรูป เพิ่มรูปสินค้าที่หน้า Products ก่อน เพื่อให้คงหน้าตาจริงของสินค้า"
+            />
+          ) : (
+            <Select
+              value={productId || undefined}
+              onChange={setProductId}
+              loading={products === null}
+              placeholder="เลือกสินค้า"
+              style={{ width: "100%", marginTop: 4 }}
+              options={(products ?? []).map((p) => ({
+                value: p.id,
+                label: `${p.name} (${p.pictures.length} รูป)`,
+              }))}
+            />
+          )}
+          {chosenProduct && (
+            <Typography.Text type="secondary" style={{ display: "block", marginTop: 4, fontSize: 13 }}>
+              สภาพที่มีรูป:{" "}
+              {chosenProduct.pictures.map((p) => p.label || "ไม่มีชื่อสภาพ").join(", ")} AI จะเขียนช็อตให้ใช้สินค้าเฉพาะในสภาพเหล่านี้
+            </Typography.Text>
+          )}
+          {errors.productId && (
+            <Typography.Text type="danger" style={{ display: "block", marginTop: 4 }}>
+              {errors.productId}
+            </Typography.Text>
+          )}
+        </div>
+      )}
+
+      {cast.length > 0 && (
+        <Typography.Paragraph type="secondary" style={{ fontSize: 13 }}>
+          AI รู้จักนักแสดงของช่องนี้:{" "}
+          {cast
+            .map((m) => `${m.name} (${CAST_ROLES.find((r) => r.value === m.role)?.label.split(" · ")[0] ?? m.role})`)
+            .join(", ")}{" "}
+          และจะเขียนช็อตให้มีพวกเขาเมื่อเรื่องต้องการ ตอนสร้างภาพคุณยังเป็นคนติ๊กเองว่าใครอยู่ในภาพ
+        </Typography.Paragraph>
+      )}
 
       <Typography.Text>Topic</Typography.Text>
       <Input.TextArea
@@ -182,7 +296,7 @@ function DraftForm({
         type="primary"
         style={{ marginTop: 20 }}
         loading={busy}
-        disabled={topic.trim().length < 3}
+        disabled={topic.trim().length < 3 || needsProduct}
         onClick={confirmDraft}
       >
         Draft the video

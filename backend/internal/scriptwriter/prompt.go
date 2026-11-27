@@ -64,6 +64,8 @@ func userPrompt(b Brief) string {
 			fmt.Fprintf(&s, "- Notes (tone, audience, do and don't): %s\n", b.Description)
 		}
 	}
+	s.WriteString(userCastBlock(b.Cast))
+	s.WriteString(userProductBlock(b.Product))
 	s.WriteString("\nReply with the JSON only.")
 	return s.String()
 }

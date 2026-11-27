@@ -22,6 +22,14 @@ type Brief struct {
 	ProfileName string
 	Niche       string
 	Description string
+
+	// Mode is the kind of video (empty = general). VideoStyle is the profile's style
+	// name ("3d", "realistic"). Cast is the profile's recurring subjects and Product
+	// the catalog product a product video is about; see modes.go.
+	Mode       Mode
+	VideoStyle string
+	Cast       []CastNote
+	Product    *ProductNote
 }
 
 // Shot is one drafted shot, ready to put into a Video.

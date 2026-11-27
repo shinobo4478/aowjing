@@ -550,7 +550,25 @@ captions added in the editor while voice-over is on hold).
   product_images …` (see `db/schema.sql`). **Verified:** build, unit tests for the prompt wording,
   the dialog loads a product's (empty) list against Postgres. **Not verified live:** upload, label
   edit, remove, the product-picture checks on `POST /keyframes`, and any real picture made from them.
-- **Next** (agreed order): ~~product pictures on `Product`~~ (done above) + a "product" role in the picture dialog; the
+- **Draft with AI knows the format, the style and the cast (built 2026-11-28):** the dialog has a
+  Format switch — General (as before), **Product** (needs a catalog product that has pictures) and
+  **Film** (satirical short told in visual gags, no dialogue; Thai captions are added in the editor) —
+  sent as `mode` and `productId` on `POST /videos/draft`. `scriptwriter.systemFor` appends to the standing
+  prompt: the mode's structure and rules (`modes.go`: product = hook → natural use → benefit through
+  action → calm static product shot, show the product ONLY in the states its pictures have, no label
+  close-ups, no hands turning it, no claims beyond the owner's note on the product; film = setup →
+  escalation → punchline → last beat, one place, one main character), a photographic block when the
+  profile's style is `realistic`, and, when the profile has a cast, how to refer to it: **in the English
+  fields only by role words** ("the lead character", a plain generic noun for co-stars and props, "the
+  location") — never the names, because names are often Thai and an English box with Thai blocks
+  Generate, and because the picture step names each picture with the same role words; the Thai twins use
+  the names. The user prompt lists the cast and the product (name, the owner's note, the labels of its
+  pictures). The writer sees only text; which cast members and product pictures are in a shot is still
+  ticked by the owner when the picture is made. A test keeps `the lead character` identical on both
+  sides. **Not tried on a real model yet:** whether the model follows the product rules (states,
+  no logo close-ups) and writes a joke that lands, and what a draft costs.
+- **Next** (agreed order): ~~product pictures on `Product`~~ (done above); ~~Draft knows the modes~~
+  (done above); then Kling `elements` (A/B test of two clips first, ≈ $0.84) and the `2d` style. + a "product" role in the picture dialog; the
   script helper learning the product mode and the cast names; a real test (hero + product, ≈ $0.16 per
   picture model); Kling `elements` research for keeping a person/object inside a clip.
 
