@@ -17,6 +17,13 @@ CREATE TABLE IF NOT EXISTS profiles (
     -- only: what a style means lives in internal/studio. Checked by the API, not
     -- here, so adding a style needs no schema change. Used by fal profiles.
     video_style text        NOT NULL DEFAULT '3d',
+    -- Which video model makes its clips ('kling-v3', 'veo-3.1', ...). The name
+    -- only: ids, lengths and prices live in internal/studio (models.go). Checked
+    -- by the API, not here. Used by fal profiles.
+    video_model text        NOT NULL DEFAULT 'kling-v3',
+    -- Ask the model for sound too. Off by default: Thai narration is added
+    -- separately, and sound costs more.
+    video_audio boolean     NOT NULL DEFAULT false,
     created_at  timestamptz NOT NULL DEFAULT now(),
     updated_at  timestamptz NOT NULL DEFAULT now()
 );

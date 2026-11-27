@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { App, Button, Input, InputNumber, Modal, Typography } from "antd";
-import { ApiError, draftVideo } from "@/lib/api";
+import SecondsField from "@/components/SecondsField";
+import { ApiError, draftVideo, getStudioPricing } from "@/lib/api";
 import { formatUsd } from "@/lib/format";
-import type { Video } from "@/lib/types";
+import { pricingFor, type StudioPricing, type Video } from "@/lib/types";
 import { mobileModal } from "@/lib/ui";
 import { refreshCredits } from "../../CreditsBadge";
 
@@ -18,11 +19,13 @@ import { refreshCredits } from "../../CreditsBadge";
 export default function DraftModal({
   open,
   profileId,
+  videoModel,
   onClose,
   onDrafted,
 }: {
   open: boolean;
   profileId: string;
+  videoModel: string;
   onClose: () => void;
   onDrafted: (video: Video) => void;
 }) {
@@ -36,16 +39,18 @@ export default function DraftModal({
       destroyOnHidden
       {...mobileModal}
     >
-      {open && <DraftForm profileId={profileId} onDrafted={onDrafted} />}
+      {open && <DraftForm profileId={profileId} videoModel={videoModel} onDrafted={onDrafted} />}
     </Modal>
   );
 }
 
 function DraftForm({
   profileId,
+  videoModel,
   onDrafted,
 }: {
   profileId: string;
+  videoModel: string;
   onDrafted: (video: Video) => void;
 }) {
   const { message, modal } = App.useApp();
@@ -57,6 +62,17 @@ function DraftForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const totalSeconds = shots * seconds;
+
+  // The lengths the profile's video model takes (Kling: 3 to 15; Veo: 4, 6 or 8).
+  const [pricing, setPricing] = useState<StudioPricing | null>(null);
+  useEffect(() => {
+    getStudioPricing()
+      .then(setPricing)
+      .catch(() => {
+        /* the length box falls back to Kling's range */
+      });
+  }, []);
+  const secondsOptions = pricingFor(pricing, videoModel)?.seconds ?? Array.from({ length: 13 }, (_, i) => i + 3);
 
   // The draft costs a few cents (fal bills per token), so ask first.
   function confirmDraft() {
@@ -141,7 +157,7 @@ function DraftForm({
         <div>
           <Typography.Text>Seconds per shot</Typography.Text>
           <div>
-            <InputNumber min={3} max={15} precision={0} value={seconds} onChange={(v) => setSeconds(typeof v === "number" ? v : 4)} suffix="s" />
+            <SecondsField options={secondsOptions} value={seconds} onChange={setSeconds} />
           </div>
           {errors.seconds && <Typography.Text type="danger">{errors.seconds}</Typography.Text>}
         </div>

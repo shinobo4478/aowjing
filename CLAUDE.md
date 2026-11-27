@@ -452,6 +452,23 @@ Order of work (each a small PR):
    `ALTER TABLE video_shots ADD COLUMN end_picture_prompt text NOT NULL DEFAULT '';`.
 9. ~~Video templates~~ **cut by the owner (2026-11-27):** not needed now.
 
+## Video models (built 2026-11-27)
+
+A Profile now picks its **video model** (`profiles.video_model`: `kling-v3` default, `veo-3.1`, `veo-3.1-fast`) and
+whether clips have **sound** (`profiles.video_audio`, off by default; a switch on the profile form). Registry:
+`internal/studio/models.go` (fal ids, allowed lengths, default length, price per second, whether text-only clips and an
+end picture are possible). `internal/generate/fal.go` builds the input per model family: Kling as before; **Veo**
+(read from fal's pages 2026-11-27): `image_url`, `duration` "4s"/"6s"/"8s", `aspect_ratio` "9:16", `resolution` "720p",
+`generate_audio`; an end picture needs the separate `first-last-frame-to-video` endpoint (`first_frame_url` +
+`last_frame_url`). Veo takes only 4, 6 or 8 s, so lengths are checked against the profile's model when a clip or shot is
+made (a shot kept from before a switch says what to change), the length box becomes a list for Veo, and
+`GET /studio/pricing` now returns `{models:[…]}` (per model: lengths, default, USD/s silent and with sound, whether
+the silent price was confirmed on a bill — only Kling's was). **Not verified:** any real Veo clip (input shape and
+prices are from fal's pages, not a bill; Veo with sound has no price yet, so the screen says the price is not known);
+Veo Fast offers only image-to-video (its text and first-last endpoints were not read); Kling with sound (/usr/bin/bash.126/s) is
+fal's list price. Existing DBs need `ALTER TABLE profiles ADD COLUMN video_model text NOT NULL DEFAULT 'kling-v3',
+ADD COLUMN video_audio boolean NOT NULL DEFAULT false;`.
+
 ## Dashboard (built 2026-11-27)
 
 Two screens read `GET /dashboard?tz=<IANA zone>` (`internal/dashboard`, queries in `db/query/dashboard.sql`):

@@ -17,7 +17,15 @@ import {
   updateShot,
 } from "@/lib/api";
 import { formatUsd } from "@/lib/format";
-import { MAX_SHOTS, type Shot, type StudioPricing, type Video } from "@/lib/types";
+import {
+  MAX_SHOTS,
+  perSecondUsd,
+  priceCaveat,
+  pricingFor,
+  type Shot,
+  type StudioPricing,
+  type Video,
+} from "@/lib/types";
 import { refreshCredits } from "../../CreditsBadge";
 import PictureModal, { type PictureChoice } from "./PictureModal";
 import ClipList from "./ClipList";
@@ -45,12 +53,15 @@ function errorText(err: unknown, fallback: string): string {
 export default function VideoEditor({
   videoId,
   profileId,
-  videoStyle,
+  videoModel,
+  videoAudio,
   onBack,
 }: {
   videoId: string;
   profileId: string;
-  videoStyle: string;
+  /** The profile's video model and sound setting: the lengths and the price. */
+  videoModel: string;
+  videoAudio: boolean;
   onBack: () => void;
 }) {
   const { message, modal } = App.useApp();
@@ -121,9 +132,12 @@ export default function VideoEditor({
     return () => clearInterval(iv);
   }, [anyPending, load]);
 
-  const perSecond = pricing?.imageUsdPerSecond[videoStyle];
-  const minSeconds = pricing?.minSeconds ?? 3;
-  const maxSeconds = pricing?.maxSeconds ?? 15;
+  const model = pricingFor(pricing, videoModel);
+  const perSecond = perSecondUsd(model, videoAudio);
+  // The lengths the model takes; until the list loads, Kling's range.
+  const secondsOptions = model?.seconds ?? Array.from({ length: 13 }, (_, i) => i + 3);
+  const caveat = priceCaveat(model, videoAudio);
+  const silent = videoAudio ? "" : "silent ";
 
   /** Runs one change to the video, showing why it failed. Returns whether it worked. */
   async function run(fn: () => Promise<unknown>, fallback: string): Promise<boolean> {
@@ -242,8 +256,8 @@ export default function VideoEditor({
       content:
         price !== undefined ? (
           <p style={{ margin: 0 }}>
-            A {draft.seconds}-second silent clip {flow}:{" "}
-            <strong>≈ {formatUsd(price)}</strong>, charged to your fal.ai credits.
+            A {draft.seconds}-second {silent}clip {flow}:{" "}
+            <strong>≈ {formatUsd(price)}</strong>, charged to your fal.ai credits.{caveat}
             {shot.endImageId
               ? " (The price with an end picture has not been confirmed against a bill.)"
               : ""}
@@ -253,8 +267,9 @@ export default function VideoEditor({
           </p>
         ) : (
           <p style={{ margin: 0 }}>
-            A {draft.seconds}-second silent clip. The price could not be loaded,
-            so it is not shown here; it is charged to your fal.ai credits.
+            A {draft.seconds}-second {silent}clip. The price of this model with
+            these settings is not known (or could not be loaded), so it is not
+            shown here; it is charged to your fal.ai credits.
           </p>
         ),
       okText: price !== undefined ? `Generate (≈ ${formatUsd(price)})` : "Generate",
@@ -290,13 +305,13 @@ export default function VideoEditor({
         <>
           <p style={{ margin: "0 0 8px" }}>
             Shots {list.map((s) => s.position).join(", ")}: {seconds} seconds of
-            silent clips
+            {silent}clips
             {price !== undefined ? (
               <>
                 , <strong>≈ {formatUsd(price)}</strong> in all
               </>
             ) : (
-              " (the price could not be loaded)"
+              " (the price is not known for this model with these settings)"
             )}
             , charged to your fal.ai credits. They are made at the same time.
           </p>
@@ -434,8 +449,7 @@ export default function VideoEditor({
             shot={shot}
             count={shots.length}
             perSecond={perSecond}
-            minSeconds={minSeconds}
-            maxSeconds={maxSeconds}
+            secondsOptions={secondsOptions}
             busy={busy}
             onSave={(d) => save(shot, d)}
             onChoosePicture={(d) => setChoosing({ shot, draft: d, end: false })}

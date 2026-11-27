@@ -92,10 +92,9 @@ func (h *Handler) run(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if body.Seconds == 0 {
-		body.Seconds = studio.DefaultClipSeconds
-	}
-	if !studio.ValidClipSeconds(body.Seconds) {
+	// The outer bound is checked now; the model's own lengths (Veo takes only 4,
+	// 6 or 8) once the profile, and so the model, is known.
+	if body.Seconds != 0 && !studio.ValidClipSeconds(body.Seconds) {
 		writeFieldError(w, "seconds", "A clip is 3 to 15 seconds long.")
 		return
 	}
@@ -150,6 +149,23 @@ func (h *Handler) run(w http.ResponseWriter, r *http.Request) {
 	if (imageURL != "" || imageID.Valid) && profile.Provider != "fal" {
 		writeFieldError(w, "imageUrl", "An image only works with the fal.ai video provider; this profile uses "+profile.Provider+".")
 		return
+	}
+
+	if profile.Provider == "fal" {
+		m := studio.ModelFor(profile.VideoModel)
+		if body.Seconds == 0 {
+			body.Seconds = m.DefaultSeconds
+		}
+		if !m.ValidSeconds(body.Seconds) {
+			writeFieldError(w, "seconds", m.Label+" makes clips of "+m.SecondsList()+" seconds.")
+			return
+		}
+		if imageURL == "" && !imageID.Valid && !m.SupportsText() {
+			writeFieldError(w, "imageUrl", m.Label+" needs a starting picture; give the clip one.")
+			return
+		}
+	} else if body.Seconds == 0 {
+		body.Seconds = studio.DefaultClipSeconds
 	}
 
 	productIDs, err := products.ParseProductIDs(body.ProductIDs)

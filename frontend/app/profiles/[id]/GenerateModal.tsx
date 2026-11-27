@@ -27,6 +27,9 @@ import {
   type Product,
   type PromptTemplate,
   type StudioPricing,
+  perSecondUsd,
+  priceCaveat,
+  pricingFor,
 } from "@/lib/types";
 import { mobileModal } from "@/lib/ui";
 import KeyframePicker from "./KeyframePicker";
@@ -82,7 +85,8 @@ export function imageUrlError(raw: string): string | null {
 export default function GenerateModal({
   template,
   askImage,
-  videoStyle,
+  videoModel,
+  videoAudio,
   onClose,
   onGenerate,
 }: {
@@ -90,8 +94,9 @@ export default function GenerateModal({
   /** The profile's provider is fal, so an image can be given (and the run
    *  costs money, so it is confirmed first). */
   askImage: boolean;
-  /** The profile's video style, which decides the price of a clip. */
-  videoStyle: string;
+  /** The profile's video model and sound setting, which decide the price of a clip. */
+  videoModel: string;
+  videoAudio: boolean;
   onClose: () => void;
   onGenerate: (choices: GenerateChoices) => Promise<void>;
 }) {
@@ -109,7 +114,8 @@ export default function GenerateModal({
         <Choices
           template={template}
           askImage={askImage}
-          videoStyle={videoStyle}
+          videoModel={videoModel}
+          videoAudio={videoAudio}
           onGenerate={onGenerate}
         />
       )}
@@ -120,17 +126,21 @@ export default function GenerateModal({
 function Choices({
   template,
   askImage,
-  videoStyle,
+  videoModel,
+  videoAudio,
   onGenerate,
 }: {
   template: PromptTemplate;
   askImage: boolean;
-  videoStyle: string;
+  videoModel: string;
+  videoAudio: boolean;
   onGenerate: (choices: GenerateChoices) => Promise<void>;
 }) {
   const { message, modal } = App.useApp();
   // What a clip costs, for the confirmation. null = not loaded (or not needed).
   const [pricing, setPricing] = useState<StudioPricing | null>(null);
+  // What the hints say about the clip: sound and length depend on the profile's model.
+  const clipFacts = `${videoAudio ? "made with sound" : "silent"} and ${pricingFor(pricing, videoModel)?.defaultSeconds ?? 5} seconds long`;
   // The picture chosen among those earlier clips of this profile used.
   const [pastImageId, setPastImageId] = useState("");
   const need = productSlotsNeeded(template.body);
@@ -237,21 +247,22 @@ function Choices({
       void go();
       return;
     }
-    const seconds = pricing?.defaultSeconds ?? 5;
-    const perSecond = pricing?.imageUsdPerSecond[videoStyle];
+    const model = pricingFor(pricing, videoModel);
+    const seconds = model?.defaultSeconds ?? 5;
+    const perSecond = perSecondUsd(model, videoAudio);
     const price = perSecond === undefined ? undefined : perSecond * seconds;
     modal.confirm({
       title: "Generate this clip?",
       content: hasImage ? (
         <p style={{ margin: 0 }}>
-          A {seconds}-second silent clip from the chosen picture
+          A {seconds}-second {videoAudio ? "" : "silent "}clip from the chosen picture
           {price !== undefined ? (
             <>
               : <strong>≈ {formatUsd(price)}</strong>, charged to your fal.ai
-              credits.
+              credits.{priceCaveat(model, videoAudio)}
             </>
           ) : (
-            ". The price could not be loaded, so it is not shown here; it is charged to your fal.ai credits."
+            ". The price of this model with these settings is not known (or could not be loaded), so it is not shown here; it is charged to your fal.ai credits."
           )}
         </p>
       ) : (
@@ -402,12 +413,12 @@ function Choices({
           >
             {imageError ??
               (source === "link"
-                ? "A public link, at least 300×300 px. With an image the clip is silent and 5 seconds long; leave it empty to generate from the prompt alone."
+                ? `A public link, at least 300×300 px. With an image the clip is ${clipFacts}; leave it empty to generate from the prompt alone.`
                 : source === "file"
-                  ? "A JPG or PNG, at least 300×300 px, up to 8 MB. With an image the clip is silent and 5 seconds long; choose nothing to generate from the prompt alone."
+                  ? `A JPG or PNG, at least 300×300 px, up to 8 MB. With an image the clip is ${clipFacts}; choose nothing to generate from the prompt alone.`
                   : source === "past"
-                    ? "Reuse a picture this profile's earlier clips started from: only the prompt changes, and no new picture is paid for. The clip is silent and 5 seconds long."
-                    : "Make a picture first, then pick one. The clip is silent and 5 seconds long, and starts from the picture you pick.")}
+                    ? `Reuse a picture this profile's earlier clips started from: only the prompt changes, and no new picture is paid for. The clip is ${clipFacts}.`
+                    : `Make a picture first, then pick one. The clip is ${clipFacts}, and starts from the picture you pick.`)}
           </Typography.Paragraph>
         </div>
       )}

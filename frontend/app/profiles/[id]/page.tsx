@@ -134,7 +134,8 @@ export default function ProfileDetailPage({
               <PromptTemplatesSection
                 profileId={id}
                 provider={profile.provider}
-                videoStyle={profile.videoStyle}
+                videoModel={profile.videoModel}
+                videoAudio={profile.videoAudio}
                 onGenerated={() => {
                   setGenTick((t) => t + 1);
                   setTab("generations");
@@ -154,7 +155,8 @@ export default function ProfileDetailPage({
               <VideosSection
                 profileId={id}
                 provider={profile.provider}
-                videoStyle={profile.videoStyle}
+                videoModel={profile.videoModel}
+                videoAudio={profile.videoAudio}
               />
             ),
           },
@@ -188,6 +190,8 @@ export default function ProfileDetailPage({
             description: profile.description,
             provider: profile.provider,
             videoStyle: profile.videoStyle,
+            videoModel: profile.videoModel,
+            videoAudio: profile.videoAudio,
           }}
           submitLabel="Save changes"
           onSubmit={async (input) => {

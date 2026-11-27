@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Card, Input, InputNumber, Popconfirm, Space, Typography } from "antd";
+import { Button, Card, Input, Popconfirm, Space, Typography } from "antd";
+import SecondsField from "@/components/SecondsField";
 import Tally from "@/components/Tally";
 import { imageSrc } from "@/lib/api";
 import { formatUsd } from "@/lib/format";
@@ -27,8 +28,7 @@ export default function ShotCard({
   shot,
   count,
   perSecond,
-  minSeconds,
-  maxSeconds,
+  secondsOptions,
   busy,
   onSave,
   onChoosePicture,
@@ -49,8 +49,8 @@ export default function ShotCard({
   count: number;
   /** Price per second for this video's style; undefined = not known. */
   perSecond: number | undefined;
-  minSeconds: number;
-  maxSeconds: number;
+  /** The clip lengths the profile's video model takes. */
+  secondsOptions: number[];
   /** Something is being saved or queued for this video. */
   busy: boolean;
   onSave: (draft: ShotDraft) => Promise<void>;
@@ -290,15 +290,7 @@ export default function ShotCard({
           )}
           <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginTop: 8 }}>
             <Typography.Text type="secondary">Length</Typography.Text>
-            <InputNumber
-              min={minSeconds}
-              max={maxSeconds}
-              precision={0}
-              value={seconds}
-              onChange={(v) => setSeconds(typeof v === "number" ? v : shot.seconds)}
-              suffix="s"
-              style={{ width: 90 }}
-            />
+            <SecondsField options={secondsOptions} value={seconds} onChange={setSeconds} />
             <Typography.Text type="secondary">
               {price !== undefined
                 ? `≈ ${formatUsd(price)} per attempt`

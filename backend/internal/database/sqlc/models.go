@@ -93,6 +93,8 @@ type Profile struct {
 	Description string             `json:"description"`
 	Provider    string             `json:"provider"`
 	VideoStyle  string             `json:"video_style"`
+	VideoModel  string             `json:"video_model"`
+	VideoAudio  bool               `json:"video_audio"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 }

@@ -52,6 +52,10 @@ type profileInput struct {
 	Provider string `json:"provider"`
 	// Which video style its clips use. Empty means the default ("3d").
 	VideoStyle string `json:"videoStyle"`
+	// Which video model makes its clips. Empty means the default (Kling v3).
+	VideoModel string `json:"videoModel"`
+	// Whether clips are made with sound. Left out means off.
+	VideoAudio bool `json:"videoAudio"`
 }
 
 // normalizeAndValidate trims fields and returns a map of field -> message.
@@ -68,6 +72,11 @@ func (in *profileInput) normalizeAndValidate() map[string]string {
 	in.VideoStyle = strings.TrimSpace(in.VideoStyle)
 	if in.VideoStyle == "" {
 		in.VideoStyle = string(studio.DefaultStyle)
+	}
+
+	in.VideoModel = strings.TrimSpace(in.VideoModel)
+	if in.VideoModel == "" {
+		in.VideoModel = string(studio.DefaultModel)
 	}
 
 	errs := map[string]string{}
@@ -88,6 +97,9 @@ func (in *profileInput) normalizeAndValidate() map[string]string {
 	}
 	if !studio.Valid(in.VideoStyle) {
 		errs["videoStyle"] = "Unknown video style."
+	}
+	if !studio.ValidModel(in.VideoModel) {
+		errs["videoModel"] = "Unknown video model."
 	}
 	return errs
 }
@@ -137,6 +149,8 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		Description: in.Description,
 		Provider:    in.Provider,
 		VideoStyle:  in.VideoStyle,
+		VideoModel:  in.VideoModel,
+		VideoAudio:  in.VideoAudio,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to create profile.")
@@ -167,6 +181,8 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 		Description: in.Description,
 		Provider:    in.Provider,
 		VideoStyle:  in.VideoStyle,
+		VideoModel:  in.VideoModel,
+		VideoAudio:  in.VideoAudio,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		writeError(w, http.StatusNotFound, "Profile not found.")

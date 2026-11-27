@@ -3,7 +3,7 @@ import { Typography } from "antd";
 import Stripe from "@/components/Stripe";
 import { formatDate } from "@/lib/format";
 import { tapeColor } from "@/lib/tape";
-import { providerShort, videoStyleLabel, type Profile } from "@/lib/types";
+import { providerShort, videoModelLabel, videoStyleLabel, type Profile } from "@/lib/types";
 import { pageTitle } from "@/lib/ui";
 
 function Field({
@@ -62,6 +62,11 @@ export default function ProfileSlate({
         <Field label="Generator">{providerShort(profile.provider)}</Field>
         {profile.provider === "fal" && (
           <Field label="Video style">{videoStyleLabel(profile.videoStyle)}</Field>
+        )}
+        {profile.provider === "fal" && (
+          <Field label="Video model">
+            {videoModelLabel(profile.videoModel)} · {profile.videoAudio ? "sound on" : "silent"}
+          </Field>
         )}
         <Field label="Updated">{formatDate(profile.updatedAt)}</Field>
         {profile.description && (

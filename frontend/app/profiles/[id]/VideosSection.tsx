@@ -19,11 +19,13 @@ import VideoEditor from "./VideoEditor";
 export default function VideosSection({
   profileId,
   provider,
-  videoStyle,
+  videoModel,
+  videoAudio,
 }: {
   profileId: string;
   provider: ProviderKey;
-  videoStyle: string;
+  videoModel: string;
+  videoAudio: boolean;
 }) {
   const { message } = App.useApp();
   const router = useRouter();
@@ -95,7 +97,8 @@ export default function VideosSection({
         key={openId}
         videoId={openId}
         profileId={profileId}
-        videoStyle={videoStyle}
+        videoModel={videoModel}
+        videoAudio={videoAudio}
         onBack={backToList}
       />
     );
@@ -192,6 +195,7 @@ export default function VideosSection({
       <DraftModal
         open={drafting}
         profileId={profileId}
+        videoModel={videoModel}
         onClose={() => setDrafting(false)}
         onDrafted={(v) => {
           setDrafting(false);

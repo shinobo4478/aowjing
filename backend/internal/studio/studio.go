@@ -13,8 +13,6 @@
 // the voice-over step (item 5) exists.
 package studio
 
-import "math"
-
 // Style is the name of a video style, as stored on a Profile.
 type Style string
 
@@ -26,28 +24,24 @@ const (
 	DefaultStyle = Style3D
 )
 
-// Clip lengths in seconds. fal takes 3 to 15 for Kling v3 image-to-video; the
-// default is what a clip gets when the owner does not choose. They live here,
-// not in a handler, because the price shown before spending depends on them.
+// Clip lengths in seconds: the widest range any model takes (Kling v3: 3 to 15).
+// Each model narrows it (see VideoModel.Seconds: Veo takes 4, 6 or 8), so the
+// per-model check is VideoModel.ValidSeconds; this is the outer bound.
 const (
 	MinClipSeconds     = 3
 	MaxClipSeconds     = 15
 	DefaultClipSeconds = 5
 )
 
-// ValidClipSeconds reports whether n is a length fal accepts.
+// ValidClipSeconds reports whether n is a length any model could accept.
 func ValidClipSeconds(n int) bool { return n >= MinClipSeconds && n <= MaxClipSeconds }
 
-// Recipe is everything a style implies for making a clip.
+// Recipe is everything a style implies for the wording of a clip. Which model
+// makes it is a separate choice (models.go).
 type Recipe struct {
 	Style Style
 	// Label is the name shown to the owner.
 	Label string
-
-	// TextModel makes a clip from a prompt alone; ImageModel starts from a
-	// picture. Both are fal model ids.
-	TextModel  string
-	ImageModel string
 
 	// TextSuffix is appended to the prompt of a clip made from text alone: with
 	// no picture, the prompt is the only thing that sets the look.
@@ -60,18 +54,6 @@ type Recipe struct {
 	// clip that starts from a picture, here the look is being decided, so the
 	// style's wording belongs in the prompt.
 	KeyframeSuffix string
-
-	// ImagePricePerSecondUSD is what an image-to-video clip costs per second.
-	// 0 means not known. 0.084 is from the first real clip: 5 s cost $0.42.
-	ImagePricePerSecondUSD float64
-}
-
-// ImageClipUSD is the price of one image-to-video clip of the given length,
-// rounded to the fraction of a cent fal bills in. 0 means the price is not
-// known. That the price scales linearly with the length is an assumption, only
-// checked at 5 s so far.
-func (r Recipe) ImageClipUSD(seconds int) float64 {
-	return math.Round(r.ImagePricePerSecondUSD*float64(seconds)*10000) / 10000
 }
 
 // recipes is the registry, in the order shown in the UI. To add a style, add a
@@ -81,15 +63,10 @@ var recipes = []Recipe{
 		Style: Style3D,
 		Label: "3D (Pixar-like)",
 
-		TextModel:  "fal-ai/kling-video/v3/standard/text-to-video",
-		ImageModel: "fal-ai/kling-video/v3/standard/image-to-video",
-
 		// Starting wording, not tested against real clips yet: adjust it after
 		// seeing what Kling makes of it.
 		TextSuffix:     "3D animated film style, Pixar-like characters, soft cinematic lighting, smooth natural motion.",
 		KeyframeSuffix: "3D animated film style, Pixar-like characters, soft cinematic lighting.",
-
-		ImagePricePerSecondUSD: 0.084,
 	},
 }
 
