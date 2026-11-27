@@ -8,8 +8,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
@@ -18,6 +20,7 @@ import (
 	"github.com/shinobo4478/aowjing/backend/internal/database/sqlc"
 	"github.com/shinobo4478/aowjing/backend/internal/pgconv"
 	"github.com/shinobo4478/aowjing/backend/internal/products"
+	"github.com/shinobo4478/aowjing/backend/internal/spendcap"
 	"github.com/shinobo4478/aowjing/backend/internal/studio"
 )
 
@@ -162,6 +165,13 @@ func (h *Handler) run(w http.ResponseWriter, r *http.Request) {
 		}
 		if imageURL == "" && !imageID.Valid && !m.SupportsText() {
 			writeFieldError(w, "imageUrl", m.Label+" needs a starting picture; give the clip one.")
+			return
+		}
+		// The daily spending limit (Settings), before anything is saved or queued.
+		if over, err := spendcap.Check(r.Context(), h.q, spendcap.ClipUSD(m, body.Seconds, profile.VideoAudio), time.Now()); err != nil {
+			log.Printf("spendcap: %v", err)
+		} else if over != nil {
+			writeError(w, http.StatusPaymentRequired, over.Error())
 			return
 		}
 	} else if body.Seconds == 0 {

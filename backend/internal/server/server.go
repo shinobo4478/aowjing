@@ -30,12 +30,15 @@ import (
 // Server holds the shared dependencies handlers need.
 type Server struct {
 	db *pgxpool.Pool
+	q  *sqlc.Queries
+	// live remembers fal's current model prices for /studio/pricing.
+	live livePrices
 }
 
 // New builds the HTTP handler for the API, with middleware and routes mounted.
 func New(db *pgxpool.Pool, cfg config.Config, q *queue.Client) http.Handler {
-	s := &Server{db: db}
 	queries := sqlc.New(db)
+	s := &Server{db: db, q: queries}
 	authr := auth.New(queries, cfg.AdminUsername, cfg.AdminPassword, cfg.CookieSecure)
 
 	r := chi.NewRouter()

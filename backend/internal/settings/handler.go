@@ -6,10 +6,13 @@ import (
 	"encoding/json"
 	"net/http"
 	"slices"
+	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
 	"github.com/shinobo4478/aowjing/backend/internal/database/sqlc"
+	"github.com/shinobo4478/aowjing/backend/internal/spendcap"
 )
 
 // knownKeys is the whitelist the API accepts. Add a key here when a new
@@ -22,7 +25,10 @@ import (
 //   - scriptModel: optional, the model id the script helper writes drafts with
 //     (OpenRouter style, e.g. "anthropic/claude-sonnet-5"); empty means the
 //     built-in default.
-var knownKeys = []string{"falApiKey", "falBillingKey", "scriptModel"}
+//   - dailyCapUsd / dailyCapTz: optional daily spending limit in USD (empty = no
+//     limit) and the owner's IANA time zone, which the screen saves with it so
+//     "today" starts at the owner's midnight (see internal/spendcap).
+var knownKeys = []string{"falApiKey", "falBillingKey", "scriptModel", "dailyCapUsd", "dailyCapTz"}
 
 type Handler struct {
 	q *sqlc.Queries
@@ -77,6 +83,16 @@ func (h *Handler) put(w http.ResponseWriter, r *http.Request) {
 	for key := range body {
 		if !slices.Contains(knownKeys, key) {
 			writeError(w, http.StatusBadRequest, "Unknown setting: "+key)
+			return
+		}
+	}
+	if v := strings.TrimSpace(body["dailyCapUsd"]); v != "" && spendcap.ParseCap(v) <= 0 {
+		writeError(w, http.StatusBadRequest, "The daily limit must be a number above 0 (leave it empty for no limit).")
+		return
+	}
+	if tz := strings.TrimSpace(body["dailyCapTz"]); tz != "" {
+		if _, err := time.LoadLocation(tz); err != nil {
+			writeError(w, http.StatusBadRequest, "Unknown time zone: "+tz)
 			return
 		}
 	}

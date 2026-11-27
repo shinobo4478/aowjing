@@ -278,6 +278,10 @@ export interface Settings {
   /** Optional model id the script helper writes drafts with (e.g.
    *  "anthropic/claude-sonnet-5"); empty means the built-in default. */
   scriptModel: string;
+  /** Daily spending limit in USD as typed ("" = none), and the browser's time
+   *  zone, saved with it so "today" starts at the owner's midnight. */
+  dailyCapUsd: string;
+  dailyCapTz: string;
 }
 
 /** One video model as GET /studio/pricing describes it. */
@@ -293,6 +297,13 @@ export interface PricingModel {
   usdPerSecondAudio: number | null;
   /** A real bill matched the silent price; otherwise it is fal's list price. */
   confirmedSilent: boolean;
+  /** The same for the price with sound. */
+  confirmedAudio: boolean;
+  /** What fal's pricing API lists for the model right now: one number, the top of
+   *  its range (the price with sound). null when fal could not be asked. */
+  liveUsdPerSecond: number | null;
+  /** That live price differs from the one in our table: estimates may be off. */
+  priceChanged: boolean;
   /** A clip can be made from a prompt alone / given an end picture. */
   supportsText: boolean;
   endPicture: boolean;
@@ -309,15 +320,24 @@ export const pricingFor = (p: StudioPricing | null, model: string): PricingModel
 
 /** USD per second for a model with or without sound; undefined when not known. */
 export function perSecondUsd(m: PricingModel | undefined, audio: boolean): number | undefined {
+  // With sound, fal's live number IS the price with sound, so when it has moved
+  // away from our table the live one is the better estimate.
+  if (audio && m?.priceChanged && m.liveUsdPerSecond != null) return m.liveUsdPerSecond;
   const v = audio ? m?.usdPerSecondAudio : m?.usdPerSecond;
   return v == null ? undefined : v;
 }
 
 /** A short caveat to put after a price that has not been seen on a bill. */
 export function priceCaveat(m: PricingModel | undefined, audio: boolean): string {
-  return m && !audio && m.confirmedSilent
-    ? ""
-    : " This is fal's list price, not yet seen on a bill.";
+  const seen = m && (audio ? m.confirmedAudio : m.confirmedSilent);
+  let text = seen ? "" : " This is fal's list price, not yet seen on a bill.";
+  if (m?.priceChanged && m.liveUsdPerSecond != null) {
+    text +=
+      ` fal now lists up to ${m.liveUsdPerSecond.toFixed(2)}/s for this model, which is not the price this estimate was built on${
+        audio ? "" : " (a silent clip costs less than that, but the table may be out of date)"
+      }; the real cost may differ.`;
+  }
+  return text;
 }
 
 /** The fal.ai credit balance, from GET /credits/fal. `configured` is false until

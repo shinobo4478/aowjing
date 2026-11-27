@@ -122,3 +122,32 @@ func TestFalAccountBillingCostsBatches(t *testing.T) {
 		t.Errorf("batch sizes = %v, want [50 50 20] (fal accepts at most 50 ids)", sizes)
 	}
 }
+
+func TestFalAccountModelPrices(t *testing.T) {
+	var gotAuth, gotPath, gotQuery string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth, gotPath, gotQuery = r.Header.Get("Authorization"), r.URL.Path, r.URL.Query().Get("endpoint_id")
+		_, _ = w.Write([]byte(`{"prices":[
+			{"endpoint_id":"fal-ai/veo3.1","unit_price":0.4,"unit":"seconds","currency":"USD"},
+			{"endpoint_id":"fal-ai/flux/dev","unit_price":0.025,"unit":"images","currency":"USD"},
+			{"endpoint_id":"fal-ai/odd","unit_price":0.1,"unit":"seconds","currency":"EUR"}
+		],"next_cursor":null,"has_more":false}`))
+	}))
+	defer srv.Close()
+
+	a := NewFalAccount("secret")
+	a.baseURL = srv.URL
+	got, err := a.ModelPrices(context.Background(), []string{"fal-ai/veo3.1", "fal-ai/flux/dev", "fal-ai/odd"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got["fal-ai/veo3.1"] != 0.4 {
+		t.Errorf("got %v, want only the per-second USD price of veo3.1", got)
+	}
+	if gotAuth != "Key secret" || gotPath != "/models/pricing" || gotQuery != "fal-ai/veo3.1,fal-ai/flux/dev,fal-ai/odd" {
+		t.Errorf("request = %q %q %q", gotAuth, gotPath, gotQuery)
+	}
+	if _, err := NewFalAccount("").ModelPrices(context.Background(), []string{"x"}); err == nil {
+		t.Error("want an error without a key")
+	}
+}

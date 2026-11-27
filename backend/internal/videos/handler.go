@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -23,6 +24,7 @@ import (
 	"github.com/shinobo4478/aowjing/backend/internal/database/sqlc"
 	"github.com/shinobo4478/aowjing/backend/internal/pgconv"
 	"github.com/shinobo4478/aowjing/backend/internal/scriptwriter"
+	"github.com/shinobo4478/aowjing/backend/internal/spendcap"
 	"github.com/shinobo4478/aowjing/backend/internal/studio"
 )
 
@@ -476,6 +478,14 @@ func (h *Handler) queueShot(ctx context.Context, v sqlc.Video, profile sqlc.Prof
 	}
 	if latest != nil && latest.Status == "pending" {
 		return attemptDTO{}, &queueError{code: http.StatusConflict, msg: "This shot is already being made."}
+	}
+	// The daily spending limit (Settings). In "generate all" the shots queued
+	// before this one already count (they are pending rows), so the total is held.
+	m := studio.ModelFor(profile.VideoModel)
+	if over, err := spendcap.Check(ctx, h.q, spendcap.ClipUSD(m, int(shot.Seconds), profile.VideoAudio), time.Now()); err != nil {
+		log.Printf("spendcap: %v", err)
+	} else if over != nil {
+		return attemptDTO{}, &queueError{code: http.StatusPaymentRequired, msg: over.Error()}
 	}
 
 	row, err := h.q.CreateGeneration(ctx, sqlc.CreateGenerationParams{

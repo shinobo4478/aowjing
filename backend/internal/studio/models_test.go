@@ -65,9 +65,9 @@ func TestClipUSD(t *testing.T) {
 	if got := kling.ClipUSD(10, false); got != 0.84 {
 		t.Errorf("kling 10 s silent = %v, want 0.84", got)
 	}
-	// Veo's with-sound price is not known: 0, never a guess.
-	if got := ModelFor("veo-3.1").ClipUSD(8, true); got != 0 {
-		t.Errorf("veo with sound should be unknown (0), got %v", got)
+	// A real 6 s Veo clip with sound was billed $2.40: that is $0.40/s.
+	if got := ModelFor("veo-3.1").ClipUSD(6, true); got != 2.4 {
+		t.Errorf("veo 6 s with sound = %v, want 2.4", got)
 	}
 	if got := ModelFor("veo-3.1").ClipUSD(8, false); got != 1.6 {
 		t.Errorf("veo 8 s silent = %v, want 1.6", got)

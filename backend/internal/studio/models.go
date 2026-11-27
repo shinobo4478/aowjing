@@ -62,6 +62,9 @@ type VideoModel struct {
 	// ConfirmedSilent: a real bill matched USDPerSecond. Kling's did (a 5 s clip
 	// cost $0.42). Veo's are fal's listed prices, not yet seen on a bill.
 	ConfirmedSilent bool
+	// ConfirmedAudio: the same for the price with sound. Veo 3.1's was: a 6 s clip
+	// with sound was billed $2.40 (2026-11-27).
+	ConfirmedAudio bool
 }
 
 func seq(from, to int) []int {
@@ -91,7 +94,10 @@ var models = []VideoModel{
 		DefaultSeconds: DefaultClipSeconds,
 
 		USDPerSecond:      0.084,
-		USDPerSecondAudio: 0.126,
+		// fal's pricing API (GET /v1/models/pricing) answered 0.14 on 2026-11-27,
+		// the top price of the endpoint; an earlier read of the model page said
+		// 0.126. The higher one is kept so an estimate is never low.
+		USDPerSecondAudio: 0.14,
 		ConfirmedSilent:   true,
 	},
 	{
@@ -108,7 +114,10 @@ var models = []VideoModel{
 		DefaultSeconds: 4,
 
 		USDPerSecond: 0.20,
-		// With-sound price not read yet.
+		// 0.40 is what fal's pricing API lists and what a real 6 s clip with sound
+		// was billed (2.4 / 6).
+		USDPerSecondAudio: 0.40,
+		ConfirmedAudio:    true,
 	},
 	{
 		Key:   ModelVeo31Fast,
@@ -124,6 +133,8 @@ var models = []VideoModel{
 		DefaultSeconds: 4,
 
 		USDPerSecond: 0.10,
+		// From fal's pricing API (2026-11-27); not yet seen on a bill.
+		USDPerSecondAudio: 0.15,
 	},
 }
 

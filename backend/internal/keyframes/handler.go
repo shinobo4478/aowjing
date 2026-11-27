@@ -10,8 +10,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/go-chi/chi/v5"
@@ -20,6 +22,7 @@ import (
 
 	"github.com/shinobo4478/aowjing/backend/internal/database/sqlc"
 	"github.com/shinobo4478/aowjing/backend/internal/pgconv"
+	"github.com/shinobo4478/aowjing/backend/internal/spendcap"
 	"github.com/shinobo4478/aowjing/backend/internal/studio"
 )
 
@@ -135,6 +138,14 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	}
 	if body.Count < 1 || body.Count > studio.MaxKeyframeImages {
 		writeFieldError(w, "count", "Ask for 1 to 4 pictures.")
+		return
+	}
+
+	// The daily spending limit (Settings), before anything is saved or queued.
+	if over, err := spendcap.Check(r.Context(), h.q, model.CostUSD(body.Count), time.Now()); err != nil {
+		log.Printf("spendcap: %v", err)
+	} else if over != nil {
+		writeError(w, http.StatusPaymentRequired, over.Error())
 		return
 	}
 
