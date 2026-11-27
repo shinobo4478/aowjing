@@ -1,7 +1,7 @@
 "use client";
 
 import { AntdRegistry } from "@ant-design/nextjs-registry";
-import { App, ConfigProvider, theme } from "antd";
+import { App, ConfigProvider, Grid, theme } from "antd";
 import { FONT_FAMILY } from "@/lib/theme";
 import { PALETTE } from "@/lib/tape";
 import { ThemeModeProvider, useThemeMode } from "./ThemeMode";
@@ -37,6 +37,9 @@ function Themed({ children }: { children: React.ReactNode }) {
   // variables (those are for the things we draw ourselves; see lib/tape.ts).
   const c = PALETTE[mode];
   const dark = mode === "dark";
+  // Phones: 16px text (iOS zooms the page into any smaller input) and 44px
+  // controls, the minimum comfortable touch target.
+  const phone = Grid.useBreakpoint().md === false;
   const focusRing = dark ? "rgba(255, 201, 51, 0.18)" : "rgba(217, 154, 0, 0.25)";
 
   return (
@@ -70,9 +73,9 @@ function Themed({ children }: { children: React.ReactNode }) {
           borderRadius: 4,
           borderRadiusSM: 2,
           borderRadiusLG: 6,
-          controlHeight: 40,
+          controlHeight: phone ? 44 : 40,
           fontFamily: FONT_FAMILY,
-          fontSize: 15,
+          fontSize: phone ? 16 : 15,
           lineHeight: 1.65,
           fontWeightStrong: 600,
 

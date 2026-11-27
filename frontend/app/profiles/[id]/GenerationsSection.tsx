@@ -223,6 +223,7 @@ export default function GenerationsSection({
     },
     {
       title: "Provider",
+      responsive: ["md"],
       dataIndex: "provider",
       width: 120,
       render: (v: string, row) => (row.model ? `${v} / ${row.model}` : v),
@@ -245,6 +246,7 @@ export default function GenerationsSection({
     },
     {
       title: "Created",
+      responsive: ["md"],
       dataIndex: "createdAt",
       width: 180,
       render: (v: string) => formatDateTime(v),

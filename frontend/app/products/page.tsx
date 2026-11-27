@@ -101,6 +101,7 @@ export default function ProductsPage() {
     },
     {
       title: "Affiliate link",
+      responsive: ["md"],
       dataIndex: "affiliateUrl",
       width: 160,
       render: (v: string) => (
@@ -116,6 +117,7 @@ export default function ProductsPage() {
     },
     {
       title: "Pinned to",
+      responsive: ["md"],
       dataIndex: "usedCount",
       width: 120,
       render: (n: number, row) =>
@@ -129,6 +131,7 @@ export default function ProductsPage() {
     },
     {
       title: "Updated",
+      responsive: ["md"],
       dataIndex: "updatedAt",
       width: 130,
       render: (v: string) => formatDate(v),

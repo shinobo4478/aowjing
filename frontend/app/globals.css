@@ -344,3 +344,83 @@ video {
   background: var(--acmp-scroll-hover);
   background-clip: content-box;
 }
+
+/* --- App shell -------------------------------------------------------- */
+.acmp-content {
+  padding: clamp(28px, 5vw, 64px) clamp(16px, 4vw, 32px) 112px;
+}
+/* Sticky bar that lets the page show through, like a native navigation bar.
+   The colour-mix keeps it the canvas colour in either theme. */
+.acmp-header.ant-layout-header {
+  background: color-mix(in srgb, var(--acmp-void) 82%, transparent);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+/* --- Phone: tab bar and native feel ------------------------------------ */
+.acmp-tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  padding-bottom: env(safe-area-inset-bottom);
+  background: color-mix(in srgb, var(--acmp-panel) 88%, transparent);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid var(--acmp-rule-soft);
+}
+.acmp-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 56px;
+  padding: 6px 0 4px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--acmp-ash);
+  text-decoration: none;
+  cursor: pointer;
+}
+.acmp-tab.is-active {
+  color: var(--acmp-accent);
+}
+.acmp-tab:active {
+  opacity: 0.6;
+}
+
+@media (max-width: 767px) {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    /* No rubber-band scroll past the ends and no blue flash on tap. */
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .acmp-content {
+    /* Clear the tab bar (56px + home-indicator inset) with room to spare. */
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+  .acmp-header.ant-layout-header {
+    /* Under the status bar / notch in a standalone or full-screen view. */
+    padding-top: env(safe-area-inset-top);
+    height: calc(60px + env(safe-area-inset-top));
+  }
+  /* Taps respond at once (no double-tap-zoom wait). */
+  a,
+  button,
+  [role="button"],
+  .ant-btn,
+  .ant-segmented-item,
+  .ant-tabs-tab {
+    touch-action: manipulation;
+  }
+}

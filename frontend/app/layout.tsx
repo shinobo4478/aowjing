@@ -7,12 +7,16 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "AI Content Management Platform",
+  // Added to a phone home screen, it opens full-screen like an app.
+  appleWebApp: { capable: true, title: "ACMP", statusBarStyle: "default" },
   description: "Create and organise AI-generated video content.",
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  // Draw under the notch / home indicator; the shell pads with safe-area insets.
+  viewportFit: "cover",
   // Dark (OLED-first) is the default; light is the other mode (see
   // app/ThemeMode.tsx). `colorScheme` lets the UA draw native controls and
   // scrollbars to match; `themeColor` tints the mobile browser chrome.

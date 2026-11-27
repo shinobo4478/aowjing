@@ -113,8 +113,8 @@ export default function ChannelsSection({ profileId }: { profileId: string }) {
 
   const columns: TableColumnsType<Channel> = [
     { title: "Name", dataIndex: "name" },
-    { title: "Platform", dataIndex: "platform" },
-    { title: "Handle", dataIndex: "handle" },
+    { title: "Platform", dataIndex: "platform", responsive: ["md"] },
+    { title: "Handle", dataIndex: "handle", responsive: ["md"] },
     ...(ytConfigured
       ? ([
           {
