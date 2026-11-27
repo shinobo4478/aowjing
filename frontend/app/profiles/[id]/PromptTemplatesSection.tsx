@@ -109,6 +109,7 @@ export default function PromptTemplatesSection({
     { title: "Name", dataIndex: "name" },
     {
       title: "Updated",
+      responsive: ["md"],
       dataIndex: "updatedAt",
       width: 190,
       render: (v: string) => formatDateTime(v),

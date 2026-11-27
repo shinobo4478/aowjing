@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Button, Drawer, Grid, Menu, Space, Typography } from "antd";
+import { Button, Grid, Menu, Space, Typography } from "antd";
 import Stripe from "@/components/Stripe";
 import { INK } from "@/lib/tape";
 import { useAuth } from "./AuthGate";
 import CreditsBadge from "./CreditsBadge";
+import { useThemeMode } from "./ThemeMode";
+import ThemeSwitch from "./ThemeSwitch";
 
 const links = [
   { key: "/profiles", label: "Profiles" },
@@ -43,7 +44,7 @@ export default function SiteHeader() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const screens = Grid.useBreakpoint();
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const { mode } = useThemeMode();
 
   // Assume desktop until we know otherwise — avoids a menu-button flash on load.
   const isDesktop = screens.md !== false;
@@ -69,7 +70,7 @@ export default function SiteHeader() {
         <Brand />
         <Menu
           mode="horizontal"
-          theme="dark"
+          theme={mode}
           selectedKeys={selected}
           items={menuItems}
           style={{
@@ -82,6 +83,7 @@ export default function SiteHeader() {
         />
         <Space size="middle">
           <CreditsBadge />
+          <ThemeSwitch />
           <Typography.Text type="secondary">{user.username}</Typography.Text>
           <Button size="small" onClick={logout}>
             Sign out
@@ -91,49 +93,23 @@ export default function SiteHeader() {
     );
   }
 
+  // Phones: a slim top bar (brand, balance, theme). Navigation is the tab bar
+  // at the bottom (BottomNav), where a thumb reaches it.
   return (
     <div
       style={{
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
+        gap: 12,
         height: "100%",
       }}
     >
       <Brand />
-      <Button type="text" onClick={() => setDrawerOpen(true)}>
-        Menu
-      </Button>
-      <Drawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        placement="right"
-        size={260}
-        title={user.username}
-        styles={{ body: { padding: 0 } }}
-      >
-        <Menu
-          mode="inline"
-          selectedKeys={selected}
-          items={menuItems}
-          onClick={() => setDrawerOpen(false)}
-          style={{ borderInlineEnd: "none", fontSize: 18 }}
-        />
-        <div style={{ padding: 16 }}>
-          <div style={{ marginBottom: 12 }}>
-            <CreditsBadge />
-          </div>
-          <Button
-            block
-            onClick={() => {
-              setDrawerOpen(false);
-              logout();
-            }}
-          >
-            Sign out
-          </Button>
-        </div>
-      </Drawer>
+      <Space size={12}>
+        <CreditsBadge />
+        <ThemeSwitch />
+      </Space>
     </div>
   );
 }

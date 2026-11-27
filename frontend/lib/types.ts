@@ -118,7 +118,18 @@ export interface Generation {
   seconds: number;
   /** The video shot this is an attempt at; "" for a clip made from a template. */
   shotId: string;
+  /** What fal actually charged, in USD. null until fal's billing shows it, and
+   *  for text-only runs and clips made before this was tracked. */
+  costUsd: number | null;
   createdAt: string; // ISO 8601
+}
+
+/** Reply of POST /credits/fal/costs: bills found by that call, by generation id. */
+export interface FalCosts {
+  /** false when no billing key is set in Settings. */
+  configured: boolean;
+  costs: Record<string, number>;
+  error?: string;
 }
 
 // --- Videos (Phase 4 item 3): an ordered list of shots ---

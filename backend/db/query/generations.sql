@@ -25,8 +25,20 @@ SET status = $2,
     output_kind = $4,
     error = $5,
     provider = $6,
-    model = $7
+    model = $7,
+    fal_request_id = $8
 WHERE id = $1;
+
+-- name: ListGenerationsToCost :many
+-- Clips whose real cost we still need to ask fal for.
+SELECT id, fal_request_id, created_at
+FROM generations
+WHERE id = ANY($1::uuid[])
+  AND fal_request_id <> ''
+  AND cost_usd IS NULL;
+
+-- name: SetGenerationCost :exec
+UPDATE generations SET cost_usd = $2 WHERE id = $1;
 
 -- name: DeleteGeneration :execrows
 DELETE FROM generations

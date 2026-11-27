@@ -162,7 +162,7 @@ export default function ShotCard({
               style={{
                 width: 108,
                 height: 192,
-                border: "1px dashed rgba(255,255,255,0.25)",
+                border: "1px dashed var(--acmp-dashed)",
                 borderRadius: 4,
                 display: "flex",
                 alignItems: "center",
@@ -208,7 +208,7 @@ export default function ShotCard({
               style={{
                 width: 108,
                 height: 192,
-                border: "1px dashed rgba(255,255,255,0.25)",
+                border: "1px dashed var(--acmp-dashed)",
                 borderRadius: 4,
                 display: "flex",
                 alignItems: "center",

@@ -46,7 +46,9 @@ type cached struct {
 type Handler struct {
 	q     *sqlc.Queries
 	fetch func(ctx context.Context, key string) (generate.FalCredits, error)
-	now   func() time.Time
+	// fetchCosts reads the real bills of fal requests (see costs.go).
+	fetchCosts func(ctx context.Context, key string, requestIDs []string, since time.Time) (map[string]float64, error)
+	now        func() time.Time
 
 	mu    sync.Mutex
 	cache *cached
@@ -58,6 +60,9 @@ func NewHandler(q *sqlc.Queries) *Handler {
 		fetch: func(ctx context.Context, key string) (generate.FalCredits, error) {
 			return generate.NewFalAccount(key).Credits(ctx)
 		},
+		fetchCosts: func(ctx context.Context, key string, ids []string, since time.Time) (map[string]float64, error) {
+			return generate.NewFalAccount(key).BillingCosts(ctx, ids, since)
+		},
 		now: time.Now,
 	}
 }
@@ -66,6 +71,7 @@ func NewHandler(q *sqlc.Queries) *Handler {
 func (h *Handler) Routes() http.Handler {
 	r := chi.NewRouter()
 	r.Get("/fal", h.fal)
+	r.Post("/fal/costs", h.costs)
 	return r
 }
 

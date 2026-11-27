@@ -16,7 +16,7 @@ INSERT INTO generations (
     profile_id, prompt_template_id, input_prompt, image_url, image_id, output, status, error, provider, model,
     seconds, shot_id, end_image_id
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-RETURNING id, profile_id, prompt_template_id, input_prompt, image_url, image_id, end_image_id, seconds, shot_id, output, output_kind, status, error, provider, model, created_at
+RETURNING id, profile_id, prompt_template_id, input_prompt, image_url, image_id, end_image_id, seconds, shot_id, output, output_kind, status, error, provider, model, fal_request_id, cost_usd, created_at
 `
 
 type CreateGenerationParams struct {
@@ -68,6 +68,8 @@ func (q *Queries) CreateGeneration(ctx context.Context, arg CreateGenerationPara
 		&i.Error,
 		&i.Provider,
 		&i.Model,
+		&i.FalRequestID,
+		&i.CostUsd,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -93,18 +95,20 @@ SET status = $2,
     output_kind = $4,
     error = $5,
     provider = $6,
-    model = $7
+    model = $7,
+    fal_request_id = $8
 WHERE id = $1
 `
 
 type FinishGenerationParams struct {
-	ID         pgtype.UUID `json:"id"`
-	Status     string      `json:"status"`
-	Output     string      `json:"output"`
-	OutputKind string      `json:"output_kind"`
-	Error      string      `json:"error"`
-	Provider   string      `json:"provider"`
-	Model      string      `json:"model"`
+	ID           pgtype.UUID `json:"id"`
+	Status       string      `json:"status"`
+	Output       string      `json:"output"`
+	OutputKind   string      `json:"output_kind"`
+	Error        string      `json:"error"`
+	Provider     string      `json:"provider"`
+	Model        string      `json:"model"`
+	FalRequestID string      `json:"fal_request_id"`
 }
 
 func (q *Queries) FinishGeneration(ctx context.Context, arg FinishGenerationParams) error {
@@ -116,12 +120,13 @@ func (q *Queries) FinishGeneration(ctx context.Context, arg FinishGenerationPara
 		arg.Error,
 		arg.Provider,
 		arg.Model,
+		arg.FalRequestID,
 	)
 	return err
 }
 
 const getGeneration = `-- name: GetGeneration :one
-SELECT g.id, g.profile_id, g.prompt_template_id, g.input_prompt, g.image_url, g.image_id, g.end_image_id, g.seconds, g.shot_id, g.output, g.output_kind, g.status, g.error, g.provider, g.model, g.created_at, pt.name AS template_name
+SELECT g.id, g.profile_id, g.prompt_template_id, g.input_prompt, g.image_url, g.image_id, g.end_image_id, g.seconds, g.shot_id, g.output, g.output_kind, g.status, g.error, g.provider, g.model, g.fal_request_id, g.cost_usd, g.created_at, pt.name AS template_name
 FROM generations g
 LEFT JOIN prompt_templates pt ON pt.id = g.prompt_template_id
 WHERE g.id = $1
@@ -143,6 +148,8 @@ type GetGenerationRow struct {
 	Error            string             `json:"error"`
 	Provider         string             `json:"provider"`
 	Model            string             `json:"model"`
+	FalRequestID     string             `json:"fal_request_id"`
+	CostUsd          *float64           `json:"cost_usd"`
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 	TemplateName     *string            `json:"template_name"`
 }
@@ -166,6 +173,8 @@ func (q *Queries) GetGeneration(ctx context.Context, id pgtype.UUID) (GetGenerat
 		&i.Error,
 		&i.Provider,
 		&i.Model,
+		&i.FalRequestID,
+		&i.CostUsd,
 		&i.CreatedAt,
 		&i.TemplateName,
 	)
@@ -173,7 +182,7 @@ func (q *Queries) GetGeneration(ctx context.Context, id pgtype.UUID) (GetGenerat
 }
 
 const listGenerationsByProfile = `-- name: ListGenerationsByProfile :many
-SELECT g.id, g.profile_id, g.prompt_template_id, g.input_prompt, g.image_url, g.image_id, g.end_image_id, g.seconds, g.shot_id, g.output, g.output_kind, g.status, g.error, g.provider, g.model, g.created_at, pt.name AS template_name
+SELECT g.id, g.profile_id, g.prompt_template_id, g.input_prompt, g.image_url, g.image_id, g.end_image_id, g.seconds, g.shot_id, g.output, g.output_kind, g.status, g.error, g.provider, g.model, g.fal_request_id, g.cost_usd, g.created_at, pt.name AS template_name
 FROM generations g
 LEFT JOIN prompt_templates pt ON pt.id = g.prompt_template_id
 WHERE g.profile_id = $1
@@ -196,6 +205,8 @@ type ListGenerationsByProfileRow struct {
 	Error            string             `json:"error"`
 	Provider         string             `json:"provider"`
 	Model            string             `json:"model"`
+	FalRequestID     string             `json:"fal_request_id"`
+	CostUsd          *float64           `json:"cost_usd"`
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 	TemplateName     *string            `json:"template_name"`
 }
@@ -225,6 +236,8 @@ func (q *Queries) ListGenerationsByProfile(ctx context.Context, profileID pgtype
 			&i.Error,
 			&i.Provider,
 			&i.Model,
+			&i.FalRequestID,
+			&i.CostUsd,
 			&i.CreatedAt,
 			&i.TemplateName,
 		); err != nil {
@@ -236,4 +249,53 @@ func (q *Queries) ListGenerationsByProfile(ctx context.Context, profileID pgtype
 		return nil, err
 	}
 	return items, nil
+}
+
+const listGenerationsToCost = `-- name: ListGenerationsToCost :many
+SELECT id, fal_request_id, created_at
+FROM generations
+WHERE id = ANY($1::uuid[])
+  AND fal_request_id <> ''
+  AND cost_usd IS NULL
+`
+
+type ListGenerationsToCostRow struct {
+	ID           pgtype.UUID        `json:"id"`
+	FalRequestID string             `json:"fal_request_id"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+}
+
+// Clips whose real cost we still need to ask fal for.
+func (q *Queries) ListGenerationsToCost(ctx context.Context, dollar_1 []pgtype.UUID) ([]ListGenerationsToCostRow, error) {
+	rows, err := q.db.Query(ctx, listGenerationsToCost, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListGenerationsToCostRow
+	for rows.Next() {
+		var i ListGenerationsToCostRow
+		if err := rows.Scan(&i.ID, &i.FalRequestID, &i.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const setGenerationCost = `-- name: SetGenerationCost :exec
+UPDATE generations SET cost_usd = $2 WHERE id = $1
+`
+
+type SetGenerationCostParams struct {
+	ID      pgtype.UUID `json:"id"`
+	CostUsd *float64    `json:"cost_usd"`
+}
+
+func (q *Queries) SetGenerationCost(ctx context.Context, arg SetGenerationCostParams) error {
+	_, err := q.db.Exec(ctx, setGenerationCost, arg.ID, arg.CostUsd)
+	return err
 }

@@ -13,26 +13,69 @@ body {
   padding: 0;
 }
 
-:root {
+/* Palette. Dark is the default (no attribute); a script in <head> sets
+   data-theme on <html> before first paint (see app/layout.tsx and
+   app/ThemeMode.tsx). Mirrors PALETTE in lib/tape.ts: change both together. */
+:root,
+:root[data-theme="dark"] {
   color-scheme: dark;
+  --acmp-tungsten: #ffc933;
+  --acmp-accent: #ffc933;
+  --acmp-chalk: #ece9e4;
+  --acmp-ash: #9b988f;
+  --acmp-dim: #6e6b64;
+  --acmp-faint: #4a4843;
+  --acmp-void: #000000;
+  --acmp-panel: #0d0d0f;
+  --acmp-raised: #151518;
+  --acmp-inset: #0a0a0b;
+  --acmp-rule: #2a2a2f;
+  --acmp-rule-soft: #1c1c20;
+  --acmp-succeeded: #4fe3a8;
+  --acmp-failed: #ff5d5d;
+  --acmp-dashed: rgba(255, 255, 255, 0.25);
+  --acmp-scroll: rgba(255, 255, 255, 0.14);
+  --acmp-scroll-hover: rgba(255, 255, 255, 0.24);
+  --acmp-select: rgba(255, 201, 51, 0.28);
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --acmp-tungsten: #ffc933;
+  --acmp-accent: #8a5a00;
+  --acmp-chalk: #1b1a17;
+  --acmp-ash: #5e5b53;
+  --acmp-dim: #8a867c;
+  --acmp-faint: #b5b1a6;
+  --acmp-void: #f4f2ed;
+  --acmp-panel: #ffffff;
+  --acmp-raised: #ffffff;
+  --acmp-inset: #faf9f6;
+  --acmp-rule: #d9d5cb;
+  --acmp-rule-soft: #e8e4da;
+  --acmp-succeeded: #0e8a5a;
+  --acmp-failed: #d12f2f;
+  --acmp-dashed: rgba(27, 26, 23, 0.3);
+  --acmp-scroll: rgba(27, 26, 23, 0.22);
+  --acmp-scroll-hover: rgba(27, 26, 23, 0.36);
+  --acmp-select: rgba(255, 201, 51, 0.5);
 }
 
 /* Sukhumvit Set via next/font (app/fonts.ts). True-black canvas for OLED; ink
    is a warm chalk, never pure white. */
 body {
   font-family: var(--font-sukhumvit);
-  background: #000000;
-  color: #ece9e4;
+  background: var(--acmp-void);
+  color: var(--acmp-chalk);
   -webkit-font-smoothing: antialiased;
 }
 
 ::selection {
-  background: rgba(255, 201, 51, 0.28);
+  background: var(--acmp-select);
 }
 
 /* Keyboard focus: one consistent tungsten ring, on everything focusable. */
 :focus-visible {
-  outline: 2px solid #ffc933;
+  outline: 2px solid var(--acmp-tungsten);
   outline-offset: 2px;
 }
 
@@ -43,7 +86,7 @@ body {
   background: repeating-linear-gradient(
     -45deg,
     var(--tape) 0 var(--band),
-    #000 var(--band) calc(var(--band) * 2)
+    var(--acmp-void) var(--band) calc(var(--band) * 2)
   );
 }
 
@@ -96,7 +139,7 @@ body {
   column-gap: 28px;
   padding-right: 24px;
   min-height: 84px;
-  background: #0d0d0f;
+  background: var(--acmp-panel);
   border-radius: 2px;
   color: inherit;
   text-decoration: none;
@@ -104,7 +147,7 @@ body {
   transition: background-color 0.18s ease;
 }
 .acmp-roster-row:hover {
-  background: #151518;
+  background: var(--acmp-raised);
 }
 .acmp-roster-row > .acmp-stripe {
   align-self: stretch;
@@ -118,20 +161,20 @@ body {
   font-weight: 600;
   line-height: 1.3;
   letter-spacing: -0.01em;
-  color: #ece9e4;
+  color: var(--acmp-chalk);
   overflow-wrap: anywhere;
 }
 .acmp-roster-sub {
   font-size: 15px;
-  color: #9b988f;
+  color: var(--acmp-ash);
   overflow-wrap: anywhere;
 }
 .acmp-roster-meta {
   font-size: 15px;
-  color: #ece9e4;
+  color: var(--acmp-chalk);
 }
 .acmp-roster-meta.is-quiet {
-  color: #9b988f;
+  color: var(--acmp-ash);
 }
 @media (max-width: 720px) {
   .acmp-roster-row {
@@ -158,9 +201,9 @@ body {
 /* The one place ruled cells are used, because it really is a grid of
    label/value fields. */
 .acmp-slate {
-  border: 1px solid #2a2a2f;
+  border: 1px solid var(--acmp-rule);
   border-radius: 2px;
-  background: #0a0a0b;
+  background: var(--acmp-inset);
   overflow: hidden;
 }
 .acmp-slate-head {
@@ -174,7 +217,7 @@ body {
 .acmp-slate-fields {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  border-top: 1px solid #2a2a2f;
+  border-top: 1px solid var(--acmp-rule);
 }
 .acmp-slate-field {
   padding: 14px 24px 16px;
@@ -182,41 +225,69 @@ body {
 }
 .acmp-slate-field:nth-child(3n + 2),
 .acmp-slate-field:nth-child(3n + 3) {
-  border-left: 1px solid #2a2a2f;
+  border-left: 1px solid var(--acmp-rule);
 }
 .acmp-slate-field.is-wide {
   grid-column: 1 / -1;
-  border-top: 1px solid #2a2a2f;
+  border-top: 1px solid var(--acmp-rule);
 }
 @media (max-width: 720px) {
+  /* Two compact columns instead of one tall stack, so the header does not
+     take the whole first screen of a phone. */
+  .acmp-slate-head {
+    padding: 16px 16px 14px;
+  }
   .acmp-slate-fields {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .acmp-slate-fields > .acmp-slate-field:nth-child(n) {
+  .acmp-slate-field {
+    padding: 10px 16px 12px;
+  }
+  .acmp-slate-field:nth-child(3n + 2),
+  .acmp-slate-field:nth-child(3n + 3) {
     border-left: 0;
-    border-top: 1px solid #2a2a2f;
   }
-  .acmp-slate-fields > .acmp-slate-field:first-child {
+  .acmp-slate-fields > .acmp-slate-field {
+    border-top: 1px solid var(--acmp-rule);
+  }
+  .acmp-slate-fields > .acmp-slate-field:nth-child(-n + 2) {
     border-top: 0;
+  }
+  .acmp-slate-fields > .acmp-slate-field:nth-child(2n) {
+    border-left: 1px solid var(--acmp-rule);
+  }
+  .acmp-slate-field.is-wide {
+    grid-column: 1 / -1;
+    border-left: 0 !important;
+  }
+  .acmp-field-value {
+    font-size: 15px;
+  }
+  /* Long notes show two lines; the full text is on the Edit form. */
+  .acmp-field-value.is-note {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 }
 .acmp-field-label {
   font-size: 13px;
   font-weight: 500;
-  color: #9b988f;
+  color: var(--acmp-ash);
 }
 .acmp-field-value {
   margin-top: 2px;
   font-size: 17px;
   font-weight: 600;
-  color: #ece9e4;
+  color: var(--acmp-chalk);
   overflow-wrap: anywhere;
 }
 .acmp-field-value.is-note {
   font-size: 15px;
   font-weight: 400;
   line-height: 1.7;
-  color: #c9c6bf;
+  color: var(--acmp-ash);
   white-space: pre-wrap;
 }
 
@@ -232,20 +303,20 @@ body {
   column-gap: 24px;
   align-items: start;
   padding: 28px 0 30px;
-  border-top: 1px solid #1c1c20;
+  border-top: 1px solid var(--acmp-rule-soft);
 }
 .acmp-step-num {
   font-size: clamp(64px, 10vw, 104px);
   font-weight: 100;
   line-height: 0.85;
   letter-spacing: -0.03em;
-  color: #ece9e4;
+  color: var(--acmp-chalk);
 }
 .acmp-step.is-done .acmp-step-num {
-  color: #4a4843;
+  color: var(--acmp-faint);
 }
 .acmp-step.is-next .acmp-step-num {
-  color: #ffc933;
+  color: var(--acmp-accent);
 }
 
 /* --- Login ------------------------------------------------------------ */
@@ -259,7 +330,7 @@ body {
   font-weight: 100;
   letter-spacing: -0.045em;
   line-height: 0.85;
-  color: #ece9e4;
+  color: var(--acmp-chalk);
   margin: 0;
 }
 @media (max-width: 860px) {
@@ -275,14 +346,14 @@ video {
   border-radius: 2px;
 }
 video {
-  background: #0d0d0f;
-  border: 1px solid #2a2a2f;
+  background: var(--acmp-panel);
+  border: 1px solid var(--acmp-rule);
 }
 
 /* --- Scrollbars ------------------------------------------------------- */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+  scrollbar-color: var(--acmp-scroll) transparent;
 }
 ::-webkit-scrollbar {
   width: 10px;
@@ -292,12 +363,99 @@ video {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--acmp-scroll);
   border-radius: 8px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.24);
+  background: var(--acmp-scroll-hover);
   background-clip: content-box;
+}
+
+/* --- App shell -------------------------------------------------------- */
+.acmp-content {
+  padding: clamp(28px, 5vw, 64px) clamp(16px, 4vw, 32px) 112px;
+}
+/* Sticky bar that lets the page show through, like a native navigation bar.
+   The colour-mix keeps it the canvas colour in either theme. */
+.acmp-header.ant-layout-header {
+  background: color-mix(in srgb, var(--acmp-void) 82%, transparent);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+/* --- Phone: tab bar and native feel ------------------------------------ */
+.acmp-tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  padding-bottom: env(safe-area-inset-bottom);
+  background: color-mix(in srgb, var(--acmp-panel) 88%, transparent);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid var(--acmp-rule-soft);
+}
+.acmp-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 56px;
+  padding: 6px 0 4px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--acmp-ash);
+  text-decoration: none;
+  cursor: pointer;
+}
+.acmp-tab.is-active {
+  color: var(--acmp-accent);
+}
+.acmp-tab:active {
+  opacity: 0.6;
+}
+
+@media (max-width: 767px) {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    /* No rubber-band scroll past the ends and no blue flash on tap. */
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .acmp-content {
+    /* Clear the tab bar (56px + home-indicator inset) with room to spare. */
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+  .acmp-header.ant-layout-header {
+    /* Under the status bar / notch in a standalone or full-screen view. */
+    padding-top: env(safe-area-inset-top);
+    height: calc(60px + env(safe-area-inset-top));
+  }
+  /* Small buttons (row actions, move up/down) are 40px tall on a phone: a
+     thumb-sized target without making the rows look heavy. */
+  .ant-btn.ant-btn-sm {
+    min-height: 40px;
+    min-width: 40px;
+    font-size: 14px;
+  }
+  /* Taps respond at once (no double-tap-zoom wait). */
+  a,
+  button,
+  [role="button"],
+  .ant-btn,
+  .ant-segmented-item,
+  .ant-tabs-tab {
+    touch-action: manipulation;
+  }
 }

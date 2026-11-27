@@ -35,6 +35,8 @@ type Generation struct {
 	Error            string             `json:"error"`
 	Provider         string             `json:"provider"`
 	Model            string             `json:"model"`
+	FalRequestID     string             `json:"fal_request_id"`
+	CostUsd          *float64           `json:"cost_usd"`
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 }
 

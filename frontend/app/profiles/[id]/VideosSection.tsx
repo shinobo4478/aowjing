@@ -111,15 +111,17 @@ export default function VideosSection({
         </Button>
       ),
     },
-    { title: "Shots", dataIndex: "shotCount", width: 90 },
+    { title: "Shots", dataIndex: "shotCount", width: 90, responsive: ["md"] },
     {
       title: "Length",
+      responsive: ["md"],
       dataIndex: "totalSeconds",
       width: 100,
       render: (v: number) => `${v} s`,
     },
     {
       title: "Created",
+      responsive: ["md"],
       dataIndex: "createdAt",
       width: 180,
       render: (v: string) => formatDateTime(v),

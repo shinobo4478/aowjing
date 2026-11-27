@@ -7,6 +7,7 @@
 import type {
   Channel,
   ChannelInput,
+  FalCosts,
   FalCredits,
   Generation,
   Keyframe,
@@ -428,6 +429,15 @@ export function getStudioPricing() {
  *  still keeps a few seconds' pause between asks of fal). */
 export function getFalCredits(refresh = false) {
   return request<FalCredits>(`/credits/fal${refresh ? "?refresh=1" : ""}`);
+}
+
+/** Asks fal what these clips really cost and stores the bills it finds. Safe to
+ *  call again: clips whose cost is already stored are not asked about. */
+export function fetchFalCosts(generationIds: string[]) {
+  return request<FalCosts>("/credits/fal/costs", {
+    method: "POST",
+    body: JSON.stringify({ generationIds }),
+  });
 }
 
 // --- Settings (global provider credentials) ---

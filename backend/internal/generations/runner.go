@@ -97,7 +97,11 @@ func (rn *Runner) Run(ctx context.Context, generationID string) error {
 
 	finish := sqlc.FinishGenerationParams{ID: id, Provider: row.Provider, OutputKind: "text"}
 	req := generate.Request{Prompt: row.InputPrompt, ImageURL: imageURL, EndImageURL: endURL, Seconds: int(row.Seconds)}
-	if res, genErr := gen.Generate(ctx, req); genErr != nil {
+	res, genErr := gen.Generate(ctx, req)
+	// Keep fal's request id even when the clip failed after it was submitted:
+	// the bill can still exist, and the id is how to find it.
+	finish.FalRequestID = res.RequestID
+	if genErr != nil {
 		finish.Status = "failed"
 		finish.Error = genErr.Error()
 	} else {

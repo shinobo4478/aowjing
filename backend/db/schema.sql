@@ -186,6 +186,13 @@ CREATE TABLE IF NOT EXISTS generations (
     error              text        NOT NULL DEFAULT '',
     provider           text        NOT NULL,
     model              text        NOT NULL DEFAULT '',
+    -- fal's id for the request that made this clip (set when the job is sent;
+    -- '' for text-only runs and clips made before this column existed). It is
+    -- the key for looking the real bill up in fal's billing events.
+    fal_request_id     text        NOT NULL DEFAULT '',
+    -- What fal actually charged, in USD, once its billing events show the
+    -- request (NULL = not known yet / not a fal clip).
+    cost_usd           double precision,
     created_at         timestamptz NOT NULL DEFAULT now()
 );
 

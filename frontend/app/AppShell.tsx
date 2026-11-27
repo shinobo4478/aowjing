@@ -1,7 +1,8 @@
 "use client";
 
-import { Layout } from "antd";
+import { Grid, Layout } from "antd";
 import { SURFACE } from "@/lib/tape";
+import BottomNav from "./BottomNav";
 import SiteHeader from "./SiteHeader";
 
 /**
@@ -10,9 +11,12 @@ import SiteHeader from "./SiteHeader";
  * across the RSC boundary), so the shell lives here.
  */
 export default function AppShell({ children }: { children: React.ReactNode }) {
+  // Assume desktop until we know otherwise — avoids a tab-bar flash on load.
+  const isPhone = Grid.useBreakpoint().md === false;
   return (
     <Layout style={{ minHeight: "100vh" }}>
       <Layout.Header
+        className="acmp-header"
         style={{
           position: "sticky",
           top: 0,
@@ -23,13 +27,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       >
         <SiteHeader />
       </Layout.Header>
-      <Layout.Content
-        style={{
-          padding: "clamp(28px, 5vw, 64px) clamp(16px, 4vw, 32px) 112px",
-        }}
-      >
+      <Layout.Content className="acmp-content">
         <div style={{ maxWidth: 1040, margin: "0 auto" }}>{children}</div>
       </Layout.Content>
+      {isPhone && <BottomNav />}
     </Layout>
   );
 }

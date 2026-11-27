@@ -40,6 +40,10 @@ func LoadDotEnv(path string) {
 
 // Config holds everything the server needs to start.
 type Config struct {
+	// ListenHost is the interface the API binds to. Empty means every
+	// interface (what a cloud deploy wants). Local dev sets 127.0.0.1 so
+	// Windows Firewall has no reason to ask for permission.
+	ListenHost  string
 	Port        string
 	DatabaseURL string
 
@@ -87,6 +91,7 @@ func (c Config) YouTubeConfigured() bool {
 // required variable is missing so main can fail fast with a clear message.
 func Load() (Config, error) {
 	cfg := Config{
+		ListenHost:    os.Getenv("LISTEN_HOST"),
 		Port:          getenv("PORT", "8080"),
 		DatabaseURL:   os.Getenv("DATABASE_URL"),
 		RedisAddr:     getenv("REDIS_ADDR", "localhost:6379"),

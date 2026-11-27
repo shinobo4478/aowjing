@@ -1,19 +1,22 @@
 "use client";
 
 import { AntdRegistry } from "@ant-design/nextjs-registry";
-import { App, ConfigProvider, theme } from "antd";
+import { App, ConfigProvider, Grid, theme } from "antd";
 import { FONT_FAMILY } from "@/lib/theme";
-import { INK, STATUS, SURFACE, TUNGSTEN } from "@/lib/tape";
+import { PALETTE } from "@/lib/tape";
+import { ThemeModeProvider, useThemeMode } from "./ThemeMode";
 
 /**
  * Client-side providers for the whole app.
  *
  * - AntdRegistry: extracts antd's CSS-in-JS on the server so RSC pages render
  *   styled on first paint (no flash).
- * - ConfigProvider: the "slate" theme. True-black canvas (OLED), warm-chalk
- *   ink, and tungsten as the only brand colour — reserved for the primary
- *   action, the current page and focus. Colour elsewhere means identity or
- *   state (see lib/tape.ts), never decoration.
+ * - ThemeModeProvider: light / dark / follow-the-system (app/ThemeMode.tsx).
+ * - ConfigProvider: the "slate" theme. Dark is a true-black canvas (OLED) with
+ *   warm-chalk ink; light is warm paper with near-black ink. Tungsten is the
+ *   only brand colour in both — reserved for the primary action, the current
+ *   page and focus. Colour elsewhere means identity or state (see
+ *   lib/tape.ts), never decoration.
  *   Radii differ by role on purpose: 2px structure, 4px controls, 6px overlays.
  * - App: gives components the static message/notification/modal APIs via
  *   `App.useApp()`.
@@ -21,142 +24,173 @@ import { INK, STATUS, SURFACE, TUNGSTEN } from "@/lib/tape";
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <AntdRegistry>
-      <ConfigProvider
-        theme={{
-          algorithm: theme.darkAlgorithm,
-          token: {
-            colorPrimary: TUNGSTEN,
-            colorInfo: "#46D2F2",
-            colorSuccess: STATUS.succeeded,
-            colorWarning: TUNGSTEN,
-            colorError: STATUS.failed,
-            colorLink: INK.chalk,
-            colorLinkHover: TUNGSTEN,
-            // Text drawn on a tungsten fill (primary buttons) is black.
-            colorTextLightSolid: "#000000",
-
-            colorBgLayout: SURFACE.void,
-            colorBgContainer: SURFACE.panel,
-            colorBgElevated: SURFACE.raised,
-            colorBgMask: "rgba(0, 0, 0, 0.7)",
-            colorBorder: SURFACE.rule,
-            colorBorderSecondary: SURFACE.ruleSoft,
-
-            colorText: INK.chalk,
-            colorTextSecondary: INK.ash,
-            colorTextTertiary: INK.dim,
-            colorTextQuaternary: "#4A4843",
-            colorTextPlaceholder: INK.dim,
-
-            borderRadius: 4,
-            borderRadiusSM: 2,
-            borderRadiusLG: 6,
-            controlHeight: 40,
-            fontFamily: FONT_FAMILY,
-            fontSize: 15,
-            lineHeight: 1.65,
-            fontWeightStrong: 600,
-
-            // Shadows barely register on true black; keep them deep and short.
-            boxShadow: "0 8px 24px rgba(0, 0, 0, 0.6)",
-            boxShadowSecondary: "0 6px 18px rgba(0, 0, 0, 0.6)",
-          },
-          components: {
-            Layout: {
-              headerBg: SURFACE.void,
-              headerHeight: 60,
-              headerPadding: "0 24px",
-              bodyBg: SURFACE.void,
-            },
-            Menu: {
-              darkItemBg: "transparent",
-              darkItemColor: INK.ash,
-              darkItemHoverColor: INK.chalk,
-              darkItemHoverBg: "transparent",
-              darkItemSelectedColor: TUNGSTEN,
-              darkItemSelectedBg: "transparent",
-              horizontalItemSelectedColor: TUNGSTEN,
-              horizontalItemHoverColor: INK.chalk,
-              activeBarHeight: 2,
-              activeBarBorderWidth: 0,
-              itemBorderRadius: 2,
-              fontSize: 15,
-            },
-            Tabs: {
-              itemColor: INK.ash,
-              itemHoverColor: INK.chalk,
-              itemActiveColor: INK.chalk,
-              itemSelectedColor: INK.chalk,
-              inkBarColor: TUNGSTEN,
-              titleFontSize: 17,
-              horizontalItemGutter: 36,
-              horizontalMargin: "0 0 20px 0",
-            },
-            Table: {
-              headerBg: "transparent",
-              headerColor: INK.ash,
-              headerSplitColor: "transparent",
-              borderColor: SURFACE.ruleSoft,
-              rowHoverBg: SURFACE.raised,
-              rowExpandedBg: "#0A0A0B",
-              cellPaddingBlock: 16,
-              cellPaddingInline: 16,
-              colorBgContainer: "transparent",
-            },
-            Button: {
-              fontWeight: 600,
-              primaryShadow: "none",
-              defaultShadow: "none",
-              dangerShadow: "none",
-              defaultBg: "transparent",
-              defaultBorderColor: "#3A3A40",
-              defaultColor: INK.chalk,
-            },
-            Input: {
-              activeBorderColor: TUNGSTEN,
-              hoverBorderColor: "#55555C",
-              activeShadow: "0 0 0 2px rgba(255, 201, 51, 0.18)",
-              colorBgContainer: "#0A0A0B",
-            },
-            Select: {
-              activeBorderColor: TUNGSTEN,
-              hoverBorderColor: "#55555C",
-              activeOutlineColor: "rgba(255, 201, 51, 0.18)",
-              colorBgContainer: "#0A0A0B",
-            },
-            Modal: {
-              contentBg: SURFACE.raised,
-              headerBg: SURFACE.raised,
-              titleFontSize: 19,
-            },
-            Tag: {
-              defaultBg: "transparent",
-              defaultColor: INK.chalk,
-            },
-            // Room for the error message and the helper text to stack without
-            // touching the next field's label.
-            Form: {
-              itemMarginBottom: 28,
-            },
-            Breadcrumb: {
-              linkColor: INK.ash,
-              linkHoverColor: INK.chalk,
-              lastItemColor: INK.chalk,
-              separatorColor: INK.dim,
-              itemColor: INK.ash,
-            },
-            Drawer: {
-              colorBgElevated: SURFACE.panel,
-            },
-            Empty: {
-              colorTextDescription: INK.ash,
-            },
-            Popover: { colorBgElevated: SURFACE.raised },
-          },
-        }}
-      >
-        <App>{children}</App>
-      </ConfigProvider>
+      <ThemeModeProvider>
+        <Themed>{children}</Themed>
+      </ThemeModeProvider>
     </AntdRegistry>
+  );
+}
+
+function Themed({ children }: { children: React.ReactNode }) {
+  const { mode } = useThemeMode();
+  // antd derives shades from these, so they must be literal colours, not CSS
+  // variables (those are for the things we draw ourselves; see lib/tape.ts).
+  const c = PALETTE[mode];
+  const dark = mode === "dark";
+  // Phones: 16px text (iOS zooms the page into any smaller input) and 44px
+  // controls, the minimum comfortable touch target.
+  const phone = Grid.useBreakpoint().md === false;
+  const focusRing = dark ? "rgba(255, 201, 51, 0.18)" : "rgba(217, 154, 0, 0.25)";
+
+  return (
+    <ConfigProvider
+      theme={{
+        algorithm: dark ? theme.darkAlgorithm : theme.defaultAlgorithm,
+        token: {
+          colorPrimary: c.tungsten,
+          colorInfo: c.info,
+          colorSuccess: c.succeeded,
+          colorWarning: c.tungsten,
+          colorError: c.failed,
+          colorLink: c.chalk,
+          colorLinkHover: c.accent,
+          // Text drawn on a tungsten fill (primary buttons) is black.
+          colorTextLightSolid: "#000000",
+
+          colorBgLayout: c.void,
+          colorBgContainer: c.panel,
+          colorBgElevated: c.raised,
+          colorBgMask: c.mask,
+          colorBorder: c.rule,
+          colorBorderSecondary: c.ruleSoft,
+
+          colorText: c.chalk,
+          colorTextSecondary: c.ash,
+          colorTextTertiary: c.dim,
+          colorTextQuaternary: c.faint,
+          colorTextPlaceholder: c.dim,
+
+          borderRadius: 4,
+          borderRadiusSM: 2,
+          borderRadiusLG: 6,
+          controlHeight: phone ? 44 : 40,
+          fontFamily: FONT_FAMILY,
+          fontSize: phone ? 16 : 15,
+          lineHeight: 1.65,
+          fontWeightStrong: 600,
+
+          // Shadows barely register on true black; keep them deep and short.
+          // On paper they are what lifts a modal off the page.
+          boxShadow: `0 8px 24px ${c.shadow}`,
+          boxShadowSecondary: `0 6px 18px ${c.shadow}`,
+        },
+        components: {
+          Layout: {
+            headerBg: c.void,
+            headerHeight: 60,
+            headerPadding: "0 24px",
+            bodyBg: c.void,
+          },
+          Menu: {
+            darkItemBg: "transparent",
+            darkItemColor: c.ash,
+            darkItemHoverColor: c.chalk,
+            darkItemHoverBg: "transparent",
+            darkItemSelectedColor: c.accent,
+            darkItemSelectedBg: "transparent",
+            itemBg: "transparent",
+            itemColor: c.ash,
+            itemHoverColor: c.chalk,
+            itemHoverBg: "transparent",
+            itemSelectedColor: c.accent,
+            itemSelectedBg: "transparent",
+            horizontalItemSelectedColor: c.accent,
+            horizontalItemHoverColor: c.chalk,
+            activeBarHeight: 2,
+            activeBarBorderWidth: 0,
+            itemBorderRadius: 2,
+            fontSize: 15,
+          },
+          Tabs: {
+            itemColor: c.ash,
+            itemHoverColor: c.chalk,
+            itemActiveColor: c.chalk,
+            itemSelectedColor: c.chalk,
+            inkBarColor: dark ? c.tungsten : "#D99A00",
+            titleFontSize: 17,
+            horizontalItemGutter: 36,
+            horizontalMargin: "0 0 20px 0",
+          },
+          Table: {
+            headerBg: "transparent",
+            headerColor: c.ash,
+            headerSplitColor: "transparent",
+            borderColor: c.ruleSoft,
+            rowHoverBg: dark ? c.raised : c.inset,
+            rowExpandedBg: c.inset,
+            cellPaddingBlock: 16,
+            cellPaddingInline: 16,
+            colorBgContainer: "transparent",
+          },
+          Button: {
+            fontWeight: 600,
+            primaryShadow: "none",
+            defaultShadow: "none",
+            dangerShadow: "none",
+            defaultBg: "transparent",
+            defaultBorderColor: c.ruleStrong,
+            defaultColor: c.chalk,
+            // Pills: fully rounded ends at every size.
+            borderRadius: 999,
+            borderRadiusSM: 999,
+            borderRadiusLG: 999,
+            paddingInline: 22,
+            paddingInlineSM: 16,
+          },
+          Input: {
+            activeBorderColor: dark ? c.tungsten : "#D99A00",
+            hoverBorderColor: c.ruleHover,
+            activeShadow: `0 0 0 2px ${focusRing}`,
+            colorBgContainer: c.inset,
+          },
+          Select: {
+            activeBorderColor: dark ? c.tungsten : "#D99A00",
+            hoverBorderColor: c.ruleHover,
+            activeOutlineColor: focusRing,
+            colorBgContainer: c.inset,
+          },
+          Modal: {
+            contentBg: c.raised,
+            headerBg: c.raised,
+            titleFontSize: 19,
+          },
+          Tag: {
+            defaultBg: "transparent",
+            defaultColor: c.chalk,
+          },
+          // Room for the error message and the helper text to stack without
+          // touching the next field's label.
+          Form: {
+            itemMarginBottom: 28,
+          },
+          Breadcrumb: {
+            linkColor: c.ash,
+            linkHoverColor: c.chalk,
+            lastItemColor: c.chalk,
+            separatorColor: c.dim,
+            itemColor: c.ash,
+          },
+          Drawer: {
+            colorBgElevated: c.panel,
+          },
+          Empty: {
+            colorTextDescription: c.ash,
+          },
+          Popover: { colorBgElevated: c.raised },
+        },
+      }}
+    >
+      <App>{children}</App>
+    </ConfigProvider>
   );
 }

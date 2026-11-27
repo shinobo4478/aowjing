@@ -57,17 +57,17 @@ func (g *FalVideoGenerator) Generate(ctx context.Context, req Request) (Result, 
 	}
 
 	if err := g.fal.waitForCompletion(ctx, sub.StatusURL, falVideoMaxWait); err != nil {
-		return Result{}, err
+		return Result{RequestID: sub.RequestID}, err
 	}
 
 	var res falVideoResult
 	if err := g.fal.result(ctx, sub.ResponseURL, &res); err != nil {
-		return Result{}, err
+		return Result{RequestID: sub.RequestID}, err
 	}
 	if res.Video.URL == "" {
-		return Result{}, errors.New("fal result: no video url in reply")
+		return Result{RequestID: sub.RequestID}, errors.New("fal result: no video url in reply")
 	}
-	return Result{Output: res.Video.URL, Kind: "video", Provider: "fal", Model: model}, nil
+	return Result{Output: res.Video.URL, Kind: "video", Provider: "fal", Model: model, RequestID: sub.RequestID}, nil
 }
 
 // plan picks the model and builds its JSON input. With an image it uses the
