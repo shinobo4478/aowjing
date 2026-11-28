@@ -598,6 +598,24 @@ captions added in the editor while voice-over is on hold).
   script helper learning the product mode and the cast names; a real test (hero + product, ≈ $0.16 per
   picture model); Kling `elements` research for keeping a person/object inside a clip.
 
+## "ตรวจด้วย AI" — a strict reviewer reads the whole draft (built 2026-11-29)
+
+The checks in `lib/promptLint.ts` are patterns. A button above the shot cards ("🔍 ตรวจด้วย AI") sends the whole video to the same
+LLM route, told to act as a strict reviewer under the studio's rules, and lists what it is SURE is wrong. `POST /videos/{id}/review`
+(no body) → `{findings:[{shotId, shot, kind, messageTh, fixTh}], costUsd, model}`; it changes nothing.
+- Kinds (`scriptwriter/review.go`): picture-shows-action, too-many-beats, stray-object (an object/icon/negative from e.g. the scene
+  sentence that fights the shot's own picture), picture-vs-narration, chain (end picture vs next shot's start), camera, character,
+  and two narration kinds: narration-loanword (starts with a loanword written in Thai letters, which the regex cannot see) and
+  narration-claim (a number or absolute claim to check). Unusable findings (no such shot, unknown kind, no Thai message) are dropped;
+  at most 12; empty is a valid answer ("ไม่พบปัญหาที่มั่นใจ"); one retry if the reply is not JSON.
+- A finding a rewrite can fix carries `fixTh` (one Thai instruction); "แก้ช็อตนี้ด้วย AI" scrolls to that shot and opens its rewrite
+  dialog (see above) with the instruction typed in (`ShotCard` prop `pendingRevise`); the owner reads and confirms. Narration kinds
+  have no fix: the owner edits the narration.
+- Temperature 0.2, ~4k tokens in, a few cents at most; the screen shows the real cost. Not in the daily limit (like Draft).
+- **Verified:** unit tests (prompt, parser, retry, fake model) and on screen with the fake model: the list renders, the fix button
+  opens shot 1's rewrite dialog with the suggestion typed in. **Not verified with a real model:** how often it finds real problems vs
+  invents them (it is told to stay quiet when sure of nothing); judge on a few real drafts.
+
 ## Video models (built 2026-11-27)
 
 A Profile now picks its **video model** (`profiles.video_model`: `kling-v3` default, `veo-3.1`, `veo-3.1-fast`) and
@@ -907,7 +925,7 @@ owner wrote the Thai by hand and the shot lengths were guessed.
   start with a Thai letter (`narrationProblem`); the existing one retry tells the model what was wrong (each try is paid).
   The shot card shows ⚠ lines for the same things (`narrationWarnings`). A loanword written in Thai letters cannot be
   detected, so a line that starts with one is only avoided by the prompt.
-- No schema change (`narration_th` already exists); `CreateShotWithPlan` takes it as `$9`. Needs PR #48 (narration) merged first.
+- No schema change (`narration_th` already exists); `CreateShotWithPlan` takes it as `$9`.
 - **Verified:** unit tests (budget, lengths, parser, retry, fake LLM) and the dialog end to end on the fake LLM (4 shots of
   6, 8, 5, 6 s; the warnings on an English-first line). **Not verified against a real model:** that it follows the rules (Thai
   letters only, starts with a Thai word, stays within the budget), the quality and accuracy of the narration (facts must be

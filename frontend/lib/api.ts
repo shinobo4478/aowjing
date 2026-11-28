@@ -399,6 +399,30 @@ export interface ShotRevision {
   model: string;
 }
 
+/** One problem the AI reviewer found in one shot of a video. */
+export interface ReviewFinding {
+  shotId: string;
+  /** The shot's number (position). */
+  shot: number;
+  /** picture-shows-action, too-many-beats, stray-object, picture-vs-narration, chain,
+   *  camera, character, narration-loanword or narration-claim. */
+  kind: string;
+  /** What is wrong, in Thai. */
+  messageTh: string;
+  /** What the shot should show instead (Thai), to hand to "ให้ AI แก้ช็อตนี้";
+   *  "" when a rewrite of the prompts cannot fix it (the narration kinds). */
+  fixTh: string;
+}
+
+/** Asks the script helper to review the whole video as a strict reviewer. Changes
+ *  nothing; the cost is the model's reply (`costUsd`). */
+export function reviewVideo(videoId: string) {
+  return request<{ findings: ReviewFinding[]; costUsd: number; model: string }>(
+    `/videos/${videoId}/review`,
+    { method: "POST" },
+  );
+}
+
 /** Asks the script helper to rewrite ONE shot's prompts from a sentence of the
  *  owner's. Saves nothing: the screen puts the result into the shot's boxes. */
 export function reviseShot(videoId: string, shotId: string, instruction: string) {
