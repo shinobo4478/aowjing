@@ -9,6 +9,7 @@ import { formatUsd } from "@/lib/format";
 import { hasThaiLetters, usePromptPair } from "@/lib/promptPair";
 import type { Shot } from "@/lib/types";
 import PromptPairField from "./PromptPairField";
+import { ZoomableImage } from "@/components/ZoomableImage";
 
 /** The part of a shot's plan typed on the card. The picture is chosen in its
  *  own dialog and saved at once. Each prompt is a Thai/English pair: the owner
@@ -186,13 +187,11 @@ export default function ShotCard({
         {/* Starting picture */}
         <div style={{ width: 108 }}>
           {hasPicture ? (
-            // Served by the API with the session cookie (or a pasted link), so
-            // next/image cannot optimize it.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <ZoomableImage
               src={shot.imageId ? imageSrc(shot.imageId) : shot.imageUrl}
               alt={`Starting picture of shot ${shot.position}`}
-              style={{ width: 108, height: 192, objectFit: "cover", borderRadius: 10, display: "block" }}
+              width={108}
+              height={192}
             />
           ) : (
             <div
@@ -233,12 +232,11 @@ export default function ShotCard({
         {/* End picture: the clip flows from the starting picture to this one. */}
         <div style={{ width: 108 }}>
           {shot.endImageId ? (
-            // Served by the API with the session cookie, so next/image cannot optimize it.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <ZoomableImage
               src={imageSrc(shot.endImageId)}
               alt={`End picture of shot ${shot.position}`}
-              style={{ width: 108, height: 192, objectFit: "cover", borderRadius: 10, display: "block" }}
+              width={108}
+              height={192}
             />
           ) : (
             <div

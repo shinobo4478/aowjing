@@ -690,6 +690,18 @@ shown as "Not connected"):** YouTube views/likes (the Data API `videos.list` sta
 `youtube.readonly` scope already granted — to be tried; watch time and revenue need `yt-analytics.readonly`, a new
 consent) and Shopee clicks/orders/commission (Phase 3 B).
 
+## Picture zoom and small hints (built 2026-11-28)
+
+AI pictures were too small to judge. `components/ZoomableImage.tsx` wraps antd's `Image` preview (full
+screen, zoom, Esc to close; no new dependency): a shot's starting and end picture, cast pictures and
+product pictures open large when clicked. In the picture dialog a candidate is picked by clicking it, so
+it keeps that click and has its own "ขยายดู" link (`ZoomLink`) under it; candidates are also bigger
+(140×249). Hints: cast notes and product picture labels should be written in English ("cap open"), since
+they are sent to the image model as typed (names may stay Thai); when the English picture prompt holds a
+count ("exactly three bottles") and fewer than 3 pictures are asked for, a hint suggests 3–4 because image
+models often get counts wrong. **Verified on screen:** clicking a cast picture opens it large. **Not
+looked at on screen:** the "ขยายดู" link and the count hint (they need candidate pictures; type-checked only).
+
 ## Explicitly OUT of scope for Phase 2 (do not build yet)
 
 - TikTok / Instagram integration — after YouTube is solid
