@@ -291,6 +291,7 @@ export default function ShotCard({
         <div style={{ flex: "1 1 320px", minWidth: 0 }}>
           <PromptPairField
             pair={motion}
+            kind="motion"
             title="การเคลื่อนไหวของคลิป · Motion"
             hint="บอกว่าอะไรขยับ กล้องทำอะไร และจบอย่างไร (ไม่ต้องบรรยายหน้าตา ภาพกำหนดไว้แล้ว)"
             placeholder="เช่น แมวส่ายก้น กระโจนใส่ถุง ตีลังกาแล้วลุกขึ้น กล้องนิ่ง"
@@ -299,6 +300,7 @@ export default function ShotCard({
           />
           <PromptPairField
             pair={picture}
+            kind="picture"
             title="ภาพเริ่มต้น · Picture"
             hint="ใครอยู่ในภาพ ทำอะไร มุมกล้อง บรรยากาศ (หน้าต่าง Make with AI เริ่มจากข้อความนี้)"
             placeholder="เช่น ภาพระยะกลางของแมวนั่งตัวตรงกลางพรม มองกล้อง มีถุงพลาสติกสีขาวลอยลงมา"
@@ -306,6 +308,7 @@ export default function ShotCard({
           {(hasPicture || endPic.th.trim() !== "" || endPic.en.trim() !== "") && (
             <PromptPairField
               pair={endPic}
+              kind="endPicture"
               title="ภาพจบ · End picture"
               hint="เฉพาะสิ่งที่เปลี่ยนเมื่อจบช็อต (ท่าหรือตำแหน่ง) กล้องและห้องเหมือนเดิม เว้นว่างถ้าช็อตนี้ไม่มีภาพจบ"
               placeholder="เช่น เปลี่ยนเฉพาะท่าของแมว: ก้มตัวต่ำ หางตั้ง ถุงยุบอยู่บนพรมตรงหน้าจมูก"

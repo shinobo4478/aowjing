@@ -289,6 +289,7 @@ export default function KeyframePicker({
     <div style={{ marginTop: 8 }}>
       <PromptPairField
         pair={pair}
+        kind={sameCamera ? "endPicture" : "picture"}
         title={sameCamera ? "ภาพจบ · End picture" : "ภาพ · Picture"}
         hint={
           sameCamera
