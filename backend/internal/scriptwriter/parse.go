@@ -6,11 +6,16 @@ import (
 	"fmt"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/shinobo4478/aowjing/backend/internal/studio"
 )
 
 // maxPromptRunes keeps a drafted prompt inside what a shot accepts (2000), with
 // room for the scene line that is put in front of every picture prompt.
 const maxPromptRunes = 1900
+
+// maxNarrationRunes mirrors what a shot's narration accepts (studio.MaxVoiceSampleChars).
+const maxNarrationRunes = studio.MaxVoiceSampleChars
 
 // Brief is what the owner asks for.
 type Brief struct {
@@ -30,6 +35,19 @@ type Brief struct {
 	VideoStyle string
 	Cast       []CastNote
 	Product    *ProductNote
+
+	// SecondsOptions are the clip lengths the profile's video model takes. In
+	// explainer mode each shot's length is worked out from its narration and
+	// rounded up to one of these; Seconds is then the LONGEST a shot may be.
+	SecondsOptions []int
+}
+
+// parseOptions are the parts of a Brief that decide how a reply is read.
+type parseOptions struct {
+	// Narration: every shot must carry a usable narrationTh, and its length is
+	// worked out from it (explainer mode).
+	Narration      bool
+	SecondsOptions []int
 }
 
 // Shot is one drafted shot, ready to put into a Video.
@@ -49,6 +67,13 @@ type Shot struct {
 	PicturePromptTh    string // the Thai scene line, then the Thai picture prompt
 	EndPicturePromptTh string
 	MotionPromptTh     string
+
+	// NarrationTh is what the narrator says over the shot (explainer mode only).
+	// Thai letters only; the shot's Seconds is worked out from it.
+	NarrationTh string
+	// NarrationTooLong is true when the narration does not fit even the longest
+	// allowed shot: the screen warns and the owner shortens it.
+	NarrationTooLong bool
 }
 
 // Draft is a drafted video.
@@ -72,6 +97,7 @@ type reply struct {
 		EndPicturePromptTh string `json:"endPicturePromptTh"`
 		MotionPrompt       string `json:"motionPrompt"`
 		MotionPromptTh     string `json:"motionPromptTh"`
+		NarrationTh        string `json:"narrationTh"`
 	} `json:"shots"`
 }
 
@@ -81,6 +107,11 @@ type reply struct {
 // video with gaps, and drops extra shots. Every picture prompt gets the scene in
 // front of it, so the pictures of one video describe the same place.
 func parse(raw string, want, seconds int) (Draft, error) {
+	return parseWith(raw, want, seconds, parseOptions{})
+}
+
+// parseWith is parse with the options of a mode (see parseOptions).
+func parseWith(raw string, want, seconds int, opt parseOptions) (Draft, error) {
 	start, end := strings.Index(raw, "{"), strings.LastIndex(raw, "}")
 	if start < 0 || end <= start {
 		return Draft{}, errors.New("the model did not answer with JSON")
@@ -118,6 +149,22 @@ func parse(raw string, want, seconds int) (Draft, error) {
 			return Draft{}, fmt.Errorf("shot %d of the draft is too long", i+1)
 		}
 		s := Shot{PicturePrompt: full, EndPicturePrompt: end, MotionPrompt: motion, Seconds: seconds}
+
+		// A narrated shot: the narration must be speakable Thai, and it (not the
+		// brief) sets how long the shot is.
+		if opt.Narration {
+			narration := strings.TrimSpace(r.Shots[i].NarrationTh)
+			if perr := narrationProblem(narration); perr != nil {
+				return Draft{}, fmt.Errorf("the narration of shot %d %w", i+1, perr)
+			}
+			if utf8.RuneCountInString(narration) > maxNarrationRunes {
+				return Draft{}, fmt.Errorf("the narration of shot %d is too long", i+1)
+			}
+			s.NarrationTh = narration
+			if secs, fits := studio.SecondsForNarration(narration, opt.SecondsOptions); secs > 0 {
+				s.Seconds, s.NarrationTooLong = secs, !fits
+			}
+		}
 
 		// The Thai versions: kept only if they are usable. The Thai picture prompt
 		// gets the Thai scene line in front, as the English one does, so each Thai

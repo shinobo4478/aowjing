@@ -384,12 +384,13 @@ export function draftVideo(input: {
   seconds: number;
   title?: string;
   /** What kind of video (the structure the AI follows): general (default),
-   *  product (needs productId) or film. */
-  mode?: "general" | "product" | "film";
+   *  product (needs productId), film or explainer (a narrated educational clip:
+   *  `seconds` is then the longest a shot may be). */
+  mode?: "general" | "product" | "film" | "explainer";
   /** The catalog product a product video is about; it must have pictures. */
   productId?: string;
 }) {
-  return request<{ video: Video; costUsd: number; model: string }>("/videos/draft", {
+  return request<{ video: Video; costUsd: number; model: string; tooLongShots?: number }>("/videos/draft", {
     method: "POST",
     body: JSON.stringify(input),
   });

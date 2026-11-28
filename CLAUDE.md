@@ -845,6 +845,37 @@ and joined in the editor. Order: write the narration → speak it → set the sh
   editor", and voices longer than ~1500 characters. Voice-over costs are not in the daily spend or the dashboard
   (like the Draft and translations), though the daily limit is checked before speaking.
 
+## Explainer draft — the Thai narration written with the shots (built 2026-11-28)
+
+"Draft with AI" has a fourth format, **Explainer** (`scriptwriter.ModeExplainer`, "ให้ความรู้"), for the 2D educational
+clips with a narrator. What the owner's first narrated video showed was missing: Draft knew nothing about narration, so the
+owner wrote the Thai by hand and the shot lengths were guessed.
+- **The narration is written first and sets the length.** Every shot comes back with `narrationTh` (saved to
+  `video_shots.narration_th`, no English twin). The shot's seconds = the shortest length the profile's video model takes that
+  holds the narration plus 0.5 s (`studio.SecondsForNarration`, same 11 characters/second guess as the screen's
+  `lib/narration.ts` — adjust BOTH after real audio is measured). In this format the "seconds" box means the **longest** a shot
+  may be (default 8 s, `studio.ExplainerSeconds`), and the request tells the model the character budget that fits it
+  (`studio.NarrationBudget`: 8 s → 82 characters). A narration that fits no allowed length keeps the longest, the response says
+  how many (`tooLongShots`) and the screen warns. The video's total length is the sum of the real shot lengths.
+- **Rules the model is given** (`scriptwriter/modes.go`, `explainerRules`): hook → one point per shot → recap → one line of
+  caution when the topic touches health/money/safety; each narration starts with a Thai word, never a loanword (the voice takes
+  its accent from the first words — the owner's finding on "แคลอรี่ ดีฟิซิท", a hypothesis not confirmed by ElevenLabs' docs),
+  loanwords in the middle/end after Thai context and spelled the same way every time; Thai letters only, no Latin letters, no
+  digits, numbers spelled out; no invented statistics or sources; no commands as medical/financial advice; the narration never goes
+  into picture or motion prompts. `flatRules` (2D) now also says how to show an idea with no words: quantity by size/count of
+  simple shapes, comparison side by side or on a balance, change by an arrow, a food or body part by one icon.
+- **Enforced, not just asked:** `parseWith` refuses a reply whose narration is empty, holds Latin letters or digits, or does not
+  start with a Thai letter (`narrationProblem`); the existing one retry tells the model what was wrong (each try is paid).
+  The shot card shows ⚠ lines for the same things (`narrationWarnings`). A loanword written in Thai letters cannot be
+  detected, so a line that starts with one is only avoided by the prompt.
+- No schema change (`narration_th` already exists); `CreateShotWithPlan` takes it as `$9`. Needs PR #48 (narration) merged first.
+- **Verified:** unit tests (budget, lengths, parser, retry, fake LLM) and the dialog end to end on the fake LLM (4 shots of
+  6, 8, 5, 6 s; the warnings on an English-first line). **Not verified against a real model:** that it follows the rules (Thai
+  letters only, starts with a Thai word, stays within the budget), the quality and accuracy of the narration (facts must be
+  checked by the owner), what a draft costs (more tokens than before: narration in Thai), and the 11 characters/second guess.
+- The profile "Calorie Deficit" has **sound on** (Kling with audio is ~1.5x the price of silent and its audio is Chinese/English
+  only): a narrated 2D profile should normally have the sound switch off.
+
 ## Explicitly OUT of scope for Phase 2 (do not build yet)
 
 - TikTok / Instagram integration — after YouTube is solid

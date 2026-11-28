@@ -6,7 +6,7 @@ import SecondsField from "@/components/SecondsField";
 import Tally from "@/components/Tally";
 import { imageSrc, shotVoiceSrc } from "@/lib/api";
 import { formatUsd } from "@/lib/format";
-import { estimateSpeechSeconds, secondsForAudio, speechChars } from "@/lib/narration";
+import { estimateSpeechSeconds, narrationWarnings, secondsForAudio, speechChars } from "@/lib/narration";
 import { hasThaiLetters, usePromptPair, useTyped } from "@/lib/promptPair";
 import type { Shot } from "@/lib/types";
 import PromptPairField from "./PromptPairField";
@@ -366,6 +366,11 @@ export default function ShotCard({
                 ? ` · ยาวกว่าช็อต ${seconds} วินาที ย่อบทหรือเพิ่มความยาวช็อต`
                 : ""}
             </Typography.Text>
+            {narrationWarnings(narration).map((w) => (
+              <Typography.Text key={w} type="warning" style={{ display: "block", fontSize: 12, marginTop: 2 }}>
+                ⚠ {w}
+              </Typography.Text>
+            ))}
 
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 6 }}>
               <Button

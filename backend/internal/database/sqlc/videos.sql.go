@@ -88,7 +88,7 @@ func (q *Queries) CreateShot(ctx context.Context, arg CreateShotParams) (VideoSh
 
 const createShotWithPlan = `-- name: CreateShotWithPlan :one
 INSERT INTO video_shots (video_id, position, prompt, seconds, picture_prompt, end_picture_prompt,
-                         prompt_th, picture_prompt_th, end_picture_prompt_th)
+                         prompt_th, picture_prompt_th, end_picture_prompt_th, narration_th)
 VALUES (
     $1,
     (SELECT COALESCE(MAX(position), 0) + 1 FROM video_shots WHERE video_id = $1),
@@ -98,7 +98,8 @@ VALUES (
     $5,
     $6,
     $7,
-    $8
+    $8,
+    $9
 )
 RETURNING id, video_id, position, prompt, picture_prompt, end_picture_prompt, prompt_th, picture_prompt_th, end_picture_prompt_th, narration_th, seconds, image_url, image_id, end_image_id, approved, created_at, updated_at, chosen_generation_id
 `
@@ -112,6 +113,7 @@ type CreateShotWithPlanParams struct {
 	PromptTh           string      `json:"prompt_th"`
 	PicturePromptTh    string      `json:"picture_prompt_th"`
 	EndPicturePromptTh string      `json:"end_picture_prompt_th"`
+	NarrationTh        string      `json:"narration_th"`
 }
 
 // Adds a drafted shot (from the script helper) at the end, with its picture
@@ -126,6 +128,7 @@ func (q *Queries) CreateShotWithPlan(ctx context.Context, arg CreateShotWithPlan
 		arg.PromptTh,
 		arg.PicturePromptTh,
 		arg.EndPicturePromptTh,
+		arg.NarrationTh,
 	)
 	var i VideoShot
 	err := row.Scan(

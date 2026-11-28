@@ -55,7 +55,7 @@ func (b *Brief) Validate() map[string]string {
 		errs["seconds"] = "A shot is 3 to 15 seconds long."
 	}
 	if !ValidMode(string(b.Mode)) {
-		errs["mode"] = "Choose general, product or film."
+		errs["mode"] = "Choose general, product, film or explainer."
 	}
 	if b.Mode == ModeProduct && b.Product == nil {
 		errs["productId"] = "Choose the product this video is about."
@@ -115,6 +115,11 @@ func draftFrom(ctx context.Context, llm generate.LLM, model string, b Brief) (Dr
 		MaxTokens:   1000 + 900*b.Shots, // room for the JSON with its Thai twins (Thai costs more tokens)
 		Temperature: 0.8,
 	}
+	opt := parseOptions{}
+	if b.Mode == ModeExplainer {
+		req.MaxTokens += 300 * b.Shots // the narration of every shot, in Thai
+		opt = parseOptions{Narration: true, SecondsOptions: b.SecondsOptions}
+	}
 	var spent float64
 	var lastErr error
 	for attempt := 0; attempt < 2; attempt++ {
@@ -123,7 +128,7 @@ func draftFrom(ctx context.Context, llm generate.LLM, model string, b Brief) (Dr
 			return Draft{}, err
 		}
 		spent += res.CostUSD
-		d, perr := parse(res.Text, b.Shots, b.Seconds)
+		d, perr := parseWith(res.Text, b.Shots, b.Seconds, opt)
 		if perr == nil {
 			d.CostUSD, d.Model = spent, model
 			return d, nil
@@ -164,9 +169,13 @@ func (fakeLLM) Complete(_ context.Context, req generate.LLMRequest) (generate.LL
 			end = "Only the fake cat's pose changes in fake shot 1."
 			endTh = "เปลี่ยนเฉพาะท่าของแมวจำลองในช็อตจำลองที่ 1"
 		}
+		// The narration only matters in explainer mode (the parser ignores it
+		// otherwise). Each has a different length, so the shots get different
+		// lengths; it starts with a Thai word and holds no Latin letters.
+		narration := "ช็อตจำลองนี้อธิบายเรื่องหนึ่งอย่างสั้นๆ" + strings.Repeat(" และอธิบายต่อไปอีกนิด", i%3)
 		shots = append(shots, fmt.Sprintf(
-			`{"picturePrompt":"Fake picture prompt for shot %d.","picturePromptTh":"พรอมต์ภาพจำลองของช็อต %d","endPicturePrompt":"%s","endPicturePromptTh":"%s","motionPrompt":"Fake motion for shot %d. Static camera, no zoom.","motionPromptTh":"การเคลื่อนไหวจำลองของช็อต %d กล้องนิ่ง ไม่ซูม"}`,
-			i, i, end, endTh, i, i))
+			`{"picturePrompt":"Fake picture prompt for shot %d.","picturePromptTh":"พรอมต์ภาพจำลองของช็อต %d","endPicturePrompt":"%s","endPicturePromptTh":"%s","motionPrompt":"Fake motion for shot %d. Static camera, no zoom.","motionPromptTh":"การเคลื่อนไหวจำลองของช็อต %d กล้องนิ่ง ไม่ซูม","narrationTh":"%s"}`,
+			i, i, end, endTh, i, i, narration))
 	}
 	text := `{"title":"Fake draft","scene":"A fake sunny room with a sofa and a window.","sceneTh":"ห้องจำลองที่แดดส่อง มีโซฟาและหน้าต่าง","shots":[` + strings.Join(shots, ",") + `]}`
 	return generate.LLMResult{Text: text}, nil

@@ -15,6 +15,8 @@ package scriptwriter
 import (
 	"fmt"
 	"strings"
+
+	"github.com/shinobo4478/aowjing/backend/internal/studio"
 )
 
 // systemPrompt is the standing instruction. It asks for JSON only and shows one
@@ -55,7 +57,14 @@ func userPrompt(b Brief) string {
 	s.WriteString("Write the shot list for this video.\n\n")
 	fmt.Fprintf(&s, "Topic (the owner's words, any language): %s\n", strings.TrimSpace(b.Topic))
 	fmt.Fprintf(&s, "Number of shots: %d\n", b.Shots)
-	fmt.Fprintf(&s, "Each shot is about %d seconds long, so give each only as much action as fits.\n", b.Seconds)
+	if b.Mode == ModeExplainer {
+		// The narration sets the length of a shot, so the brief gives a ceiling
+		// and the character budget that fits it.
+		fmt.Fprintf(&s, "Each shot is at most %d seconds long. Its narrationTh has at most %d characters (spaces not counted); a shorter line gives a shorter shot, which is fine.\n",
+			b.Seconds, studio.NarrationBudget(b.Seconds))
+	} else {
+		fmt.Fprintf(&s, "Each shot is about %d seconds long, so give each only as much action as fits.\n", b.Seconds)
+	}
 	if b.ProfileName != "" || b.Niche != "" || b.Description != "" {
 		s.WriteString("\nThe channel this is for:\n")
 		if b.ProfileName != "" {

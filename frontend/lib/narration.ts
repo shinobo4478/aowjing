@@ -55,3 +55,30 @@ export function narratorInfo(
   }
   return null;
 }
+
+/**
+ * Things in a narration that make the Thai voice read it badly. The voice takes
+ * its accent from the first words, and drifts into English sounds on Latin
+ * letters; digits may be read in either language. Returns Thai messages, empty
+ * when the text is fine. A loanword written in Thai letters (แคลอรี่) cannot be
+ * told apart from Thai, so a line that starts with one is not caught: start
+ * with Thai words first. Mirrors scriptwriter.narrationProblem on the backend.
+ */
+export function narrationWarnings(text: string): string[] {
+  const t = text.trim();
+  if (!t) return [];
+  const out: string[] = [];
+  const first = [...t][0];
+  const isLatin = (c: string) => /[A-Za-z]/.test(c);
+  const isDigit = (c: string) => /[0-9๐-๙]/.test(c);
+  if (isLatin(first) || isDigit(first)) {
+    out.push("ขึ้นต้นด้วยตัวอักษรอังกฤษหรือตัวเลข เสียงอาจอ่านด้วยสำเนียงอังกฤษ ขึ้นต้นด้วยคำไทยก่อนจะชัดกว่า");
+  }
+  if (!isLatin(first) && [...t].some(isLatin)) {
+    out.push("มีตัวอักษรอังกฤษในบท เขียนเป็นตัวไทยตามที่ออกเสียง (เช่น ที ดี อี อี)");
+  }
+  if (!isDigit(first) && [...t].some(isDigit)) {
+    out.push("มีตัวเลขในบท เขียนเป็นคำอ่านไทยจะออกเสียงสม่ำเสมอกว่า (เช่น เจ็ดพันเจ็ดร้อย)");
+  }
+  return out;
+}
