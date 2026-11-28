@@ -171,6 +171,11 @@ export interface Video {
   title: string;
   shotCount: number;
   totalSeconds: number;
+  /** The place every shot happens in (English), put in front of the picture prompt of
+   *  each shot when its picture is made, and its Thai twin. "" on older videos, whose
+   *  shots carry the scene inside their own picture prompts. */
+  scene: string;
+  sceneTh: string;
   createdAt: string; // ISO 8601
   updatedAt: string; // ISO 8601
 }

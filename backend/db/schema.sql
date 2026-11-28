@@ -159,6 +159,13 @@ CREATE TABLE IF NOT EXISTS videos (
     id         uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
     profile_id uuid        NOT NULL REFERENCES profiles (id) ON DELETE CASCADE,
     title      text        NOT NULL,
+    -- The place all shots happen in (English, for the models) and its Thai twin: ONE
+    -- sentence or two, put in front of the picture prompt of every shot when its
+    -- picture is made, so it is edited here once, not in every shot. Empty on a
+    -- video made before this existed (its shots then carry the scene in their own
+    -- picture prompts) and on one made without a draft.
+    scene      text        NOT NULL DEFAULT '',
+    scene_th   text        NOT NULL DEFAULT '',
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
 );

@@ -55,6 +55,7 @@ func (h *Handler) Routes() http.Handler {
 	r.Post("/translate", h.translate)
 	r.Get("/{id}", h.get)
 	r.Patch("/{id}", h.rename)
+	r.Put("/{id}/scene", h.setScene)
 	r.Delete("/{id}", h.delete)
 
 	r.Post("/{id}/shots", h.addShot)
@@ -1025,7 +1026,7 @@ func (h *Handler) draft(w http.ResponseWriter, r *http.Request) {
 	}
 	title = truncateRunes(title, maxTitleRunes)
 
-	v, err := h.q.CreateVideo(r.Context(), sqlc.CreateVideoParams{ProfileID: profileID, Title: title})
+	v, err := h.q.CreateVideo(r.Context(), sqlc.CreateVideoParams{ProfileID: profileID, Title: title, Scene: d.Scene, SceneTh: d.SceneTh})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "The draft was written but the video was not saved.")
 		return

@@ -107,3 +107,15 @@ func TestFakeLLMRevisesAShot(t *testing.T) {
 		t.Fatalf("the fake revision is not usable: %v", err)
 	}
 }
+
+func TestRevisePromptShowsTheSceneApartWhenThereIsOne(t *testing.T) {
+	r := reviseReq()
+	if strings.Contains(revisePrompt(r), "The scene (put in front") {
+		t.Error("no scene line without a scene (an older video keeps it inside the picture prompt)")
+	}
+	r.Scene = "A plain flat pastel background."
+	p := revisePrompt(r)
+	if !strings.Contains(p, "The scene (put in front of the picture prompt automatically; do not repeat it): A plain flat pastel background.") {
+		t.Errorf("the scene must be shown apart, with the rule not to repeat it:\n%s", p)
+	}
+}

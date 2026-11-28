@@ -57,7 +57,8 @@ type parseOptions struct {
 
 // Shot is one drafted shot, ready to put into a Video.
 type Shot struct {
-	// PicturePrompt already has the scene in front of it.
+	// PicturePrompt is what THIS shot's picture shows. The scene is kept once on the
+	// video (Draft.Scene) and put in front of it when the picture is made.
 	PicturePrompt string
 	// EndPicturePrompt says what changes by the END picture (only a pose or
 	// position), "" when the shot has no end picture because the next shot cuts to
@@ -69,7 +70,7 @@ type Shot struct {
 	// The same three prompts in Thai, for the owner to read and edit. A
 	// convenience: a missing or unusable one is left empty, not an error, because
 	// it can be made later with the translation helper.
-	PicturePromptTh    string // the Thai scene line, then the Thai picture prompt
+	PicturePromptTh    string // the Thai twin of PicturePrompt (no scene)
 	EndPicturePromptTh string
 	MotionPromptTh     string
 
@@ -85,6 +86,7 @@ type Shot struct {
 type Draft struct {
 	Title   string
 	Scene   string
+	SceneTh string // the Thai twin of Scene, "" when the model gave none
 	Shots   []Shot
 	CostUSD float64 // what the LLM call cost, as fal reported it
 	Model   string
@@ -109,8 +111,9 @@ type reply struct {
 // parse turns the model's text into a Draft. Models often wrap JSON in prose or
 // a code fence despite being told not to, so it takes the outermost {...}. It
 // refuses a reply with too few shots or an empty prompt rather than filling a
-// video with gaps, and drops extra shots. Every picture prompt gets the scene in
-// front of it, so the pictures of one video describe the same place.
+// video with gaps, and drops extra shots. The scene is returned once (Draft.Scene)
+// for the video to keep; it is put in front of a picture prompt when the picture
+// is made, so the pictures of one video describe the same place.
 func parse(raw string, want, seconds int) (Draft, error) {
 	return parseWith(raw, want, seconds, parseOptions{})
 }
@@ -134,7 +137,10 @@ func parseWith(raw string, want, seconds int, opt parseOptions) (Draft, error) {
 		return Draft{}, fmt.Errorf("the model wrote %d shots, not the %d asked for", len(r.Shots), want)
 	}
 
-	d := Draft{Title: strings.TrimSpace(r.Title), Scene: scene}
+	if hasThai(scene) {
+		return Draft{}, errors.New("the scene contains Thai letters (it must be English; its Thai twin is sceneTh)")
+	}
+	d := Draft{Title: strings.TrimSpace(r.Title), Scene: scene, SceneTh: strings.TrimSpace(r.SceneTh)}
 	for i := 0; i < want; i++ {
 		pic := strings.TrimSpace(r.Shots[i].PicturePrompt)
 		motion := strings.TrimSpace(r.Shots[i].MotionPrompt)
@@ -147,13 +153,14 @@ func parseWith(raw string, want, seconds int, opt parseOptions) (Draft, error) {
 		if i == want-1 {
 			end = ""
 		}
-		full := scene + " " + pic
-		if utf8.RuneCountInString(full) > maxPromptRunes ||
+		// The scene goes in front of the picture prompt when the picture is made, so
+		// the two together must still fit what a picture request accepts.
+		if utf8.RuneCountInString(scene+" "+pic) > maxPromptRunes ||
 			utf8.RuneCountInString(motion) > maxPromptRunes ||
 			utf8.RuneCountInString(end) > maxPromptRunes {
 			return Draft{}, fmt.Errorf("shot %d of the draft is too long", i+1)
 		}
-		s := Shot{PicturePrompt: full, EndPicturePrompt: end, MotionPrompt: motion, Seconds: seconds}
+		s := Shot{PicturePrompt: pic, EndPicturePrompt: end, MotionPrompt: motion, Seconds: seconds}
 
 		// A narrated shot: the narration must be speakable Thai, and it (not the
 		// brief) sets how long the shot is.
@@ -171,16 +178,8 @@ func parseWith(raw string, want, seconds int, opt parseOptions) (Draft, error) {
 			}
 		}
 
-		// The Thai versions: kept only if they are usable. The Thai picture prompt
-		// gets the Thai scene line in front, as the English one does, so each Thai
-		// prompt says what its English twin says.
-		sceneTh := strings.TrimSpace(r.SceneTh)
-		picTh := strings.TrimSpace(r.Shots[i].PicturePromptTh)
-		if sceneTh != "" && picTh != "" {
-			s.PicturePromptTh = sceneTh + " " + picTh
-		} else {
-			s.PicturePromptTh = picTh
-		}
+		// The Thai versions: kept only if they are usable.
+		s.PicturePromptTh = strings.TrimSpace(r.Shots[i].PicturePromptTh)
 		s.MotionPromptTh = strings.TrimSpace(r.Shots[i].MotionPromptTh)
 		if i != want-1 {
 			s.EndPicturePromptTh = strings.TrimSpace(r.Shots[i].EndPicturePromptTh)

@@ -163,6 +163,8 @@ type Video struct {
 	ID        pgtype.UUID        `json:"id"`
 	ProfileID pgtype.UUID        `json:"profile_id"`
 	Title     string             `json:"title"`
+	Scene     string             `json:"scene"`
+	SceneTh   string             `json:"scene_th"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }

@@ -41,6 +41,9 @@ type ReviseRequest struct {
 	// Previous and Next are the neighbouring shots' starting pictures, given for
 	// context only ("" at the ends of the video).
 	Previous, Next string
+	// Scene is the video's scene (English), put in front of the shot's picture prompt
+	// when its picture is made; "" on a video made before scenes were kept apart.
+	Scene string
 	// HasNext: a shot that is not the last may chain into the next one with an end picture.
 	HasNext bool
 }
@@ -73,7 +76,7 @@ const reviseTask = `
 THIS TIME THE TASK IS DIFFERENT. You are not writing a whole video: you REWRITE ONE EXISTING SHOT, following the owner's instruction. Everything above still applies to the prompts you write, except the JSON shape. Reply with ONE JSON object only, no "scene", no "shots":
 {"picturePrompt": string, "picturePromptTh": string, "endPicturePrompt": string, "endPicturePromptTh": string, "motionPrompt": string, "motionPromptTh": string}
 - The owner's instruction decides what the shot shows. Follow it exactly; change only what it needs and keep the rest of the current prompts (the same character noun, framing, style of wording).
-- "picturePrompt" must be COMPLETE: it also states the background. The current text may start with a scene sentence that was copied in front of every shot; keep its background part (the place, the light), but drop anything in it that is an object, an icon or a negative that does not belong to THIS shot's picture, and never leave two things both "in the centre".
+- "picturePrompt" says what THIS shot's picture shows. If a scene is given below, it is put in front of the picture prompt automatically: do not repeat it and do not restate the background. If NO scene is given, the picturePrompt must be COMPLETE and also state the background: the current text may start with a scene sentence that was copied in front of every shot; keep its background part (the place, the light), but drop anything in it that is an object, an icon or a negative that does not belong to THIS shot's picture, and never leave two things both "in the centre".
 - The picture is the moment BEFORE the action; what changes goes in "motionPrompt" and, only if the next shot carries straight on from this one, in "endPicturePrompt" (starting "Only the ..."). Otherwise "endPicturePrompt" and "endPicturePromptTh" are "".
 - The narration is what the narrator says over this shot: the picture illustrates it. Never change or repeat it in the prompts.
 - The neighbouring shots are shown for context only: do not rewrite them, and keep this shot consistent with them (same character, same drawing style).
@@ -87,6 +90,9 @@ func revisePrompt(r ReviseRequest) string {
 	var s strings.Builder
 	s.WriteString("Revise this one shot.\n\n")
 	fmt.Fprintf(&s, "The owner's instruction (any language): %s\n\n", r.Instruction)
+	if r.Scene != "" {
+		fmt.Fprintf(&s, "The scene (put in front of the picture prompt automatically; do not repeat it): %s\n\n", r.Scene)
+	}
 	s.WriteString("The shot now:\n")
 	fmt.Fprintf(&s, "- picturePrompt: %s\n", r.Shot.PicturePrompt)
 	fmt.Fprintf(&s, "- endPicturePrompt: %s\n", orNone(r.Shot.EndPicturePrompt))

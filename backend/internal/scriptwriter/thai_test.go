@@ -17,9 +17,9 @@ func TestParseThaiTwins(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The Thai picture prompt gets the Thai scene in front, like the English one.
-	if d.Shots[0].PicturePromptTh != "ฉาก. ภาพ ก" {
-		t.Errorf("Thai picture prompt = %q", d.Shots[0].PicturePromptTh)
+	// The scene is kept once (Draft.Scene / SceneTh), not put in front of each shot.
+	if d.Shots[0].PicturePromptTh != "ภาพ ก" || d.SceneTh != "ฉาก." || d.Scene != "S." {
+		t.Errorf("Thai picture prompt = %q, scene %q / %q", d.Shots[0].PicturePromptTh, d.Scene, d.SceneTh)
 	}
 	if d.Shots[0].MotionPromptTh != "ขยับ 1" || d.Shots[0].EndPicturePromptTh != "เฉพาะ x" {
 		t.Errorf("shot 1 Thai = %+v", d.Shots[0])

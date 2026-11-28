@@ -155,23 +155,32 @@ func (q *Queries) CreateShotWithPlan(ctx context.Context, arg CreateShotWithPlan
 }
 
 const createVideo = `-- name: CreateVideo :one
-INSERT INTO videos (profile_id, title)
-VALUES ($1, $2)
-RETURNING id, profile_id, title, created_at, updated_at
+INSERT INTO videos (profile_id, title, scene, scene_th)
+VALUES ($1, $2, $3, $4)
+RETURNING id, profile_id, title, scene, scene_th, created_at, updated_at
 `
 
 type CreateVideoParams struct {
 	ProfileID pgtype.UUID `json:"profile_id"`
 	Title     string      `json:"title"`
+	Scene     string      `json:"scene"`
+	SceneTh   string      `json:"scene_th"`
 }
 
 func (q *Queries) CreateVideo(ctx context.Context, arg CreateVideoParams) (Video, error) {
-	row := q.db.QueryRow(ctx, createVideo, arg.ProfileID, arg.Title)
+	row := q.db.QueryRow(ctx, createVideo,
+		arg.ProfileID,
+		arg.Title,
+		arg.Scene,
+		arg.SceneTh,
+	)
 	var i Video
 	err := row.Scan(
 		&i.ID,
 		&i.ProfileID,
 		&i.Title,
+		&i.Scene,
+		&i.SceneTh,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -236,7 +245,7 @@ func (q *Queries) GetShot(ctx context.Context, id pgtype.UUID) (VideoShot, error
 }
 
 const getVideo = `-- name: GetVideo :one
-SELECT id, profile_id, title, created_at, updated_at FROM videos
+SELECT id, profile_id, title, scene, scene_th, created_at, updated_at FROM videos
 WHERE id = $1
 `
 
@@ -247,6 +256,8 @@ func (q *Queries) GetVideo(ctx context.Context, id pgtype.UUID) (Video, error) {
 		&i.ID,
 		&i.ProfileID,
 		&i.Title,
+		&i.Scene,
+		&i.SceneTh,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -720,12 +731,42 @@ func (q *Queries) UpdateShot(ctx context.Context, arg UpdateShotParams) (VideoSh
 	return i, err
 }
 
+const updateVideoScene = `-- name: UpdateVideoScene :one
+UPDATE videos
+SET scene = $2,
+    scene_th = $3,
+    updated_at = now()
+WHERE id = $1
+RETURNING id, profile_id, title, scene, scene_th, created_at, updated_at
+`
+
+type UpdateVideoSceneParams struct {
+	ID      pgtype.UUID `json:"id"`
+	Scene   string      `json:"scene"`
+	SceneTh string      `json:"scene_th"`
+}
+
+func (q *Queries) UpdateVideoScene(ctx context.Context, arg UpdateVideoSceneParams) (Video, error) {
+	row := q.db.QueryRow(ctx, updateVideoScene, arg.ID, arg.Scene, arg.SceneTh)
+	var i Video
+	err := row.Scan(
+		&i.ID,
+		&i.ProfileID,
+		&i.Title,
+		&i.Scene,
+		&i.SceneTh,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const updateVideoTitle = `-- name: UpdateVideoTitle :one
 UPDATE videos
 SET title = $2,
     updated_at = now()
 WHERE id = $1
-RETURNING id, profile_id, title, created_at, updated_at
+RETURNING id, profile_id, title, scene, scene_th, created_at, updated_at
 `
 
 type UpdateVideoTitleParams struct {
@@ -740,6 +781,8 @@ func (q *Queries) UpdateVideoTitle(ctx context.Context, arg UpdateVideoTitlePara
 		&i.ID,
 		&i.ProfileID,
 		&i.Title,
+		&i.Scene,
+		&i.SceneTh,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

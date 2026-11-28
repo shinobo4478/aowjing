@@ -45,6 +45,7 @@ func (h *Handler) reviseShot(w http.ResponseWriter, r *http.Request) {
 	}
 	req := scriptwriter.ReviseRequest{
 		Instruction: body.Instruction,
+		Scene:       v.Scene,
 		Brief: scriptwriter.Brief{
 			ProfileName: profile.Name, Niche: profile.Niche, Description: profile.Description,
 			VideoStyle: profile.VideoStyle,

@@ -34,6 +34,7 @@ import {
 import { refreshCredits } from "../../CreditsBadge";
 import PictureModal, { type PictureChoice } from "./PictureModal";
 import ClipList from "./ClipList";
+import SceneBox from "./SceneBox";
 import ShotCard, { type ShotDraft } from "./ShotCard";
 import Storyboard, { isReadyToMake } from "./Storyboard";
 import TakesModal from "./TakesModal";
@@ -534,6 +535,11 @@ export default function VideoEditor({
         onMakeApproved={confirmMakeApproved}
       />
 
+      <SceneBox
+        video={video}
+        onSaved={(v) => setVideo((cur) => (cur ? { ...cur, scene: v.scene, sceneTh: v.sceneTh } : cur))}
+      />
+
       <Space orientation="vertical" size={16} style={{ width: "100%" }}>
         {shots.map((shot) => (
           <ShotCard
@@ -591,6 +597,7 @@ export default function VideoEditor({
         open={choosing !== null}
         profileId={profileId}
         end={choosing?.end ?? false}
+        scenePrefix={video.scene}
         context={choosing ? `shot:${choosing.shot.id}:${choosing.end ? "end" : "start"}` : undefined}
         initialPrompt={
           choosing
