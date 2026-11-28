@@ -26,6 +26,9 @@ export interface PromptPair {
   en: string;
   setTh: (text: string) => void;
   setEn: (text: string) => void;
+  /** Sets both texts at once as a pair that is in step (the English says what the
+   *  Thai says): a rewrite by the script helper, or undoing one. */
+  setBoth: (th: string, en: string) => void;
   /** The English is missing, or the Thai was changed after the English was made
    *  from it, so the English no longer says what the Thai says. */
   stale: boolean;
@@ -99,7 +102,13 @@ export function usePromptPair(kind: PromptKind, savedTh: string, savedEn: string
     return en;
   }, [stale, toEnglish, en]);
 
-  return { th, en, setTh, setEn, stale, busy, lastCostUsd, toEnglish, toThai, ensureEnglish };
+  const setBoth = (nextTh: string, nextEn: string) => {
+    setTh(nextTh);
+    setEn(nextEn);
+    setMade({ text: nextTh, base: savedTh });
+  };
+
+  return { th, en, setTh, setEn, setBoth, stale, busy, lastCostUsd, toEnglish, toThai, ensureEnglish };
 }
 
 /** A prompt as the two texts it is kept in: the Thai the owner edits and the
