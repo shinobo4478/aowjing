@@ -23,13 +23,13 @@ func TestVoiceCandidatesAreComplete(t *testing.T) {
 			t.Errorf("a MiniMax voice must be one of the Thai system voices, got %q", v.VoiceID)
 		}
 	}
-	got, ok := VoiceCandidateFor("minimax-hd-woman")
+	got, ok := VoiceCandidateFor("eleven-v3-rachel")
 	if !ok {
-		t.Fatal("minimax-hd-woman is missing")
+		t.Fatal("eleven-v3-rachel is missing")
 	}
 	// fal bills per character: 400 Thai characters at $0.10 per 1000.
 	if c := got.CostUSD(strings.Repeat("ก", 400)); math.Abs(c-0.04) > 1e-9 {
-		t.Errorf("400 Thai characters on MiniMax HD should cost $0.04, got %v", c)
+		t.Errorf("400 Thai characters on ElevenLabs v3 should cost $0.04, got %v", c)
 	}
 	if _, ok := VoiceCandidateFor("nope"); ok {
 		t.Error("an unknown key must not be found")

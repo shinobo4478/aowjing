@@ -32,7 +32,7 @@ const MaxVoiceSampleChars = 1500
 const MinVoiceSampleChars = 20
 
 // MaxVoiceCandidates is how many voices one samples request may ask for.
-const MaxVoiceCandidates = 7
+const MaxVoiceCandidates = 10
 
 // VoiceCandidate is one voice the owner can listen to.
 type VoiceCandidate struct {
@@ -57,54 +57,40 @@ func (v VoiceCandidate) CostUSD(text string) float64 {
 	return v.PricePer1KChars * float64(utf8.RuneCountInString(text)) / 1000
 }
 
-// The MiniMax Thai voice ids are from MiniMax's own list of system voices
-// (platform.minimax.io, "system voice id"); fal's pages do not say whether its
-// endpoints accept them, so the first sample is also the test. ElevenLabs' fal
-// pages do not list Thai at all, so those candidates may answer with an error,
-// which the screen shows as it is.
+// The owner listened to MiniMax 2.8 (HD and Turbo, the Thai system voices) and to
+// ElevenLabs v3 on 2026-11-28 with the same Thai text: MiniMax misread a lot,
+// ElevenLabs v3 read it without a mistake with an acceptable accent. So the
+// registry now holds ElevenLabs voices, to choose a narrator's gender and tone by
+// ear; MiniMax stays supported by internal/generate but is not offered. Voice names
+// are from fal's examples (the `voice` field is a free string); none is documented
+// as Thai-specific, so how each reads Thai is the owner's to judge.
 var voiceCandidates = []VoiceCandidate{
+	elevenV3("rachel", "Rachel", "Heard 2026-11-28: read the Thai text without a mistake, accent acceptable. The default voice."),
+	elevenV3("aria", "Aria", ""),
+	elevenV3("sarah", "Sarah", ""),
+	elevenV3("charlotte", "Charlotte", ""),
+	elevenV3("roger", "Roger", ""),
+	elevenV3("brian", "Brian", ""),
+	elevenV3("daniel", "Daniel", ""),
+	elevenV3("george", "George", ""),
 	{
-		Key: "minimax-hd-woman", Label: "MiniMax 2.8 HD · Confident Woman",
-		Family: VoiceMiniMax, Model: "fal-ai/minimax/speech-2.8-hd", VoiceID: "Thai_female_1_sample1",
-		PricePer1KChars: 0.10,
-		Note:            "A Thai voice from MiniMax's list. Thai is a listed language option.",
-	},
-	{
-		Key: "minimax-hd-man", Label: "MiniMax 2.8 HD · Serene Man",
-		Family: VoiceMiniMax, Model: "fal-ai/minimax/speech-2.8-hd", VoiceID: "Thai_male_1_sample8",
-		PricePer1KChars: 0.10,
-		Note:            "A Thai voice from MiniMax's list. Thai is a listed language option.",
-	},
-	{
-		Key: "minimax-hd-energetic", Label: "MiniMax 2.8 HD · Energetic Woman",
-		Family: VoiceMiniMax, Model: "fal-ai/minimax/speech-2.8-hd", VoiceID: "Thai_female_2_sample2",
-		PricePer1KChars: 0.10,
-		Note:            "A livelier Thai voice from MiniMax's list.",
-	},
-	{
-		Key: "minimax-turbo-woman", Label: "MiniMax 2.8 Turbo · Confident Woman",
-		Family: VoiceMiniMax, Model: "fal-ai/minimax/speech-2.8-turbo", VoiceID: "Thai_female_1_sample1",
-		PricePer1KChars: 0.06,
-		Note:            "The cheaper, faster MiniMax model with the same voice: listen for what is lost.",
-	},
-	{
-		Key: "minimax-turbo-man", Label: "MiniMax 2.8 Turbo · Serene Man",
-		Family: VoiceMiniMax, Model: "fal-ai/minimax/speech-2.8-turbo", VoiceID: "Thai_male_1_sample8",
-		PricePer1KChars: 0.06,
-		Note:            "The cheaper, faster MiniMax model with the same voice: listen for what is lost.",
-	},
-	{
-		Key: "eleven-v3", Label: "ElevenLabs v3 · Rachel",
-		Family: VoiceElevenLabs, Model: "fal-ai/elevenlabs/tts/eleven-v3", VoiceID: "Rachel",
-		PricePer1KChars: 0.10,
-		Note:            "fal's page does not say Thai is supported (ElevenLabs' own site does). Rachel is a default English-named voice: it may read Thai with an accent, or fail.",
-	},
-	{
-		Key: "eleven-multilingual-v2", Label: "ElevenLabs Multilingual v2 · Rachel",
+		Key: "eleven-multilingual-v2-rachel", Label: "ElevenLabs Multilingual v2 · Rachel",
 		Family: VoiceElevenLabs, Model: "fal-ai/elevenlabs/tts/multilingual-v2", VoiceID: "Rachel",
 		PricePer1KChars: 0.10,
-		Note:            "Same caveat as v3: Thai is not listed on fal's page.",
+		Note:            "The older ElevenLabs model with the same voice, to compare with v3. Not heard yet.",
 	},
+}
+
+// elevenV3 is an ElevenLabs v3 voice by name. An empty note gets the standard one.
+func elevenV3(slug, name, note string) VoiceCandidate {
+	if note == "" {
+		note = "An ElevenLabs v3 voice by name. How it reads Thai is yours to judge: listen to it against Rachel."
+	}
+	return VoiceCandidate{
+		Key: "eleven-v3-" + slug, Label: "ElevenLabs v3 · " + name,
+		Family: VoiceElevenLabs, Model: "fal-ai/elevenlabs/tts/eleven-v3", VoiceID: name,
+		PricePer1KChars: 0.10, Note: note,
+	}
 }
 
 // VoiceCandidates lists every candidate in display order. The slice is a copy.

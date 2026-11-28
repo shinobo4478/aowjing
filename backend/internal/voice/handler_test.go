@@ -21,14 +21,14 @@ func TestValidate(t *testing.T) {
 		wantField string // "" = valid
 		wantN     int
 	}{
-		{"valid", ok, []string{"minimax-hd-woman", "eleven-v3"}, "", 2},
-		{"text is trimmed before counting", "   " + ok + "  ", []string{"eleven-v3"}, "", 1},
-		{"too short", "สวัสดี", []string{"eleven-v3"}, "text", 0},
-		{"too long", long, []string{"eleven-v3"}, "text", 0},
-		{"exactly the maximum", strings.Repeat("ก", studio.MaxVoiceSampleChars), []string{"eleven-v3"}, "", 1},
+		{"valid", ok, []string{"eleven-v3-aria", "eleven-v3-rachel"}, "", 2},
+		{"text is trimmed before counting", "   " + ok + "  ", []string{"eleven-v3-rachel"}, "", 1},
+		{"too short", "สวัสดี", []string{"eleven-v3-rachel"}, "text", 0},
+		{"too long", long, []string{"eleven-v3-rachel"}, "text", 0},
+		{"exactly the maximum", strings.Repeat("ก", studio.MaxVoiceSampleChars), []string{"eleven-v3-rachel"}, "", 1},
 		{"no voice", ok, nil, "candidates", 0},
 		{"unknown voice", ok, []string{"nope"}, "candidates", 0},
-		{"a repeat is counted once", ok, []string{"eleven-v3", "eleven-v3"}, "", 1},
+		{"a repeat is counted once", ok, []string{"eleven-v3-rachel", "eleven-v3-rachel"}, "", 1},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

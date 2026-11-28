@@ -721,10 +721,15 @@ voice speaks the SAME text, with an audio player per voice. Nothing is saved (fa
 - API: `GET /voice/candidates` (voices, prices, limits), `POST /voice/samples` `{text, candidates[]}` →
   `{results[{key,label,ok,audioUrl,durationMs,costUsd,error}], chars, totalCostUsd}`; 20–1500 characters, at
   most 7 voices; the daily spending limit is checked first (402), the voices run at once.
-- **Unverified (the first run is the test):** that fal's MiniMax endpoints accept the Thai voice ids from
-  MiniMax's list in `voice_setting.voice_id` (fal's pages do not list the subfields), that ElevenLabs on fal
-  accepts `language_code: "th"`, and how any of them sounds in Thai. Samples are not counted in the daily
-  spend or the dashboard (like the Draft and translations), though fal credits drop.
+- **Heard by the owner (2026-11-28, same Thai text):** **MiniMax 2.8 misread Thai a lot** (HD and Turbo,
+  the Thai system voices); **ElevenLabs v3 read it without a mistake, accent acceptable** (voice Rachel,
+  `language_code: "th"` accepted on fal, no duration in the reply). So the registry now offers ElevenLabs
+  voices only (v3 Rachel, Aria, Sarah, Charlotte, Roger, Brian, Daniel, George, and Multilingual v2 Rachel to
+  compare), to pick a narrator's gender and tone by ear; MiniMax stays supported in `generate/voice.go` but is
+  not offered. Names are from fal's examples (`voice` is a free string), none documented as Thai-specific.
+  **Chosen model: ElevenLabs v3** ($0.10 per 1K characters). Still to choose: the narrator voice.
+  Samples are not counted in the daily spend or the dashboard (like the Draft and translations), though fal
+  credits drop.
 
 ## Explicitly OUT of scope for Phase 2 (do not build yet)
 
