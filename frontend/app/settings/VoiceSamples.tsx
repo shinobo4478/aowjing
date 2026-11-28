@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Alert, App, Button, Checkbox, Input, Tag, Typography } from "antd";
-import { ApiError, getVoiceCandidates, makeVoiceSamples } from "@/lib/api";
+import { ApiError, getSettings, getVoiceCandidates, makeVoiceSamples, updateSettings } from "@/lib/api";
+import { narratorInfo } from "@/lib/narration";
 import { formatUsd } from "@/lib/format";
 import type { VoiceCandidates, VoiceSampleResult } from "@/lib/types";
 
@@ -66,6 +67,8 @@ export default function VoiceSamples() {
   const [custom, setCustom] = useState<string[]>([]);
   const [customDraft, setCustomDraft] = useState("");
   const [notes, setNotes] = useState<Record<string, string>>({});
+  // The voice that speaks every shot's narration (a key; "" = none chosen).
+  const [narratorKey, setNarratorKey] = useState("");
 
   useEffect(() => {
     // Read once on the client (localStorage does not exist on the server).
@@ -95,6 +98,31 @@ export default function VoiceSamples() {
     custom.length * priceOf(CUSTOM_PRICE_PER_1K);
   const tooShort = !!info && chars < info.minChars;
   const tooLong = !!info && chars > info.maxChars;
+
+  useEffect(() => {
+    let cancelled = false;
+    getSettings()
+      .then((s) => {
+        if (!cancelled) setNarratorKey(s.narratorVoice ?? "");
+      })
+      .catch(() => {
+        /* the narrator line just says none is chosen */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Makes a voice the narrator of every shot (saved in Settings).
+  async function chooseNarrator(key: string) {
+    try {
+      const saved = await updateSettings({ narratorVoice: key });
+      setNarratorKey(saved.narratorVoice ?? key);
+      message.success("Narrator voice saved.");
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : "Could not save the narrator voice.");
+    }
+  }
 
   // Adds a voice the owner named (once; the server checks the characters too).
   function addCustom(raw: string) {
@@ -166,6 +194,18 @@ export default function VoiceSamples() {
         จึงเลือกด้วยหู ถ้าเสียงไหนขึ้นข้อผิดพลาดหรือสำเนียงเพี้ยน ก็ตัดทิ้งได้เลย
         เสียงไม่ถูกบันทึกในแอป (fal เก็บไฟล์อย่างน้อย 7 วัน)
       </Typography.Paragraph>
+
+      <Alert
+        type={narratorKey ? "success" : "info"}
+        showIcon
+        style={{ marginBottom: 16 }}
+        title={
+          narratorKey
+            ? `เสียงพากย์ตอนนี้: ${narratorInfo(narratorKey, info?.candidates ?? [])?.label ?? narratorKey}`
+            : "ยังไม่ได้เลือกเสียงพากย์"
+        }
+        description="เสียงนี้พูดบทพากย์ของทุกช็อตในหน้า Videos ฟังตัวอย่างด้านล่างแล้วกด “ใช้เป็นเสียงพากย์” ใต้เสียงที่ชอบ"
+      />
 
       <Typography.Text>ข้อความที่ให้อ่าน · Text to speak</Typography.Text>
       <Input.TextArea
@@ -290,6 +330,15 @@ export default function VoiceSamples() {
                   {r.durationMs > 0 ? `${(r.durationMs / 1000).toFixed(1)} s · ` : ""}≈ {formatUsd(r.costUsd)}
                 </Typography.Text>
                 <audio controls preload="none" src={r.audioUrl} style={{ display: "block", width: "100%", marginTop: 4 }} />
+                <Button
+                  size="small"
+                  type={narratorKey === r.key ? "default" : "primary"}
+                  disabled={narratorKey === r.key}
+                  onClick={() => void chooseNarrator(r.key)}
+                  style={{ marginTop: 6 }}
+                >
+                  {narratorKey === r.key ? "เสียงพากย์ปัจจุบัน" : "ใช้เป็นเสียงพากย์"}
+                </Button>
                 <Input
                   size="small"
                   value={notes[r.key] ?? ""}

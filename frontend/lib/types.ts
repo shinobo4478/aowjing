@@ -196,6 +196,11 @@ export interface Shot {
   promptTh: string;
   picturePromptTh: string;
   endPicturePromptTh: string;
+  /** What the narrator says over this shot, in Thai (never sent to a picture or
+   *  video model). */
+  narrationTh: string;
+  /** The voice-over made from it, null when none. */
+  voice: ShotVoice | null;
   seconds: number;
   /** A public link the shot starts from, or "" . */
   imageUrl: string;
@@ -230,6 +235,7 @@ export interface ShotInput {
   promptTh: string;
   picturePromptTh: string;
   endPicturePromptTh: string;
+  narrationTh: string;
   seconds: number;
   imageUrl: string;
   imageId: string;
@@ -316,6 +322,9 @@ export interface Settings {
    *  zone, saved with it so "today" starts at the owner's midnight. */
   dailyCapUsd: string;
   dailyCapTz: string;
+  /** The voice that speaks every shot's narration: a key from the voice list or
+   *  "custom:<name>"; "" = none chosen. */
+  narratorVoice: string;
 }
 
 /** One video model as GET /studio/pricing describes it. */
@@ -602,4 +611,18 @@ export interface VoiceSampleResult {
   durationMs: number;
   costUsd: number;
   error?: string;
+}
+
+/** The voice-over made for a shot (GET /videos/{id}: shot.voice), null when none. */
+export interface ShotVoice {
+  /** The voice key it was spoken with. */
+  voice: string;
+  /** Exactly what was spoken. */
+  text: string;
+  /** Approximate: the MP3's length from its size (128 kbps constant bitrate). */
+  durationMs: number;
+  sizeBytes: number;
+  createdAt: string;
+  /** The narration has not changed since this audio was made. */
+  current: boolean;
 }

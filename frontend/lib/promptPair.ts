@@ -13,7 +13,7 @@ export const hasThaiLetters = (s: string) => /[฀-๿]/.test(s);
  * was typed only counts while the saved value is still the one it was typed
  * over; otherwise the saved value shows.
  */
-function useTyped(saved: string): [string, (text: string) => void] {
+export function useTyped(saved: string): [string, (text: string) => void] {
   const [typed, setTyped] = useState<{ text: string; base: string } | null>(null);
   const value = typed && typed.base === saved ? typed.text : saved;
   return [value, (text) => setTyped({ text, base: saved })];

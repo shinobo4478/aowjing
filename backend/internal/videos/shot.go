@@ -2,6 +2,7 @@ package videos
 
 import (
 	"errors"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -35,6 +36,9 @@ type shotInput struct {
 	PromptTh           string `json:"promptTh"`
 	PicturePromptTh    string `json:"picturePromptTh"`
 	EndPicturePromptTh string `json:"endPicturePromptTh"`
+	// NarrationTh is what the narrator says over this shot, in Thai. Never sent to
+	// a picture or video model; the voice-over is made from it.
+	NarrationTh string `json:"narrationTh"`
 	// ImageURL is a public link the shot starts from; ImageID is a stored
 	// picture (uploaded, or made with AI). Give at most one. Neither means the
 	// shot has no picture yet, which is fine while planning but cannot be
@@ -68,6 +72,10 @@ func (in *shotInput) normalizeAndValidate() map[string]string {
 		if utf8.RuneCountInString(*field) > maxPromptRunes {
 			errs[name] = "The Thai text must be 2000 characters or fewer."
 		}
+	}
+	in.NarrationTh = strings.TrimSpace(in.NarrationTh)
+	if utf8.RuneCountInString(in.NarrationTh) > studio.MaxVoiceSampleChars {
+		errs["narrationTh"] = "The narration must be " + strconv.Itoa(studio.MaxVoiceSampleChars) + " characters or fewer."
 	}
 	in.EndPicturePrompt = strings.TrimSpace(in.EndPicturePrompt)
 	if utf8.RuneCountInString(in.EndPicturePrompt) > maxPromptRunes {

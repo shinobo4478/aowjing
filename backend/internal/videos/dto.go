@@ -41,6 +41,10 @@ type shotDTO struct {
 	PromptTh           string `json:"promptTh"`
 	PicturePromptTh    string `json:"picturePromptTh"`
 	EndPicturePromptTh string `json:"endPicturePromptTh"`
+	// NarrationTh is what the narrator says over the shot, in Thai; Voice is the
+	// voice-over made from it (nil when none has been made).
+	NarrationTh string     `json:"narrationTh"`
+	Voice       *voiceDTO `json:"voice"`
 	Seconds            int    `json:"seconds"`
 	ImageURL           string `json:"imageUrl"`
 	ImageID            string `json:"imageId"`
@@ -71,7 +75,7 @@ func toVideoDTO(v sqlc.Video, shotCount, totalSeconds int) videoDTO {
 	}
 }
 
-func toShotDTO(s sqlc.VideoShot, latest *sqlc.ListShotLatestGenerationsRow, take *sqlc.ListShotTakesRow) shotDTO {
+func toShotDTO(s sqlc.VideoShot, latest *sqlc.ListShotLatestGenerationsRow, take *sqlc.ListShotTakesRow, audio *sqlc.ListShotAudioMetaRow) shotDTO {
 	d := shotDTO{
 		ID:                 pgconv.UUIDString(s.ID),
 		VideoID:            pgconv.UUIDString(s.VideoID),
@@ -82,6 +86,8 @@ func toShotDTO(s sqlc.VideoShot, latest *sqlc.ListShotLatestGenerationsRow, take
 		PromptTh:           s.PromptTh,
 		PicturePromptTh:    s.PicturePromptTh,
 		EndPicturePromptTh: s.EndPicturePromptTh,
+		NarrationTh:        s.NarrationTh,
+		Voice:              toVoiceDTO(s, audio),
 		Seconds:            int(s.Seconds),
 		ImageURL:           s.ImageUrl,
 		ImageID:            pgconv.UUIDString(s.ImageID),

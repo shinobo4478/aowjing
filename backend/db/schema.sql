@@ -177,6 +177,11 @@ CREATE TABLE IF NOT EXISTS video_shots (
     prompt_th text NOT NULL DEFAULT '',
     picture_prompt_th text NOT NULL DEFAULT '',
     end_picture_prompt_th text NOT NULL DEFAULT '',
+    -- What the narrator says over this shot, in Thai (the voice reads Thai
+    -- directly, so there is no English twin). Never sent to a picture or video
+    -- model, so it never affects the approval; the voice-over is made from it
+    -- (shot_audio) and the shot's length can follow the audio.
+    narration_th text NOT NULL DEFAULT '',
     seconds    smallint    NOT NULL DEFAULT 5 CHECK (seconds BETWEEN 3 AND 15),
     -- The picture the shot starts from: a link, or an uploaded/made one (at
     -- most one of the two is set). Both empty = text-to-video.
@@ -193,6 +198,23 @@ CREATE TABLE IF NOT EXISTS video_shots (
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
     UNIQUE (video_id, position) DEFERRABLE INITIALLY DEFERRED
+);
+
+-- The voice-over of a shot: one row per shot, replaced each time it is spoken
+-- again. The audio is kept here (not just the fal link, which expires after at
+-- least 7 days) like pictures are, until object storage exists. `text` is exactly
+-- what was spoken and `voice` the voice key, so the screen can tell when the
+-- narration changed after the audio was made. duration_ms is approximate: the
+-- MP3 is 128 kbps constant bitrate, so its length follows from its size.
+CREATE TABLE IF NOT EXISTS shot_audio (
+    shot_id      uuid        PRIMARY KEY REFERENCES video_shots (id) ON DELETE CASCADE,
+    voice        text        NOT NULL,
+    text         text        NOT NULL,
+    content_type text        NOT NULL,
+    size_bytes   integer     NOT NULL,
+    duration_ms  integer     NOT NULL,
+    data         bytea       NOT NULL,
+    created_at   timestamptz NOT NULL DEFAULT now()
 );
 
 -- One run of a prompt template through the AI provider. An immutable record:

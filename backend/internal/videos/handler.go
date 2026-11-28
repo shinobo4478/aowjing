@@ -38,10 +38,12 @@ type Handler struct {
 	q       *sqlc.Queries
 	enq     Enqueuer
 	drafter Drafter
+	// fakeFal makes the voice-over with a silent stand-in (AI_FAKE_FAL=1).
+	fakeFal bool
 }
 
-func NewHandler(db *pgxpool.Pool, q *sqlc.Queries, enq Enqueuer, drafter Drafter) *Handler {
-	return &Handler{db: db, q: q, enq: enq, drafter: drafter}
+func NewHandler(db *pgxpool.Pool, q *sqlc.Queries, enq Enqueuer, drafter Drafter, fakeFal bool) *Handler {
+	return &Handler{db: db, q: q, enq: enq, drafter: drafter, fakeFal: fakeFal}
 }
 
 // Routes returns the router to mount at /videos.
@@ -60,6 +62,10 @@ func (h *Handler) Routes() http.Handler {
 	r.Patch("/{id}/shots/{shotId}", h.updateShot)
 	r.Delete("/{id}/shots/{shotId}", h.deleteShot)
 	r.Post("/{id}/shots/{shotId}/generate", h.generateShot)
+	// The voice-over of a shot: speak it, play it, remove it.
+	r.Post("/{id}/shots/{shotId}/voice", h.makeVoice)
+	r.Get("/{id}/shots/{shotId}/voice/audio", h.voiceAudio)
+	r.Delete("/{id}/shots/{shotId}/voice", h.deleteVoice)
 	r.Put("/{id}/shots/{shotId}/approved", h.setApproved)
 	r.Get("/{id}/shots/{shotId}/attempts", h.listAttempts)
 	r.Put("/{id}/shots/{shotId}/take", h.setTake)
@@ -167,10 +173,17 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	audio, err := h.audioByShot(r.Context(), v.ID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to load the shots.")
+		return
+	}
+
 	out := make([]shotDTO, len(shots))
 	total := 0
 	for i, s := range shots {
-		out[i] = toShotDTO(s, latest[pgconv.UUIDString(s.ID)], takes[pgconv.UUIDString(s.ID)])
+		id := pgconv.UUIDString(s.ID)
+		out[i] = toShotDTO(s, latest[id], takes[id], audio[id])
 		total += int(s.Seconds)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -272,19 +285,20 @@ func (h *Handler) addShot(w http.ResponseWriter, r *http.Request) {
 	// A picture given with the new shot goes on with the update (CreateShot has
 	// no picture columns, to keep its query simple).
 	if in.ImageURL != "" || imageID.Valid || endID.Valid || in.PicturePrompt != "" || in.EndPicturePrompt != "" ||
-		in.PromptTh != "" || in.PicturePromptTh != "" || in.EndPicturePromptTh != "" {
+		in.PromptTh != "" || in.PicturePromptTh != "" || in.EndPicturePromptTh != "" || in.NarrationTh != "" {
 		shot, err = h.q.UpdateShot(r.Context(), sqlc.UpdateShotParams{
 			ID: shot.ID, Prompt: shot.Prompt, Seconds: shot.Seconds,
 			ImageUrl: in.ImageURL, ImageID: imageID, EndImageID: endID,
 			PicturePrompt: in.PicturePrompt, EndPicturePrompt: in.EndPicturePrompt,
 			PromptTh: in.PromptTh, PicturePromptTh: in.PicturePromptTh, EndPicturePromptTh: in.EndPicturePromptTh,
+		NarrationTh: in.NarrationTh,
 		})
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "The shot was added but its picture was not.")
 			return
 		}
 	}
-	writeJSON(w, http.StatusCreated, map[string]any{"shot": toShotDTO(shot, nil, nil)})
+	writeJSON(w, http.StatusCreated, map[string]any{"shot": toShotDTO(shot, nil, nil, nil)})
 }
 
 func (h *Handler) updateShot(w http.ResponseWriter, r *http.Request) {
@@ -314,6 +328,7 @@ func (h *Handler) updateShot(w http.ResponseWriter, r *http.Request) {
 		ImageUrl: in.ImageURL, ImageID: imageID, EndImageID: endID,
 		PicturePrompt: in.PicturePrompt, EndPicturePrompt: in.EndPicturePrompt,
 			PromptTh: in.PromptTh, PicturePromptTh: in.PicturePromptTh, EndPicturePromptTh: in.EndPicturePromptTh,
+		NarrationTh: in.NarrationTh,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to update the shot.")
@@ -685,8 +700,9 @@ func (h *Handler) takeByShot(ctx context.Context, videoID pgtype.UUID) (map[stri
 func (h *Handler) shotDTOFor(ctx context.Context, videoID pgtype.UUID, s sqlc.VideoShot) shotDTO {
 	latest, _ := h.latestByShot(ctx, videoID)
 	takes, _ := h.takeByShot(ctx, videoID)
+	audio, _ := h.audioByShot(ctx, videoID)
 	id := pgconv.UUIDString(s.ID)
-	return toShotDTO(s, latest[id], takes[id])
+	return toShotDTO(s, latest[id], takes[id], audio[id])
 }
 
 // listAttempts returns every attempt at a shot, newest first, so the owner can

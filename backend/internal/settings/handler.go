@@ -13,6 +13,7 @@ import (
 
 	"github.com/shinobo4478/aowjing/backend/internal/database/sqlc"
 	"github.com/shinobo4478/aowjing/backend/internal/spendcap"
+	"github.com/shinobo4478/aowjing/backend/internal/studio"
 )
 
 // knownKeys is the whitelist the API accepts. Add a key here when a new
@@ -31,7 +32,9 @@ import (
 //   - dailyCapUsd / dailyCapTz: optional daily spending limit in USD (empty = no
 //     limit) and the owner's IANA time zone, which the screen saves with it so
 //     "today" starts at the owner's midnight (see internal/spendcap).
-var knownKeys = []string{"falApiKey", "falBillingKey", "scriptModel", "translateModel", "dailyCapUsd", "dailyCapTz"}
+//   - narratorVoice: the voice that speaks the narration of every shot: the key of
+//     a voice in internal/studio (voices.go) or "custom:<name>"; empty = none chosen.
+var knownKeys = []string{"falApiKey", "falBillingKey", "scriptModel", "translateModel", "dailyCapUsd", "dailyCapTz", "narratorVoice"}
 
 type Handler struct {
 	q *sqlc.Queries
@@ -92,6 +95,12 @@ func (h *Handler) put(w http.ResponseWriter, r *http.Request) {
 	if v := strings.TrimSpace(body["dailyCapUsd"]); v != "" && spendcap.ParseCap(v) <= 0 {
 		writeError(w, http.StatusBadRequest, "The daily limit must be a number above 0 (leave it empty for no limit).")
 		return
+	}
+	if v := strings.TrimSpace(body["narratorVoice"]); v != "" {
+		if _, ok := studio.ResolveVoice(v); !ok {
+			writeError(w, http.StatusBadRequest, "That is not a voice the app knows.")
+			return
+		}
 	}
 	if tz := strings.TrimSpace(body["dailyCapTz"]); tz != "" {
 		if _, err := time.LoadLocation(tz); err != nil {

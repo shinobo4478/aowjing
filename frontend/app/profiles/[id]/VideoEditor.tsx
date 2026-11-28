@@ -6,17 +6,22 @@ import {
   addShot,
   ApiError,
   deleteShot,
+  deleteShotVoice,
   deleteVideo,
   generateShot,
   generateShots,
+  getSettings,
+  getVoiceCandidates,
   getStudioPricing,
   getVideo,
+  makeShotVoice,
   renameVideo,
   reorderShots,
   setShotApproved,
   updateShot,
 } from "@/lib/api";
 import { formatUsd } from "@/lib/format";
+import { narratorInfo } from "@/lib/narration";
 import type { PromptTexts } from "@/lib/promptPair";
 import {
   MAX_SHOTS,
@@ -80,6 +85,8 @@ export default function VideoEditor({
   } | null>(null);
   // The shot whose takes are being compared.
   const [comparing, setComparing] = useState<Shot | null>(null);
+  // The narrator voice chosen in Settings, with its label and price (null: none).
+  const [narrator, setNarrator] = useState<{ label: string; pricePer1kChars: number } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -108,6 +115,15 @@ export default function VideoEditor({
       .then(setPricing)
       .catch(() => {
         /* the cards say the price is not known */
+      });
+    // The narrator voice chosen in Settings, so a card can say who speaks and what
+    // it costs; without one the cards say to choose one.
+    Promise.all([getSettings(), getVoiceCandidates()])
+      .then(([s, c]) => {
+        if (!cancelled) setNarrator(narratorInfo(s.narratorVoice ?? "", c.candidates));
+      })
+      .catch(() => {
+        /* no narrator shown */
       });
     return () => {
       cancelled = true;
@@ -165,6 +181,7 @@ export default function VideoEditor({
     d.picturePromptTh.trim() !== shot.picturePromptTh ||
     d.endPicturePrompt.trim() !== shot.endPicturePrompt ||
     d.endPicturePromptTh.trim() !== shot.endPicturePromptTh ||
+    d.narrationTh.trim() !== shot.narrationTh ||
     d.seconds !== shot.seconds;
 
   /** Saves a shot's whole plan: what was typed plus its current picture. */
@@ -199,6 +216,7 @@ export default function VideoEditor({
       promptTh: draft.promptTh,
       picturePromptTh: draft.picturePromptTh,
       endPicturePromptTh: draft.endPicturePromptTh,
+      narrationTh: draft.narrationTh,
       seconds: draft.seconds,
       imageUrl,
       imageId,
@@ -308,6 +326,48 @@ export default function VideoEditor({
         }, "Failed to generate.");
       },
     });
+  }
+
+  // Speaking the narration costs fal credits per character, so ask first, with the
+  // price. The narration on screen is saved first, so the voice says what is shown.
+  function confirmMakeVoice(shot: Shot, draft: ShotDraft) {
+    if (!narrator) return;
+    const text = draft.narrationTh.trim();
+    const chars = [...text].length;
+    const price = (narrator.pricePer1kChars * chars) / 1000;
+    modal.confirm({
+      title: `Make the voice for shot ${shot.position}?`,
+      content: (
+        <>
+          <p style={{ margin: "0 0 8px" }}>
+            {chars} characters spoken by <strong>{narrator.label}</strong>:{" "}
+            <strong>≈ {formatUsd(price)}</strong>, charged to your fal.ai credits.
+            {shot.voice ? " The earlier voice-over of this shot is replaced." : ""}
+          </p>
+          <p style={{ margin: 0, fontSize: 13 }}>{text}</p>
+        </>
+      ),
+      okText: `Make the voice (≈ ${formatUsd(price)})`,
+      cancelText: "Cancel",
+      onOk: async () => {
+        await run(async () => {
+          // Save what was typed first, so the voice says exactly what is on screen.
+          if (planChanged(shot, draft)) {
+            replaceShot(await plan(shot, draft));
+          }
+          replaceShot(await makeShotVoice(videoId, shot.id));
+          refreshCredits();
+          message.success(`Voice for shot ${shot.position} is ready.`);
+        }, "Failed to make the voice.");
+      },
+    });
+  }
+
+  async function removeVoice(shot: Shot) {
+    await run(async () => {
+      await deleteShotVoice(videoId, shot.id);
+      replaceShot({ ...shot, voice: null });
+    }, "Failed to remove the voice-over.");
   }
 
   async function approve(shot: Shot, approved: boolean) {
@@ -487,6 +547,9 @@ export default function VideoEditor({
             onOpenTakes={() => setComparing(shot)}
             onUseNextAsEnd={(d) => void endOnNextPicture(shot, d)}
             onRemoveEnd={(d) => removeEndPicture(shot, d)}
+            narrator={narrator}
+            onMakeVoice={(d) => confirmMakeVoice(shot, d)}
+            onRemoveVoice={() => removeVoice(shot)}
             onGenerate={(d) => confirmGenerate(shot, d)}
             onMove={(dir) => void move(shot, dir)}
             onDelete={() => void remove(shot)}

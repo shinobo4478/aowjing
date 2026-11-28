@@ -145,6 +145,17 @@ type Setting struct {
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
+type ShotAudio struct {
+	ShotID      pgtype.UUID        `json:"shot_id"`
+	Voice       string             `json:"voice"`
+	Text        string             `json:"text"`
+	ContentType string             `json:"content_type"`
+	SizeBytes   int32              `json:"size_bytes"`
+	DurationMs  int32              `json:"duration_ms"`
+	Data        []byte             `json:"data"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
 type Video struct {
 	ID        pgtype.UUID        `json:"id"`
 	ProfileID pgtype.UUID        `json:"profile_id"`
@@ -163,6 +174,7 @@ type VideoShot struct {
 	PromptTh           string             `json:"prompt_th"`
 	PicturePromptTh    string             `json:"picture_prompt_th"`
 	EndPicturePromptTh string             `json:"end_picture_prompt_th"`
+	NarrationTh        string             `json:"narration_th"`
 	Seconds            int16              `json:"seconds"`
 	ImageUrl           string             `json:"image_url"`
 	ImageID            pgtype.UUID        `json:"image_id"`

@@ -745,6 +745,40 @@ voice speaks the SAME text, with an audio player per voice. Nothing is saved (fa
   Samples are not counted in the daily spend or the dashboard (like the Draft and translations), though fal
   credits drop.
 
+## Narration and the voice-over of a shot (built 2026-11-28)
+
+For clips with a narrator (the 2D educational ones): the clip is silent, the Thai narration is spoken by a TTS
+and joined in the editor. Order: write the narration → speak it → set the shot length from the audio → pictures
+→ clips (a clip's length fixes its price, so the audio comes first; a picture does not depend on it).
+- `video_shots.narration_th` (Thai, ≤ 1500 characters): what the narrator says over the shot. Plain Thai, no
+  English twin (ElevenLabs reads Thai directly); never sent to a picture or video model, so it never affects the
+  OK (approval). Saved with the rest of the plan (Save, or when the voice is made).
+- `shot_audio` (one row per shot, replaced when spoken again): the MP3 bytes in Postgres like pictures (the fal
+  link expires after at least 7 days; move to R2 when it exists), the voice key, the exact text spoken and
+  `duration_ms`. **The duration is approximate**: fal's ElevenLabs reply carries none, so it is worked out from the
+  size of the 128 kbps CONSTANT-bitrate MP3 we ask for (`output_format: mp3_44100_128`,
+  `generate.ApproxMP3DurationMs`, about ±0.1 s). MiniMax would return a real `duration_ms` (used when present).
+- **Narrator voice = a global setting** `narratorVoice` (a key from `studio/voices.go` or `custom:<name>`),
+  chosen with "ใช้เป็นเสียงพากย์" under a voice in Settings → Thai voice samples. It is global for now because
+  the per-profile choice needs the Profile columns of the 2D PR (look notes); a per-profile narrator is the next
+  small step. ElevenLabs' Default voices expire 2026-12-31 (see above), so the narrator is a setting, not code.
+- API: `POST /videos/{id}/shots/{shotId}/voice` (speaks the saved narration with the narrator; 422 without
+  narration or narrator; the daily limit is checked first, 402; returns the shot), `GET …/voice/audio` (the MP3),
+  `DELETE …/voice`. The shot DTO has `narrationTh` and `voice {voice, text, durationMs, sizeBytes, createdAt,
+  current}` (`current` = the narration is unchanged since the audio was made).
+- Screen (shot card): a Thai narration box with the characters and an ESTIMATE of the time
+  (`lib/narration.ts`, `SPEECH_CHARS_PER_SECOND = 11`, a guess to calibrate on real audio) and a warning when it
+  will not fit the shot; "สร้างเสียง" (confirms with the price, saves the plan first, replaces the old audio); a
+  player with the real length; "ตั้งความยาวช็อตเป็น N วินาที ตามเสียง" (the shortest length the video model takes that
+  holds the audio plus 0.5 s; not saved until Save); "ลบเสียง". `scripts/narration.smoke.mjs` checks the helpers.
+- Existing DBs need `ALTER TABLE video_shots ADD COLUMN narration_th text NOT NULL DEFAULT '';` and `CREATE TABLE
+  shot_audio …` (see `db/schema.sql`). Restart the api.
+- **Not done / unverified:** a real voice made from a narration (the first one also tests that fal returns an
+  https MP3 link that `FetchAudio` can read, and that the 128 kbps duration is right), the characters-per-second
+  guess, Draft writing the narration (an "Explainer" format is the next step), an audio link in "Clips for your
+  editor", and voices longer than ~1500 characters. Voice-over costs are not in the daily spend or the dashboard
+  (like the Draft and translations), though the daily limit is checked before speaking.
+
 ## Explicitly OUT of scope for Phase 2 (do not build yet)
 
 - TikTok / Instagram integration — after YouTube is solid

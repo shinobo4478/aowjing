@@ -100,6 +100,7 @@ SET approved = CASE
     prompt_th = sqlc.arg('prompt_th')::text,
     picture_prompt_th = sqlc.arg('picture_prompt_th')::text,
     end_picture_prompt_th = sqlc.arg('end_picture_prompt_th')::text,
+    narration_th = sqlc.arg('narration_th')::text,
     updated_at = now()
 WHERE id = $1
 RETURNING *;

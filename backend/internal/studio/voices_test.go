@@ -35,3 +35,31 @@ func TestVoiceCandidatesAreComplete(t *testing.T) {
 		t.Error("an unknown key must not be found")
 	}
 }
+
+func TestResolveVoice(t *testing.T) {
+	tests := []struct {
+		key     string
+		wantID  string // VoiceID of the answer, "" = not found
+		wantKey string
+	}{
+		{"eleven-v3-rachel", "Rachel", "eleven-v3-rachel"},
+		{"custom:Alice", "Alice", "custom:Alice"},
+		{"custom:21m00Tcm4TlvDq8ikWAM", "21m00Tcm4TlvDq8ikWAM", "custom:21m00Tcm4TlvDq8ikWAM"},
+		{"custom:", "", ""},
+		{"custom:bad;name", "", ""},
+		{"eleven-v3-aria", "", ""}, // removed after the owner's listening test
+		{"", "", ""},
+	}
+	for _, tt := range tests {
+		got, ok := ResolveVoice(tt.key)
+		if tt.wantID == "" {
+			if ok {
+				t.Errorf("ResolveVoice(%q) should not be found, got %+v", tt.key, got)
+			}
+			continue
+		}
+		if !ok || got.VoiceID != tt.wantID || got.Key != tt.wantKey {
+			t.Errorf("ResolveVoice(%q) = %+v, %v", tt.key, got, ok)
+		}
+	}
+}

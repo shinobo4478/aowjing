@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { App, Button, Card, Popconfirm, Space, Typography } from "antd";
+import { App, Button, Card, Input, Popconfirm, Space, Typography } from "antd";
 import SecondsField from "@/components/SecondsField";
 import Tally from "@/components/Tally";
-import { imageSrc } from "@/lib/api";
+import { imageSrc, shotVoiceSrc } from "@/lib/api";
 import { formatUsd } from "@/lib/format";
-import { hasThaiLetters, usePromptPair } from "@/lib/promptPair";
+import { estimateSpeechSeconds, secondsForAudio, speechChars } from "@/lib/narration";
+import { hasThaiLetters, usePromptPair, useTyped } from "@/lib/promptPair";
 import type { Shot } from "@/lib/types";
 import PromptPairField from "./PromptPairField";
 import { ZoomableImage } from "@/components/ZoomableImage";
@@ -25,6 +26,8 @@ export interface ShotDraft {
   /** What changes by the END picture (a pose or position only). */
   endPicturePrompt: string;
   endPicturePromptTh: string;
+  /** What the narrator says over this shot (Thai). Never sent to a model. */
+  narrationTh: string;
   seconds: number;
 }
 
@@ -49,6 +52,9 @@ export default function ShotCard({
   onChooseEnd,
   onUseNextAsEnd,
   onRemoveEnd,
+  narrator,
+  onMakeVoice,
+  onRemoveVoice,
   onGenerate,
   onMove,
   onDelete,
@@ -76,6 +82,11 @@ export default function ShotCard({
   onChooseEnd: (draft: ShotDraft) => void;
   onUseNextAsEnd: (draft: ShotDraft) => void;
   onRemoveEnd: (draft: ShotDraft) => Promise<void>;
+  /** The narrator voice chosen in Settings (null when none is) and what it costs. */
+  narrator: { label: string; pricePer1kChars: number } | null;
+  /** Speaks the narration (the screen confirms the price and saves it first). */
+  onMakeVoice: (draft: ShotDraft) => void;
+  onRemoveVoice: () => Promise<void>;
   onGenerate: (draft: ShotDraft) => void;
   onMove: (direction: -1 | 1) => void;
   onDelete: () => void;
@@ -89,6 +100,7 @@ export default function ShotCard({
   const picture = usePromptPair("picture", shot.picturePromptTh, shot.picturePrompt);
   const endPic = usePromptPair("endPicture", shot.endPicturePromptTh, shot.endPicturePrompt);
   const [seconds, setSeconds] = useState(shot.seconds);
+  const [narration, setNarration] = useTyped(shot.narrationTh);
   const translating = motion.busy || picture.busy || endPic.busy;
 
   const draft: ShotDraft = {
@@ -98,6 +110,7 @@ export default function ShotCard({
     picturePromptTh: picture.th,
     endPicturePrompt: endPic.en,
     endPicturePromptTh: endPic.th,
+    narrationTh: narration,
     seconds,
   };
   const dirty =
@@ -107,6 +120,7 @@ export default function ShotCard({
     picture.th.trim() !== shot.picturePromptTh ||
     endPic.en.trim() !== shot.endPicturePrompt ||
     endPic.th.trim() !== shot.endPicturePromptTh ||
+    narration.trim() !== shot.narrationTh ||
     seconds !== shot.seconds;
 
   /** The draft with every English prompt brought up to date: a Thai prompt that
@@ -128,6 +142,17 @@ export default function ShotCard({
     const d = await fresh();
     if (d) await fn(d);
   };
+
+  // How long the narration takes to say: the measured length of its audio when it
+  // has one that matches the text, else an estimate from the characters.
+  const speechCharsAll = [...narration.trim()].length;
+  const estimateSeconds =
+    shot.voice?.current && narration.trim() === shot.voice.text
+      ? shot.voice.durationMs / 1000
+      : estimateSpeechSeconds(narration);
+  const narrationTooLong = estimateSeconds > seconds;
+  // The clip length that holds the real audio, offered as one click.
+  const voiceFit = shot.voice ? secondsForAudio(secondsOptions, shot.voice.durationMs) : null;
 
   const hasPicture = shot.imageId !== "" || shot.imageUrl !== "";
   const pending = shot.latest?.status === "pending";
@@ -313,6 +338,99 @@ export default function ShotCard({
               maxRows={6}
             />
           )}
+          {/* The narration and its voice-over. The narration is plain Thai: the voice
+              reads it directly, so there is no English twin to keep. */}
+          <div style={{ marginTop: 12 }}>
+            <Typography.Text strong style={{ fontSize: 13 }}>
+              บทพากย์ · Narration
+            </Typography.Text>
+            <Typography.Text type="secondary" style={{ display: "block", fontSize: 12 }}>
+              สิ่งที่คนเล่าเรื่องพูดทับช็อตนี้ พิมพ์ไทยตรงๆ ไม่ส่งให้โมเดลภาพหรือคลิป ใช้สร้างเสียงเท่านั้น
+            </Typography.Text>
+            <Input.TextArea
+              value={narration}
+              onChange={(e) => setNarration(e.target.value)}
+              autoSize={{ minRows: 2, maxRows: 8 }}
+              maxLength={1500}
+              placeholder="เช่น หลายคนอ่านหนังสือรวดเดียวก่อนสอบ แต่สมองของเรากลับลืมเร็วกว่าที่คิด"
+              style={{ marginTop: 4 }}
+            />
+            <Typography.Text
+              type={narrationTooLong ? "danger" : "secondary"}
+              style={{ display: "block", fontSize: 12, marginTop: 2 }}
+            >
+              {speechChars(narration) === 0
+                ? "ยังไม่มีบทพากย์"
+                : `${speechChars(narration)} ตัวอักษร ≈ ${estimateSeconds.toFixed(1)} วินาที (ประมาณจากจำนวนตัวอักษร)`}
+              {narrationTooLong
+                ? ` · ยาวกว่าช็อต ${seconds} วินาที ย่อบทหรือเพิ่มความยาวช็อต`
+                : ""}
+            </Typography.Text>
+
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 6 }}>
+              <Button
+                size="small"
+                disabled={!narrator || narration.trim() === "" || busy || translating}
+                onClick={() => void onMakeVoice(draft)}
+              >
+                {shot.voice ? "สร้างเสียงใหม่" : "สร้างเสียง"}
+                {narrator && narration.trim() !== ""
+                  ? ` (≈ ${formatUsd((narrator.pricePer1kChars * speechCharsAll) / 1000)})`
+                  : ""}
+              </Button>
+              {narrator ? (
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  เสียง: {narrator.label}
+                </Typography.Text>
+              ) : (
+                <Typography.Text type="warning" style={{ fontSize: 12 }}>
+                  ยังไม่ได้เลือกเสียงพากย์ (Settings → Thai voice samples → “ใช้เป็นเสียงพากย์”)
+                </Typography.Text>
+              )}
+            </div>
+
+            {shot.voice && (
+              <div style={{ marginTop: 8 }}>
+                <audio
+                  controls
+                  preload="none"
+                  src={shotVoiceSrc(shot.videoId, shot.id, shot.voice.createdAt)}
+                  style={{ display: "block", width: "100%" }}
+                />
+                <Typography.Text
+                  type={shot.voice.current ? "secondary" : "warning"}
+                  style={{ fontSize: 12, display: "block", marginTop: 2 }}
+                >
+                  เสียงจริง {(shot.voice.durationMs / 1000).toFixed(1)} วินาที (±0.1)
+                  {shot.voice.current ? "" : " · บทเปลี่ยนไปหลังสร้างเสียงนี้ สร้างเสียงใหม่เพื่อให้ตรงกัน"}
+                </Typography.Text>
+                <Space size={8} wrap style={{ marginTop: 4 }}>
+                  {voiceFit && voiceFit.seconds !== seconds && (
+                    <Button size="small" onClick={() => setSeconds(voiceFit.seconds)}>
+                      ตั้งความยาวช็อตเป็น {voiceFit.seconds} วินาที ตามเสียง
+                    </Button>
+                  )}
+                  {voiceFit && !voiceFit.fits && (
+                    <Typography.Text type="danger" style={{ fontSize: 12 }}>
+                      เสียงยาวกว่าช็อตที่ยาวสุดของโมเดลนี้ ย่อบทพากย์
+                    </Typography.Text>
+                  )}
+                  <Popconfirm
+                    title="Remove this voice-over?"
+                    description="The narration text stays."
+                    okText="Remove"
+                    okButtonProps={{ danger: true }}
+                    onConfirm={() => void onRemoveVoice()}
+                  >
+                    <Button size="small" type="text" danger>
+                      ลบเสียง
+                    </Button>
+                  </Popconfirm>
+                </Space>
+              </div>
+            )}
+          </div>
+
           <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginTop: 8 }}>
             <Typography.Text type="secondary">Length</Typography.Text>
             <SecondsField options={secondsOptions} value={seconds} onChange={setSeconds} />
