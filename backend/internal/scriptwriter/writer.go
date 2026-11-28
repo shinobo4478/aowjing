@@ -157,6 +157,11 @@ func (fakeLLM) Complete(_ context.Context, req generate.LLMRequest) (generate.LL
 		return generate.LLMResult{Text: "คำแปลภาษาไทยจำลอง"}, nil
 	}
 
+	// A revision of one shot (see revise.go).
+	if strings.HasPrefix(req.Prompt, "Revise this one shot.") {
+		return generate.LLMResult{Text: `{"picturePrompt":"Fake revised picture prompt: a flat character stands on a flat scale, a stomach icon drawn on its belly.","picturePromptTh":"พรอมต์ภาพที่แก้แล้วจำลอง: ตัวการ์ตูนยืนบนตาชั่ง มีไอคอนกระเพาะที่ท้อง","endPicturePrompt":"","endPicturePromptTh":"","motionPrompt":"The food icon slides out along an arrow. Static camera, no zoom.","motionPromptTh":"ไอคอนอาหารเลื่อนออกตามลูกศร กล้องนิ่ง ไม่ซูม"}`}, nil
+	}
+
 	n := 3
 	if m := shotsLine.FindStringSubmatch(req.Prompt); m != nil {
 		n, _ = strconv.Atoi(m[1])
