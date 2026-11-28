@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { App, Button, Card, Input, Modal, Popconfirm, Space, Typography } from "antd";
 import SecondsField from "@/components/SecondsField";
 import Tally from "@/components/Tally";
@@ -60,6 +60,8 @@ export default function ShotCard({
   onGenerate,
   onMove,
   onDelete,
+  pendingRevise,
+  onPendingReviseDone,
 }: {
   shot: Shot;
   /** How many shots the video has, to disable moving the first/last. */
@@ -92,6 +94,10 @@ export default function ShotCard({
   onGenerate: (draft: ShotDraft) => void;
   onMove: (direction: -1 | 1) => void;
   onDelete: () => void;
+  /** Asks this card to open its "ให้ AI แก้ช็อตนี้" dialog with the instruction already typed
+   *  (from the AI review). `key` changes for each request, so the same text can be asked twice. */
+  pendingRevise?: { instruction: string; key: number } | null;
+  onPendingReviseDone?: () => void;
 }) {
   const { message } = App.useApp();
   // Each prompt is a Thai/English pair (see lib/promptPair.ts). They can also
@@ -116,6 +122,16 @@ export default function ShotCard({
     picture: [string, string];
     endPic: [string, string];
   } | null>(null);
+
+  // The AI review asked for this shot's dialog, with its suggestion typed in.
+  useEffect(() => {
+    if (!pendingRevise) return;
+    setInstruction(pendingRevise.instruction);
+    setReviseOpen(true);
+    onPendingReviseDone?.();
+    // Only a new request (its key) opens the dialog, not a re-render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingRevise?.key]);
 
   async function revise() {
     setRevising(true);

@@ -34,6 +34,7 @@ import {
 import { refreshCredits } from "../../CreditsBadge";
 import PictureModal, { type PictureChoice } from "./PictureModal";
 import ClipList from "./ClipList";
+import ReviewPanel from "./ReviewPanel";
 import ShotCard, { type ShotDraft } from "./ShotCard";
 import Storyboard, { isReadyToMake } from "./Storyboard";
 import TakesModal from "./TakesModal";
@@ -87,6 +88,8 @@ export default function VideoEditor({
   } | null>(null);
   // The shot whose takes are being compared.
   const [comparing, setComparing] = useState<Shot | null>(null);
+  // A fix suggested by the AI review: opens that shot's rewrite dialog, typed in.
+  const [pendingRevise, setPendingRevise] = useState<{ shotId: string; instruction: string; key: number } | null>(null);
   // The narrator voice chosen in Settings, with its label and price (null: none).
   const [narrator, setNarrator] = useState<{ label: string; pricePer1kChars: number } | null>(null);
 
@@ -534,10 +537,22 @@ export default function VideoEditor({
         onMakeApproved={confirmMakeApproved}
       />
 
+      <ReviewPanel
+        videoId={videoId}
+        shotCount={shots.length}
+        disabled={busy}
+        onFix={(shotId, instruction) => {
+          setPendingRevise({ shotId, instruction, key: Date.now() });
+          document.getElementById(`shot-${shotId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }}
+      />
+
       <Space orientation="vertical" size={16} style={{ width: "100%" }}>
         {shots.map((shot) => (
           <ShotCard
             key={shot.id}
+            pendingRevise={pendingRevise?.shotId === shot.id ? pendingRevise : null}
+            onPendingReviseDone={() => setPendingRevise(null)}
             shot={shot}
             count={shots.length}
             perSecond={perSecond}
