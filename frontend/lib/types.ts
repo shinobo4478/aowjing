@@ -18,11 +18,12 @@ export const providerShort = (v: string) =>
 /** How a profile's video clips look. Keep in sync with the recipes in
  *  backend/internal/studio — a new style is added there and here. Only used by
  *  profiles whose generator is fal. */
-export type VideoStyle = "3d" | "realistic";
+export type VideoStyle = "3d" | "realistic" | "2d";
 
 export const VIDEO_STYLE_OPTIONS: { value: VideoStyle; label: string }[] = [
   { value: "3d", label: "3D (Pixar-like)" },
   { value: "realistic", label: "Realistic (product / live action)" },
+  { value: "2d", label: "2D flat vector (educational)" },
 ];
 
 export const DEFAULT_VIDEO_STYLE: VideoStyle = "3d";
@@ -238,13 +239,14 @@ export interface ShotInput {
 }
 
 /** What a cast member is in a picture. Mirrors studio.CastRole. */
-export type CastRole = "hero" | "costar" | "prop" | "place";
+export type CastRole = "hero" | "costar" | "prop" | "place" | "style";
 
 export const CAST_ROLES: { value: CastRole; label: string; hint: string }[] = [
   { value: "hero", label: "พระเอก · Hero", hint: "ตัวเอกของช่อง คนหรือตัวละครเดิมในทุกคลิป" },
   { value: "costar", label: "ตัวประกอบ · Co-star", hint: "ตัวละครอื่นที่อยู่ในภาพด้วย เช่น อีกคน สัตว์เลี้ยง" },
   { value: "prop", label: "ของประกอบ · Prop", hint: "สิ่งของที่ต้องหน้าตาเหมือนเดิมทุกครั้ง" },
   { value: "place", label: "สถานที่ · Place", hint: "ฉากหรือสถานที่ที่ต้องคงไว้" },
+  { value: "style", label: "สไตล์ภาพ · Style", hint: "ภาพตัวอย่างลายเส้นและสีของช่อง (ใช้ลอกวิธีวาด ไม่ใช่เนื้อหา)" },
 ];
 
 /** One recurring character, object or place of a profile (the Cast tab), with

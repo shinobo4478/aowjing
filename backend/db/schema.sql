@@ -79,8 +79,9 @@ CREATE TABLE IF NOT EXISTS cast_members (
     id         uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
     profile_id uuid        NOT NULL REFERENCES profiles (id) ON DELETE CASCADE,
     -- hero = the lead character, costar = another character (person, animal),
-    -- prop = an object, place = a location.
-    role       text        NOT NULL CHECK (role IN ('hero', 'costar', 'prop', 'place')),
+    -- prop = an object, place = a location, style = an example frame of the
+    -- profile's drawing style (its line, colours; never its content).
+    role       text        NOT NULL CHECK (role IN ('hero', 'costar', 'prop', 'place', 'style')),
     name       text        NOT NULL,
     note       text        NOT NULL DEFAULT '',
     position   smallint    NOT NULL,

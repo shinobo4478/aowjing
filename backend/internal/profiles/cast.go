@@ -57,7 +57,7 @@ func (in *castInput) validate() map[string]string {
 	in.Note = strings.TrimSpace(in.Note)
 	errs := map[string]string{}
 	if !studio.ValidCastRole(in.Role) {
-		errs["role"] = "Choose hero, costar, prop or place."
+		errs["role"] = "Choose hero, costar, prop, place or style."
 	}
 	if in.Name == "" {
 		errs["name"] = "Give it a name."

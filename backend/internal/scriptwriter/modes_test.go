@@ -149,3 +149,24 @@ func TestBriefValidateModes(t *testing.T) {
 		})
 	}
 }
+
+func TestSystemForFlatStyleAndStyleReferences(t *testing.T) {
+	got := systemFor(Brief{VideoStyle: "2d"})
+	if !strings.Contains(got, "FLAT 2D EDUCATIONAL ANIMATION") {
+		t.Error("a 2d profile must get the flat rules")
+	}
+	if strings.Contains(systemFor(Brief{VideoStyle: "3d"}), "FLAT 2D") {
+		t.Error("other styles must not get the flat rules")
+	}
+	// A style reference is not a story character: with only that in the cast the
+	// writer is told nothing about a cast.
+	onlyStyle := Brief{VideoStyle: "2d", Cast: []CastNote{{Role: "style", Name: "Frame"}}}
+	if strings.Contains(systemFor(onlyStyle), "CAST:") || userCastBlock(onlyStyle.Cast) != "" {
+		t.Error("a style reference alone must not produce a cast section")
+	}
+	withHero := Brief{Cast: []CastNote{{Role: "style", Name: "Frame"}, {Role: "hero", Name: "Mo"}}}
+	block := userCastBlock(withHero.Cast)
+	if !strings.Contains(block, `hero: "Mo"`) || strings.Contains(block, "Frame") {
+		t.Errorf("the cast block should list the hero and hide the style reference:\n%s", block)
+	}
+}

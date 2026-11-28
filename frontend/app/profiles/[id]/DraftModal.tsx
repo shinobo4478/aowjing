@@ -123,6 +123,9 @@ function DraftForm({
       cancelled = true;
     };
   }, [profileId]);
+  // A style reference (an example frame of the drawing style) is not a character;
+  // the AI is not told about it.
+  const storyCast = cast.filter((m) => m.role !== "style");
   const chosenProduct = products?.find((p) => p.id === productId);
   const modeHint = MODE_OPTIONS.find((m) => m.value === mode)?.hint ?? "";
   const needsProduct = mode === "product" && !chosenProduct;
@@ -234,10 +237,10 @@ function DraftForm({
         </div>
       )}
 
-      {cast.length > 0 && (
+      {storyCast.length > 0 && (
         <Typography.Paragraph type="secondary" style={{ fontSize: 13 }}>
           AI รู้จักนักแสดงของช่องนี้:{" "}
-          {cast
+          {storyCast
             .map((m) => `${m.name} (${CAST_ROLES.find((r) => r.value === m.role)?.label.split(" · ")[0] ?? m.role})`)
             .join(", ")}{" "}
           และจะเขียนช็อตให้มีพวกเขาเมื่อเรื่องต้องการ ตอนสร้างภาพคุณยังเป็นคนติ๊กเองว่าใครอยู่ในภาพ

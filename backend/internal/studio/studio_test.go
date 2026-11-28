@@ -97,3 +97,25 @@ func TestRealisticKeepsProductsAsTheyAre(t *testing.T) {
 		t.Errorf("realistic pictures should not ask for a cinematic look: %q", r.KeyframeSuffix)
 	}
 }
+
+func TestStyle2DIsFlatAndStaysFlatInClips(t *testing.T) {
+	r := For("2d")
+	if r.Style != Style2D || !Valid("2d") {
+		t.Fatalf("2d must be a valid style, got %+v", r)
+	}
+	for name, s := range map[string]string{"KeyframeSuffix": r.KeyframeSuffix, "TextSuffix": r.TextSuffix} {
+		for _, want := range []string{"Flat 2D vector", "no gradients", "no shading", "No text or letters"} {
+			if !strings.Contains(s, want) {
+				t.Errorf("%s lacks %q: %s", name, want, s)
+			}
+		}
+	}
+	// Unlike realistic, a clip from a flat picture is still told to stay flat.
+	if !strings.Contains(r.ImageSuffix, "no 3D rotation") || !strings.Contains(r.ImageSuffix, "no shading") {
+		t.Errorf("2d ImageSuffix must keep the clip flat: %q", r.ImageSuffix)
+	}
+	// One look for every 2D profile: the palette lives in the recipe, once.
+	if !strings.Contains(r.KeyframeSuffix, "cream background") {
+		t.Errorf("the palette should be in the recipe: %q", r.KeyframeSuffix)
+	}
+}

@@ -690,6 +690,47 @@ shown as "Not connected"):** YouTube views/likes (the Data API `videos.list` sta
 `youtube.readonly` scope already granted — to be tried; watch time and revenue need `yt-analytics.readonly`, a new
 consent) and Shopee clicks/orders/commission (Phase 3 B).
 
+## The 2D style and Thai voice-over (2D built 2026-11-28; voice researched, not built)
+
+**2D = flat vector cartoon for educational clips, ONE look for every 2D profile** (owner, 2026-11-28:
+line work, colouring and the way of telling are the same everywhere). Where that lives:
+- `studio.Style2D` recipe (`studio.go`, `flatLook`): uniform medium navy outlines with rounded ends, solid
+  flat fills only, a limited palette (cream background, navy, teal, coral, sunny yellow, soft purple — the
+  owner's to replace), matte, simple geometric shapes, plain background, no gradients/shading/3D, no text
+  or letters. The clip wording (`ImageSuffix`, NOT empty unlike realistic) says shapes move like cut-outs and
+  nothing turns in 3D or changes perspective. Change it there and every 2D profile follows.
+- **Style reference picture:** a new cast role `style` (an example frame of the look). It is sent with
+  every picture request (ticked by default, like the hero), described as "the style reference (copy only
+  its drawing style, line weight and colours, never its content)" plus an instruction to draw in exactly
+  that style. A picture pins the look harder than words; upload the same frame to each 2D profile. The
+  Draft writer is not told about it (`storyCast`). Existing DBs need `ALTER TABLE cast_members DROP
+  CONSTRAINT cast_members_role_check, ADD CONSTRAINT cast_members_role_check CHECK (role IN ('hero',
+  'costar','prop','place','style'));`.
+- Draft: a `2d` profile gets `flatRules` (one visual idea per shot, diagram-like pictures, cut-out motion,
+  no words in pictures, a shot a narrator can speak over).
+- **Unverified:** that Kling keeps a flat picture flat in a clip (it tends to add depth/shading), that the
+  wording and a style frame hold the line and palette across shots and profiles; needs a real test
+  (about $1–3).
+
+**Thai voice-over — what is needed (research 2026-11-28, from the model pages):** clips stay silent
+(Kling's own audio is Chinese/English only); narration is added by a Thai TTS. Candidates and what the pages
+state: **fal MiniMax Speech-02 HD** (`fal-ai/minimax-tts/text-to-speech`, $0.10 per 1K characters; Thai is
+in `language_boost`, a recognition hint; returns `duration_ms`) and **Speech 2.8 Turbo**
+(`fal-ai/minimax/speech-2.8-turbo`, $0.06 per 1K; input field is `prompt`; `duration_ms`; `<#x#>` pauses);
+**fal ElevenLabs** Multilingual v2 and Eleven v3 ($0.10 per 1K; per-word `timestamps`; the fal pages do NOT
+list Thai, only a `language_code` that errors if unsupported — ElevenLabs' own site advertises Thai, so test
+it); **Azure Speech** th-TH (Premwadee, Niwat, Achara; MAI-Voice-2 HD voices in preview; price not readable
+from the page) and **Google Cloud TTS** th-TH (Standard, Neural2, Chirp 3 HD with ~30 voices; no SSML or rate
+in Chirp 3 HD; price not read). Not read: Botnoi (Thai-specific), OpenAI/Gemini TTS. fal-hosted options
+keep ONE key and one bill (Settings already holds it). Cost scale: a 30 s Thai narration is roughly 300–450
+characters, so a few cents on fal. **Plan:** (1) per-shot narration text (Thai, `narration_th`) — it, not the
+picture, sets the shot length (estimate from characters, calibrated on real audio; warn when it will not fit);
+(2) a "voice samples" step that speaks the SAME Thai paragraph with each candidate so the owner picks by
+listening (cents); (3) the chosen TTS behind a `Voice` interface in `internal/` like the generators, audio
+per shot (decide where it is kept: Postgres like pictures, or R2), a play/download list for the editor;
+(4) an "Explainer" Draft format that writes the narration (hook question, 2–3 points, recap) with the
+shots. Joining audio and clips stays manual in CapCut (ffmpeg would be a new dependency: ask first).
+
 ## Picture zoom and small hints (built 2026-11-28)
 
 AI pictures were too small to judge. `components/ZoomableImage.tsx` wraps antd's `Image` preview (full

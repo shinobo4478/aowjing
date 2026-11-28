@@ -25,6 +25,10 @@ const (
 	// mode comes later and may split this recipe.
 	StyleRealistic Style = "realistic"
 
+	// Style2D is the flat vector cartoon of the owner's educational clips: one
+	// look (line, colour, way of telling) shared by every 2D profile.
+	Style2D Style = "2d"
+
 	// DefaultStyle is what a profile gets when none is given.
 	DefaultStyle = Style3D
 )
@@ -83,7 +87,26 @@ var recipes = []Recipe{
 		TextSuffix:     "Photorealistic, natural light, shot on a phone camera, realistic motion.",
 		KeyframeSuffix: "Photorealistic photograph, natural light, realistic materials and skin, no illustration, no 3D render look.",
 	},
+	{
+		Style: Style2D,
+		Label: "2D flat vector (educational)",
+
+		// ONE look for every 2D profile, so this is the single place that defines
+		// the line, the colour and the way of drawing; change it here and every
+		// profile follows. A first guess, not tried on real output yet: AI pictures
+		// drift toward 3D shading and clips tend to add depth, so the wording is
+		// strict, and a profile's "style" cast picture (an example frame) pins the
+		// look harder than words can. The palette is the owner's to replace.
+		// Unlike realistic, ImageSuffix is NOT empty: a clip made from a flat
+		// picture still needs telling to stay flat and to move like cut-outs.
+		TextSuffix:     "Flat 2D vector animation in one consistent style: " + flatLook + " Shapes slide, bounce and scale smoothly like cut-out animation.",
+		ImageSuffix:    "Flat 2D vector animation: shapes slide, bounce and scale smoothly like cut-out animation. Keep the drawing flat, with the same outlines and solid colours; no 3D rotation, no shading, no change of perspective.",
+		KeyframeSuffix: "Flat 2D vector illustration in one consistent style: " + flatLook,
+	},
 }
+
+// flatLook is the drawing rules of the 2D style: line, colour, shapes, background.
+const flatLook = "uniform medium-weight dark navy outlines with rounded ends, solid flat colour fills only, a limited palette (cream background, navy, teal, coral, sunny yellow, soft purple), matte and two-dimensional, simple geometric shapes, a plain uncluttered background, no gradients, no shading, no 3D look. No text or letters anywhere in the picture."
 
 // Recipes lists every style in display order. The slice is a copy.
 func Recipes() []Recipe { return append([]Recipe(nil), recipes...) }

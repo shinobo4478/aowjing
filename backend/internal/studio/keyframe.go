@@ -104,12 +104,15 @@ const (
 	RoleProduct CastRole = "product"
 	// RolePlace is a location to keep.
 	RolePlace CastRole = "place"
+	// RoleStyle is an example frame of the profile's drawing style: the picture
+	// model copies its line work, colours and way of drawing, never its content.
+	RoleStyle CastRole = "style"
 )
 
 // ValidCastRole reports whether s is a known role.
 func ValidCastRole(s string) bool {
 	switch CastRole(s) {
-	case RoleHero, RoleCostar, RoleProp, RolePlace:
+	case RoleHero, RoleCostar, RoleProp, RolePlace, RoleStyle:
 		return true
 	}
 	return false
@@ -156,6 +159,8 @@ func rolePhrase(r CastRole) string {
 		return "the product"
 	case RolePlace:
 		return "the location"
+	case RoleStyle:
+		return "the style reference (copy only its drawing style, line weight and colours, never its content)"
 	}
 	return "a subject"
 }
@@ -180,7 +185,11 @@ const keepSceneSameCameraInstruction = "Use the first reference picture as the e
 // keepCastInstruction closes the description of the cast pictures: each member
 // must come out as in its own pictures and must not borrow another's looks. A
 // starting guess; whether the models hold a product's logo is being tested.
-const keepCastInstruction = "Each of them must look exactly as in its own picture(s): the same face, hair, body, clothes, colours, shape, materials, logo and text in the same place, none redrawn or restyled, and never mixing one's looks into another."
+const keepCastInstruction = "Every character, object, product or place named above must look exactly as in its own picture(s): the same face, hair, body, clothes, colours, shape, materials, logo and text in the same place, none redrawn or restyled, and never mixing one's looks into another."
+
+// keepStyleInstruction closes the description when a style reference is among
+// the pictures: draw the new picture the way that frame is drawn.
+const keepStyleInstruction = "Draw the new picture in exactly the drawing style of the style reference: the same outline weight and colour, the same flat colour fills and palette, and the same level of simplicity."
 
 // castInstruction names the cast pictures, which come after sceneRefs scene
 // pictures: "Picture 3 is "Name", the lead character (note). Pictures 4-5 are …".
@@ -188,9 +197,15 @@ const keepCastInstruction = "Each of them must look exactly as in its own pictur
 func castInstruction(sceneRefs int, cast []CastRef) string {
 	var parts []string
 	next := sceneRefs + 1
+	hasStyle, hasSubject := false, false
 	for _, c := range cast {
 		if c.Pictures < 1 {
 			continue
+		}
+		if c.Role == RoleStyle {
+			hasStyle = true
+		} else {
+			hasSubject = true
 		}
 		var which, verb string
 		if c.Pictures == 1 {
@@ -208,7 +223,14 @@ func castInstruction(sceneRefs int, cast []CastRef) string {
 	if len(parts) == 0 {
 		return ""
 	}
-	return strings.Join(parts, " ") + " " + keepCastInstruction
+	out := strings.Join(parts, " ")
+	if hasSubject {
+		out += " " + keepCastInstruction
+	}
+	if hasStyle {
+		out += " " + keepStyleInstruction
+	}
+	return out
 }
 
 // KeyframePrompt is the prompt to send for a keyframe: the owner's scene
