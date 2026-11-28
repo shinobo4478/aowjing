@@ -22,3 +22,24 @@ func TestNonNilUUIDs(t *testing.T) {
 		t.Errorf("ids must pass through unchanged, got %#v", got)
 	}
 }
+
+func TestContextRE(t *testing.T) {
+	const id = "0a1b2c3d-4e5f-6789-abcd-ef0123456789"
+	cases := []struct {
+		in   string
+		want bool
+	}{
+		{"shot:" + id + ":start", true},
+		{"shot:" + id + ":end", true},
+		{"", false}, // an empty context is handled by the caller, not matched
+		{"shot:" + id + ":middle", false},
+		{"shot:not-a-uuid:start", false},
+		{"shot:" + id + ":start%", false},
+		{"x shot:" + id + ":start", false},
+	}
+	for _, c := range cases {
+		if got := contextRE.MatchString(c.in); got != c.want {
+			t.Errorf("contextRE(%q) = %v, want %v", c.in, got, c.want)
+		}
+	}
+}

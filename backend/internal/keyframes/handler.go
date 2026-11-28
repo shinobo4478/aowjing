@@ -12,6 +12,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -52,6 +53,7 @@ func (h *Handler) Routes() http.Handler {
 	r := chi.NewRouter()
 	r.Get("/models", h.models)
 	r.Post("/", h.create)
+	r.Get("/latest", h.latest) // before /{id}, which would take "latest" as an id
 	r.Get("/{id}", h.get)
 	r.Delete("/{id}", h.delete)
 	return r
@@ -103,6 +105,11 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		// camera, room and everything but the pose fixed: for an END picture, since a
 		// clip morphs whatever differs between its first and last picture.
 		SameCamera bool `json:"sameCamera"`
+		// Context says what the pictures are for ("shot:<id>:start" or ":end"). The
+		// request is then kept after the dialog closes, replaces the earlier request
+		// for the same place, and is shown again when the dialog is reopened. Empty
+		// = thrown away when the dialog closes (the Generate dialog).
+		Context string `json:"context"`
 	}
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
@@ -127,6 +134,11 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	}
 	if profile.Provider != "fal" {
 		writeFieldError(w, "profileId", "Keyframe pictures are for fal.ai video profiles; this profile uses "+profile.Provider+".")
+		return
+	}
+
+	if body.Context != "" && !contextRE.MatchString(body.Context) {
+		writeFieldError(w, "context", "Invalid context.")
 		return
 	}
 
@@ -185,12 +197,20 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		// request with no scene or cast picture would be refused by the database.
 		ExtraImageIds:  nonNilUUIDs(sceneIDs),
 		CastImageIds:   nonNilUUIDs(castImageIDs),
+		Context:        body.Context,
 	})
 	if err != nil {
 		log.Printf("keyframes: saving the request: %v", err)
 		writeError(w, http.StatusInternalServerError, "Failed to save the request.")
 		return
 	}
+	// The new request replaces the earlier ones kept for the same place, and requests
+	// of shots that were deleted are swept away. Failures only leave stray pictures
+	// behind, so they are logged and do not fail the request.
+	if body.Context != "" {
+		h.discardOlder(r.Context(), profileID, body.Context, row.ID)
+	}
+	h.sweepOrphans(r.Context())
 
 	if err := h.enq.EnqueueKeyframeRun(r.Context(), pgconv.UUIDString(row.ID)); err != nil {
 		// Nothing will process the row: mark it failed so the screen says why
@@ -399,13 +419,7 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "Invalid keyframe id.")
 		return
 	}
-	// Look first: the picture ids are gone once the request is deleted.
-	imgs, err := h.q.ListKeyframeImages(r.Context(), id)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to delete the request.")
-		return
-	}
-	n, err := h.q.DeleteKeyframe(r.Context(), id)
+	n, err := h.discard(r.Context(), id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to delete the request.")
 		return
@@ -414,12 +428,96 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "Keyframe request not found.")
 		return
 	}
-	// A failure here only leaves a stray picture behind, so it does not fail
-	// the delete.
-	for _, im := range imgs {
-		_ = h.q.DeleteImageIfUnused(r.Context(), im.ImageID)
-	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// contextRE is what a context may look like: "shot:<uuid>:start" or ":end".
+var contextRE = regexp.MustCompile(`^shot:[0-9a-f-]{36}:(start|end)$`)
+
+// discard deletes a request and then every picture of it that nothing else
+// uses; it returns how many requests were deleted (0 = there was none).
+func (h *Handler) discard(ctx context.Context, id pgtype.UUID) (int64, error) {
+	// Look first: the picture ids are gone once the request is deleted.
+	imgs, err := h.q.ListKeyframeImages(ctx, id)
+	if err != nil {
+		return 0, err
+	}
+	n, err := h.q.DeleteKeyframe(ctx, id)
+	if err != nil || n == 0 {
+		return n, err
+	}
+	// A failure here only leaves a stray picture behind, so it is not returned.
+	for _, im := range imgs {
+		_ = h.q.DeleteImageIfUnused(ctx, im.ImageID)
+	}
+	return n, nil
+}
+
+// discardOlder drops the earlier requests kept for the same place as keep.
+func (h *Handler) discardOlder(ctx context.Context, profileID pgtype.UUID, kctx string, keep pgtype.UUID) {
+	ids, err := h.q.ListOlderKeyframesByContext(ctx, sqlc.ListOlderKeyframesByContextParams{
+		ProfileID: profileID, Context: kctx, ID: keep,
+	})
+	if err != nil {
+		log.Printf("keyframes: listing the older requests: %v", err)
+		return
+	}
+	for _, id := range ids {
+		if _, err := h.discard(ctx, id); err != nil {
+			log.Printf("keyframes: discarding an older request: %v", err)
+		}
+	}
+}
+
+// sweepOrphans drops kept requests whose shot has been deleted.
+func (h *Handler) sweepOrphans(ctx context.Context) {
+	ids, err := h.q.ListOrphanKeyframes(ctx)
+	if err != nil {
+		log.Printf("keyframes: listing the orphan requests: %v", err)
+		return
+	}
+	for _, id := range ids {
+		if _, err := h.discard(ctx, id); err != nil {
+			log.Printf("keyframes: sweeping an orphan request: %v", err)
+		}
+	}
+}
+
+// latest returns the newest request kept for a place (?profileId=…&context=…), or
+// {"keyframe": null} when there is none, so reopening the dialog shows the
+// pictures made last time.
+func (h *Handler) latest(w http.ResponseWriter, r *http.Request) {
+	profileID, err := pgconv.ParseUUID(r.URL.Query().Get("profileId"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "A valid profileId is required.")
+		return
+	}
+	kctx := r.URL.Query().Get("context")
+	if !contextRE.MatchString(kctx) {
+		writeError(w, http.StatusBadRequest, "A valid context is required.")
+		return
+	}
+	row, err := h.q.GetLatestKeyframeByContext(r.Context(), sqlc.GetLatestKeyframeByContextParams{
+		ProfileID: profileID, Context: kctx,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		writeJSON(w, http.StatusOK, map[string]any{"keyframe": nil})
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to load the request.")
+		return
+	}
+	imgs, err := h.q.ListKeyframeImages(r.Context(), row.ID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to load the pictures.")
+		return
+	}
+	ids := make([]pgtype.UUID, len(imgs))
+	for i, im := range imgs {
+		ids[i] = im.ImageID
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"keyframe": toDTO(row, ids)})
 }
 
 func writeJSON(w http.ResponseWriter, code int, v any) {

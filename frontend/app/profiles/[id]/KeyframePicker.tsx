@@ -8,6 +8,7 @@ import {
   deleteKeyframe,
   getKeyframe,
   getKeyframeModels,
+  getLatestKeyframe,
   imageSrc,
   listCast,
   listPickableProducts,
@@ -33,9 +34,11 @@ const MAX_PICTURE_PRODUCTS = 2;
  * model and how many candidates, then pick one. The profile's reference
  * pictures go along (unless switched off) so the character stays the same.
  *
- * `value` is the picked picture's id ("" = none yet). Every candidate that no
- * clip uses is discarded when this goes away (the dialog closes), so the
- * unpicked ones do not pile up in the database.
+ * `value` is the picked picture's id ("" = none yet). Without a `context` every
+ * candidate that no clip uses is discarded when this goes away (the dialog
+ * closes), so the unpicked ones do not pile up in the database. With a `context`
+ * (a shot's start or end picture) the latest request is kept and shown again
+ * when the dialog reopens; only one is kept per place, a new request replaces it.
  */
 export default function KeyframePicker({
   profileId,
@@ -45,6 +48,7 @@ export default function KeyframePicker({
   sameCamera = false,
   initialPrompt,
   onPromptChange,
+  context,
 }: {
   profileId: string;
   value: string;
@@ -62,6 +66,11 @@ export default function KeyframePicker({
   /** Called whenever either text changes (typing or a translation), so the
    *  caller can keep both with the shot. */
   onPromptChange?: (prompt: PromptTexts) => void;
+  /** What the pictures are for ("shot:<id>:start" / ":end"). With it the latest
+   *  request is KEPT when the dialog closes and shown again when it reopens (a
+   *  new request replaces it); without it (the Generate dialog) the request and
+   *  its unpicked pictures are thrown away on close. */
+  context?: string;
 }) {
   const { message, modal } = App.useApp();
   const [info, setInfo] = useState<KeyframeModels | null>(null);
@@ -123,11 +132,32 @@ export default function KeyframePicker({
   }, [keyframe]);
   useEffect(
     () => () => {
+      if (context) return; // kept for the next time the dialog opens
       const id = keyframeIdRef.current;
       if (id) void deleteKeyframe(id).catch(() => {});
     },
-    [],
+    [context],
   );
+
+  // Reopened: show the pictures made last time for this place (if still pending,
+  // the polling below picks it up).
+  const [restored, setRestored] = useState(false);
+  useEffect(() => {
+    if (!context) return;
+    let cancelled = false;
+    getLatestKeyframe(profileId, context)
+      .then((k) => {
+        if (cancelled || !k) return;
+        setKeyframe((cur) => cur ?? k);
+        setRestored(true);
+      })
+      .catch(() => {
+        /* nothing to show; the owner can make new pictures */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [profileId, context]);
 
   useEffect(() => {
     let cancelled = false;
@@ -261,7 +291,9 @@ export default function KeyframePicker({
     try {
       // A new request replaces the old one; drop the old pictures (the ones no
       // clip uses) so they do not pile up.
-      if (keyframe) void deleteKeyframe(keyframe.id).catch(() => {});
+      // (With a context the server drops the earlier request of that place itself.)
+      if (keyframe && !context) void deleteKeyframe(keyframe.id).catch(() => {});
+      setRestored(false);
       onChange("");
       setKeyframe(
         await createKeyframe({
@@ -273,6 +305,7 @@ export default function KeyframePicker({
           productPictureIds: tickedProductPictures.map((x) => x.imageId),
           sceneImageIds: sceneIds,
           sameCamera: sameCamera && sceneIds.length > 0,
+          context,
         }),
       );
     } catch (err) {
@@ -496,6 +529,12 @@ export default function KeyframePicker({
       {keyframe?.status === "succeeded" && (
         <div style={{ marginTop: 12 }}>
           <Typography.Text>Pick the one to start the clip from:</Typography.Text>
+          {restored && (
+            <Typography.Text type="secondary" style={{ display: "block", fontSize: 12 }}>
+              รูปที่สร้างไว้ครั้งก่อน (สร้างเมื่อ {new Date(keyframe.createdAt).toLocaleString("th-TH")}) ยังไม่เสียเงินซ้ำ ·
+              กด Make new pictures เพื่อแทนที่ด้วยชุดใหม่
+            </Typography.Text>
+          )}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
             {keyframe.imageIds.map((id) => {
               const selected = id === value;

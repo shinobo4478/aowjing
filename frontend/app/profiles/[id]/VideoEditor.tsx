@@ -591,6 +591,7 @@ export default function VideoEditor({
         open={choosing !== null}
         profileId={profileId}
         end={choosing?.end ?? false}
+        context={choosing ? `shot:${choosing.shot.id}:${choosing.end ? "end" : "start"}` : undefined}
         initialPrompt={
           choosing
             ? choosing.end

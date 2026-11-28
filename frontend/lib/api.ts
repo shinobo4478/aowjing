@@ -317,11 +317,22 @@ export function createKeyframe(input: {
   /** With scene pictures: keep the camera, room and everything but the pose
    *  fixed (for an END picture, since a clip morphs whatever differs). */
   sameCamera?: boolean;
+  /** What the pictures are for ("shot:<id>:start" or ":end"): the request is then
+   *  kept after the dialog closes and found again by getLatestKeyframe. */
+  context?: string;
 }) {
   return request<{ keyframe: Keyframe }>("/keyframes", {
     method: "POST",
     body: JSON.stringify(input),
   }).then((r) => r.keyframe);
+}
+
+/** The newest request kept for a place (see `context` above), or null. */
+export function getLatestKeyframe(profileId: string, context: string) {
+  const q = new URLSearchParams({ profileId, context });
+  return request<{ keyframe: Keyframe | null }>(`/keyframes/latest?${q}`).then(
+    (r) => r.keyframe,
+  );
 }
 
 export function getKeyframe(id: string) {
