@@ -572,7 +572,7 @@ captions added in the editor while voice-over is on hold).
   what a real Film draft got wrong, to fix in the system prompt and a linter:**
   1. the scene line carried camera framing ("A wide view … showing the full court") and a style phrase;
      it must say only the place (and it is copied in front of EVERY shot's picture prompt, so a fix means
-     editing every shot — storing the scene once on the video is a to-do);
+     editing every shot — now done: the scene is kept once on the video, see "The scene is kept once on the video");
   2. role words ("costar", "lead character") in clip (motion) prompts — the clip model sees only the
      start picture and the text, so use a plain noun ("the person", "the player"); role words belong only
      in picture prompts, where the picture step names the reference pictures with the same words;
@@ -685,6 +685,27 @@ against the source by eye) and what a long source adds to the cost (input tokens
   A profile's tabs are now Generations, Videos, Prompt templates, Look, Channels, and Generations is the default.
 - No schema change for any of this.
 
+## The scene is kept once on the video (built 2026-11-29)
+
+Before, Draft copied the scene sentence in front of EVERY shot's picture prompt, so one stray object in it (the bathroom
+scale) sat in every shot and fixing it meant editing every shot. Now:
+- `videos.scene` / `scene_th` (English for the models, Thai for the owner). Draft stores the scene there, and a shot's
+  `picture_prompt` / `picture_prompt_th` hold only what THAT shot's picture shows. `scriptwriter.Draft` has `Scene` and
+  `SceneTh`; the parser refuses a scene with Thai letters (the English fields hold none).
+- **The scene is joined at the moment pictures are made:** the picture dialog puts `video.scene` in front of a STARTING
+  picture's description (`KeyframePicker` prop `scenePrefix`; the confirm shows the joined English). An END picture is not
+  prefixed (it is made from the starting picture, only the pose changes). `POST /keyframes` is unchanged: it receives the joined text.
+- **Edit it in one place:** a "ฉาก · Scene" box above the shot cards (`SceneBox.tsx`: Thai + English like a prompt, Save scene);
+  `PUT /videos/{id}/scene {scene, sceneTh}` (English may not hold Thai letters; ≤ 600 characters). Changing it affects pictures made
+  AFTER; pictures already made stay.
+- "ให้ AI แก้ช็อตนี้" is told the scene apart ("do not repeat it") when the video has one; without one it behaves as before.
+- **Older videos** (made before this) have an empty scene and their shots keep the scene inside their picture prompts; nothing
+  is migrated, they work exactly as before and the Scene box says so.
+- Existing DBs need `ALTER TABLE videos ADD COLUMN scene text NOT NULL DEFAULT '', ADD COLUMN scene_th text NOT NULL DEFAULT '';`
+  and the api restarted. **Verified:** unit tests (parser, revise prompt, Thai-scene refusal) and, on the fake model, a draft whose
+  scene shows in the Scene box while the shots' picture prompts hold no scene, and a picture confirm that shows scene + shot prompt.
+  Not tried on a real model; the "ตรวจด้วย AI" reviewer (its own PR) does not yet know the scene is apart: update it when both are merged.
+
 ## Dashboard (built 2026-11-27)
 
 Two screens read `GET /dashboard?tz=<IANA zone>` (`internal/dashboard`, queries in `db/query/dashboard.sql`):
@@ -771,7 +792,7 @@ weight), draw the icons ON the character, which stays the main subject, with arr
 the end picture (the starting picture is the moment before the action). Affects new drafts only: shots already drafted keep
 their scene sentence (edit it out, or use "แก้ช็อตนี้ด้วย AI" once built). The ⚠ on negatives in a picture prompt
 (`promptLint`) already covered the scene sentence, since the scene is part of the stored picture prompt. **Unverified on a real
-model:** that it follows the new rules; the scene is still stored per shot, not once on the video (still a to-do).
+model:** that it follows the new rules; drafts made after "The scene is kept once on the video" keep the scene apart (older shots still carry it in their picture prompts).
 
 ## Picture zoom and small hints (built 2026-11-28)
 

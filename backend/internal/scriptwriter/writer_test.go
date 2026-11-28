@@ -27,9 +27,9 @@ func TestParse(t *testing.T) {
 				if d.Title != "The bag drop" || len(d.Shots) != 2 {
 					t.Fatalf("got %+v", d)
 				}
-				// The scene is put in front of every picture prompt.
-				if d.Shots[0].PicturePrompt != "A sunny room. Close-up of the cat." {
-					t.Errorf("picture prompt = %q", d.Shots[0].PicturePrompt)
+				// The scene is returned once for the video to keep; it is NOT put in front of the shot.
+				if d.Shots[0].PicturePrompt != "Close-up of the cat." || d.Scene != "A sunny room." {
+					t.Errorf("picture prompt = %q, scene %q", d.Shots[0].PicturePrompt, d.Scene)
 				}
 				// The motion prompt is left as written, and every shot gets the asked length.
 				if d.Shots[1].MotionPrompt != "The cat pounces. Static camera, no zoom." || d.Shots[1].Seconds != 4 {
@@ -287,5 +287,12 @@ func TestSourceMaterial(t *testing.T) {
 	// No source, no block: a draft from the topic alone is asked exactly as before.
 	if strings.Contains(userPrompt(Brief{Topic: "x y z", Shots: 3, Seconds: 6}), "SOURCE MATERIAL") {
 		t.Error("the source block must be absent without a source")
+	}
+}
+
+func TestParseRefusesAThaiScene(t *testing.T) {
+	raw := `{"title":"t","scene":"ห้องที่แดดส่อง","shots":[{"picturePrompt":"a","motionPrompt":"m"}]}`
+	if _, err := parse(raw, 1, 4); err == nil || !strings.Contains(err.Error(), "scene contains Thai") {
+		t.Errorf("a Thai scene must be refused (the English fields hold no Thai): %v", err)
 	}
 }

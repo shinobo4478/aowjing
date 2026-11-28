@@ -1,6 +1,6 @@
 -- name: CreateVideo :one
-INSERT INTO videos (profile_id, title)
-VALUES ($1, $2)
+INSERT INTO videos (profile_id, title, scene, scene_th)
+VALUES ($1, $2, $3, $4)
 RETURNING *;
 
 -- name: GetVideo :one
@@ -20,6 +20,14 @@ ORDER BY v.created_at DESC;
 -- name: UpdateVideoTitle :one
 UPDATE videos
 SET title = $2,
+    updated_at = now()
+WHERE id = $1
+RETURNING *;
+
+-- name: UpdateVideoScene :one
+UPDATE videos
+SET scene = $2,
+    scene_th = $3,
     updated_at = now()
 WHERE id = $1
 RETURNING *;

@@ -49,6 +49,7 @@ export default function KeyframePicker({
   initialPrompt,
   onPromptChange,
   context,
+  scenePrefix,
 }: {
   profileId: string;
   value: string;
@@ -71,6 +72,10 @@ export default function KeyframePicker({
    *  new request replaces it); without it (the Generate dialog) the request and
    *  its unpicked pictures are thrown away on close. */
   context?: string;
+  /** The video's scene (English), put in front of the description when the pictures
+   *  are made, so every shot of the video describes the same place. It is not part of
+   *  what the owner types here. */
+  scenePrefix?: string;
 }) {
   const { message, modal } = App.useApp();
   const [info, setInfo] = useState<KeyframeModels | null>(null);
@@ -255,6 +260,8 @@ export default function KeyframePicker({
       message.error("The English box contains Thai. Press “แปลเป็นอังกฤษ” first.");
       return;
     }
+    // The scene (kept once on the video) goes in front of this shot's own description.
+    const full = scenePrefix?.trim() ? `${scenePrefix.trim()} ${english.trim()}` : english;
     const total = chosenModel.priceUsd * count;
     modal.confirm({
       title: `Make ${count} picture${count === 1 ? "" : "s"}?`,
@@ -265,7 +272,7 @@ export default function KeyframePicker({
             <strong>{formatUsd(total)}</strong>, charged to your fal.ai credits.
           </p>
           <p style={{ margin: "0 0 8px", fontSize: 13 }}>
-            <strong>English sent to the AI:</strong> {english}
+            <strong>English sent to the AI:</strong> {full}
           </p>
           <p style={{ margin: 0 }}>
             {sceneIds.length > 0
@@ -282,7 +289,7 @@ export default function KeyframePicker({
       ),
       okText: `Make pictures (≈ ${formatUsd(total)})`,
       cancelText: "Cancel",
-      onOk: () => make(english),
+      onOk: () => make(full),
     });
   }
 

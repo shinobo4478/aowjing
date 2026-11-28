@@ -445,6 +445,14 @@ export function renameVideo(id: string, title: string) {
   }).then((r) => r.video);
 }
 
+/** Replaces the video's scene (English for the models, Thai for the owner). */
+export function setVideoScene(id: string, scene: string, sceneTh: string) {
+  return request<{ video: Video }>(`/videos/${id}/scene`, {
+    method: "PUT",
+    body: JSON.stringify({ scene, sceneTh }),
+  }).then((r) => r.video);
+}
+
 /** Deletes the video and its shots; the clips already made stay as ordinary
  *  clips of the profile. */
 export function deleteVideo(id: string) {

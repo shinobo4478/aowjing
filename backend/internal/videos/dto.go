@@ -13,8 +13,12 @@ type videoDTO struct {
 	Title        string `json:"title"`
 	ShotCount    int    `json:"shotCount"`
 	TotalSeconds int    `json:"totalSeconds"`
-	CreatedAt    string `json:"createdAt"`
-	UpdatedAt    string `json:"updatedAt"`
+	// Scene (English) and SceneTh: the place every shot happens in, put in front of the
+	// picture prompt of each shot when its picture is made. "" on older videos.
+	Scene     string `json:"scene"`
+	SceneTh   string `json:"sceneTh"`
+	CreatedAt string `json:"createdAt"`
+	UpdatedAt string `json:"updatedAt"`
 }
 
 // attemptDTO is the newest attempt at a shot (a row of generations).
@@ -43,11 +47,11 @@ type shotDTO struct {
 	EndPicturePromptTh string `json:"endPicturePromptTh"`
 	// NarrationTh is what the narrator says over the shot, in Thai; Voice is the
 	// voice-over made from it (nil when none has been made).
-	NarrationTh string     `json:"narrationTh"`
+	NarrationTh string    `json:"narrationTh"`
 	Voice       *voiceDTO `json:"voice"`
-	Seconds            int    `json:"seconds"`
-	ImageURL           string `json:"imageUrl"`
-	ImageID            string `json:"imageId"`
+	Seconds     int       `json:"seconds"`
+	ImageURL    string    `json:"imageUrl"`
+	ImageID     string    `json:"imageId"`
 	// EndImageID is the picture the clip should end on, "" if none.
 	EndImageID string `json:"endImageId"`
 	// Approved: the owner OKed this plan on the storyboard, so it may be made in
@@ -68,6 +72,8 @@ func toVideoDTO(v sqlc.Video, shotCount, totalSeconds int) videoDTO {
 		ID:           pgconv.UUIDString(v.ID),
 		ProfileID:    pgconv.UUIDString(v.ProfileID),
 		Title:        v.Title,
+		Scene:        v.Scene,
+		SceneTh:      v.SceneTh,
 		ShotCount:    shotCount,
 		TotalSeconds: totalSeconds,
 		CreatedAt:    pgconv.TimeString(v.CreatedAt),

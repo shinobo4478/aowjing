@@ -28,11 +28,15 @@ export default function PictureModal({
   end = false,
   initialPrompt = { english: "", thai: "" },
   context,
+  scenePrefix,
   onClose,
   onPick,
 }: {
   open: boolean;
   profileId: string;
+  /** The video's scene (English): put in front of the picture prompt of a STARTING
+   *  picture when it is made ("" = none, as on older videos). */
+  scenePrefix?: string;
   /** What the pictures are for ("shot:<id>:start" / ":end"): the pictures made
    *  here are kept and shown again when the dialog reopens for the same place. */
   context?: string;
@@ -67,6 +71,7 @@ export default function PictureModal({
           end={end}
           initialPrompt={initialPrompt}
           context={context}
+          scenePrefix={scenePrefix}
           onPick={onPick}
         />
       )}
@@ -80,11 +85,13 @@ function Chooser({
   end,
   initialPrompt,
   context,
+  scenePrefix,
   onPick,
 }: {
   profileId: string;
   context?: string;
   end: boolean;
+  scenePrefix?: string;
   initialPrompt: PromptTexts;
   scenePictures: { imageId: string; label: string }[];
   onPick: (choice: PictureChoice, prompts?: PromptTexts) => Promise<void>;
@@ -176,6 +183,7 @@ function Chooser({
           initialPrompt={initialPrompt}
           onPromptChange={setMadePrompt}
           context={context}
+          scenePrefix={end ? undefined : scenePrefix}
         />
       )}
       {source === "past" && (
