@@ -901,6 +901,27 @@ owner wrote the Thai by hand and the shot lengths were guessed.
   (none is documented), so the first button lands on the Billing page; a signed-out visitor is asked to sign in by fal.
   Not seen with the owner's fal account, so whether Billing opens straight to the add-credit control is unverified.
 
+## "ให้ AI แก้ช็อตนี้" — rewrite one shot's prompts from a sentence (built 2026-11-29)
+
+For a shot that came out wrong, the owner types one sentence of what it should show (Thai or English) instead of
+editing three prompts by hand. A button at the top of the shot card's Prompts box opens a small dialog.
+- `POST /videos/{id}/shots/{shotId}/revise` `{instruction}` → `{picturePrompt, picturePromptTh, endPicturePrompt,
+  endPicturePromptTh, prompt, promptTh, costUsd, model}`. **Saves nothing:** the screen puts the three pairs into the shot's
+  boxes (so Save is lit) and keeps what was there for "ย้อนกลับ". `scriptwriter.Writer.Revise` uses the same LLM route
+  and `scriptModel` as Draft; the system prompt is `systemFor(profile style + cast)` (all the studio's rules, incl. the 2D
+  ones) plus a "rewrite ONE shot, reply with this JSON" task. The user prompt carries the instruction, the shot's current
+  prompts, its narration, the previous/next shots' starting pictures (context only, not rewritten), the channel and the cast.
+  `picturePrompt` must be complete (it states the background; the stored text may start with the scene sentence copied to every
+  shot, whose stray object/negative the model drops). An end picture is kept only when the shot has a next shot. One retry,
+  told what was wrong (Thai letters in an English field, a missing Thai twin, empty prompt), costs added.
+- The dialog button says "ไม่กี่เซ็นต์ที่สุด" (an estimate: fal bills per token, known only afterwards; the toast shows the real
+  cost). Not counted in the daily limit or the dashboard (same as Draft and translations).
+- **Does not touch pictures:** a picture already made for the shot stays; the toast says to press Change to make a new one from
+  the new prompt. Fake mode (`AI_FAKE_FAL=1`) returns a fixed revision.
+- **Verified:** unit tests (request, prompt, parser, retry), and on screen with the fake model: boxes updated, Save lit, undo
+  restored the exact texts, nothing saved. **Not verified with a real model:** that it follows the instruction and the 2D rules
+  (the owner's case: the character stands on the scale with a stomach icon on it and a food icon on that).
+
 ## Explicitly OUT of scope for Phase 2 (do not build yet)
 
 - TikTok / Instagram integration — after YouTube is solid

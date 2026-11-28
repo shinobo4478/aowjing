@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, type CSSProperties, type ReactNode } from "react";
-import { App, Button, Card, Input, Popconfirm, Space, Typography } from "antd";
+import { App, Button, Card, Input, Modal, Popconfirm, Space, Typography } from "antd";
 import SecondsField from "@/components/SecondsField";
 import Tally from "@/components/Tally";
-import { imageSrc, shotVoiceSrc } from "@/lib/api";
+import { imageSrc, reviseShot, shotVoiceSrc } from "@/lib/api";
+import { mobileModal } from "@/lib/ui";
 import { formatUsd } from "@/lib/format";
 import { estimateSpeechSeconds, narrationWarnings, secondsForAudio, speechChars } from "@/lib/narration";
 import { hasThaiLetters, usePromptPair, useTyped } from "@/lib/promptPair";
@@ -103,6 +104,51 @@ export default function ShotCard({
   const [seconds, setSeconds] = useState(shot.seconds);
   const [narration, setNarration] = useTyped(shot.narrationTh);
   const translating = motion.busy || picture.busy || endPic.busy;
+
+  // "ให้ AI แก้ช็อตนี้": the owner says in a sentence what the shot should show and
+  // the script helper rewrites the three prompts. The result goes into the boxes
+  // (nothing is saved until Save), and what was there is kept to undo it.
+  const [reviseOpen, setReviseOpen] = useState(false);
+  const [instruction, setInstruction] = useState("");
+  const [revising, setRevising] = useState(false);
+  const [beforeRevision, setBeforeRevision] = useState<{
+    motion: [string, string];
+    picture: [string, string];
+    endPic: [string, string];
+  } | null>(null);
+
+  async function revise() {
+    setRevising(true);
+    try {
+      const r = await reviseShot(shot.videoId, shot.id, instruction);
+      setBeforeRevision({
+        motion: [motion.th, motion.en],
+        picture: [picture.th, picture.en],
+        endPic: [endPic.th, endPic.en],
+      });
+      motion.setBoth(r.promptTh, r.prompt);
+      picture.setBoth(r.picturePromptTh, r.picturePrompt);
+      endPic.setBoth(r.endPicturePromptTh, r.endPicturePrompt);
+      setReviseOpen(false);
+      setInstruction("");
+      message.success(
+        `AI เขียนใหม่แล้ว (≈ ${formatUsd(r.costUsd)}) ตรวจแล้วกด Save · ภาพที่สร้างไว้แล้วไม่เปลี่ยน กด Change เพื่อสร้างภาพใหม่จากพรอมต์นี้`,
+        8,
+      );
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : "The revision failed.");
+    } finally {
+      setRevising(false);
+    }
+  }
+
+  function undoRevision() {
+    if (!beforeRevision) return;
+    motion.setBoth(...beforeRevision.motion);
+    picture.setBoth(...beforeRevision.picture);
+    endPic.setBoth(...beforeRevision.endPic);
+    setBeforeRevision(null);
+  }
 
   const draft: ShotDraft = {
     prompt: motion.en,
@@ -308,6 +354,23 @@ export default function ShotCard({
             subtitle="พิมพ์ไทย ระบบแปลเป็นอังกฤษให้โมเดลก่อนสร้าง"
             style={{ flex: "1 1 360px", minWidth: 0 }}
           >
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <Button
+                size="small"
+                disabled={busy || translating || pending}
+                onClick={() => setReviseOpen(true)}
+              >
+                ✨ ให้ AI แก้ช็อตนี้
+              </Button>
+              {beforeRevision && (
+                <Button size="small" type="text" onClick={undoRevision}>
+                  ย้อนกลับ
+                </Button>
+              )}
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                พิมพ์ประโยคเดียวว่าอยากให้ภาพเป็นอย่างไร AI เขียนพรอมต์ใหม่ให้ครบทั้ง 3 ช่อง
+              </Typography.Text>
+            </div>
             <PromptPairField
               pair={motion}
               kind="motion"
@@ -514,6 +577,34 @@ export default function ShotCard({
           <Typography.Text type={dirty ? "warning" : "secondary"} style={{ fontSize: 12 }}>
             {dirty ? "มีการแก้ไขที่ยังไม่ได้บันทึก" : "บันทึกแล้ว"}
           </Typography.Text>
+          <Modal
+            title={`ให้ AI แก้ Shot ${shot.position}`}
+            open={reviseOpen}
+            onCancel={() => !revising && setReviseOpen(false)}
+            okText="เขียนใหม่ (ไม่กี่เซ็นต์ที่สุด)"
+            cancelText="ยกเลิก"
+            okButtonProps={{ disabled: instruction.trim().length < 3 }}
+            confirmLoading={revising}
+            onOk={() => void revise()}
+            destroyOnHidden
+            {...mobileModal}
+          >
+            <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>
+              บอกว่าช็อตนี้ควรเห็นอะไร AI จะดูบทพากย์ พรอมต์เดิม และช็อตข้างเคียง แล้วเขียนภาพเริ่มต้น ภาพจบ
+              และการเคลื่อนไหวใหม่ ผลจะใส่ในกล่อง ยังไม่บันทึกจนกว่าคุณกด Save (ย้อนกลับได้)
+            </Typography.Paragraph>
+            <Input.TextArea
+              value={instruction}
+              onChange={(e) => setInstruction(e.target.value)}
+              autoSize={{ minRows: 3, maxRows: 8 }}
+              maxLength={600}
+              placeholder="เช่น ตัวการ์ตูนยืนอยู่บนตาชั่ง มีรูปกระเพาะอยู่บนตัว มีไอคอนอาหารอยู่บนกระเพาะ แล้วลูกศรพาอาหารออกไป"
+            />
+            <Typography.Text type="secondary" style={{ display: "block", fontSize: 12, marginTop: 6 }}>
+              ค่าใช้จ่ายเป็นค่า token ของ AI เขียนข้อความ ประมาณไม่กี่เซ็นต์ที่สุด (ยังไม่นับในเพดานรายวัน)
+              ไม่สร้างภาพและไม่สร้างคลิป
+            </Typography.Text>
+          </Modal>
           <Button disabled={!dirty || busy || translating} loading={translating} onClick={() => void withFresh(onSave)()}>
             Save{dirty ? "" : "d"}
           </Button>
