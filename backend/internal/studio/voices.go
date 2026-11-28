@@ -68,12 +68,10 @@ func (v VoiceCandidate) CostUSD(text string) float64 {
 // are from fal's examples (the `voice` field is a free string); none is documented
 // as Thai-specific, so how each reads Thai is the owner's to judge.
 var voiceCandidates = []VoiceCandidate{
-	elevenV3("rachel", "Rachel", "Heard 2026-11-28: read the Thai text without a mistake, accent acceptable. The default voice."),
-	elevenV3("sarah", "Sarah", ""),
-	elevenV3("charlotte", "Charlotte", ""),
-	elevenV3("roger", "Roger", ""),
-	elevenV3("daniel", "Daniel", ""),
-	elevenV3("george", "George", ""),
+	elevenV3("rachel", "Rachel", "Heard 2026-11-28: read the Thai text without a mistake, accent acceptable."),
+	elevenV3("sarah", "Sarah", "Heard 2026-11-28 and kept by the owner."),
+	elevenV3("roger", "Roger", "Heard 2026-11-28 and kept by the owner."),
+	elevenV3("chris", "Chris", "Heard 2026-11-28 and kept by the owner."),
 }
 
 // elevenV3 is an ElevenLabs v3 voice by name. An empty note gets the standard one.

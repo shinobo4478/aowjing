@@ -129,8 +129,8 @@ func TestValidateCustomVoices(t *testing.T) {
 		{"Thai letters are refused", nil, []string{"สมชาย"}, "customVoices", 0, ""},
 		{"too long", nil, []string{strings.Repeat("a", studio.MaxCustomVoiceChars+1)}, "customVoices", 0, ""},
 		{"a blank name is refused", nil, []string{"   "}, "customVoices", 0, ""},
-		{"over the cap with the custom ones", []string{"eleven-v3-rachel", "eleven-v3-sarah", "eleven-v3-roger", "eleven-v3-daniel", "eleven-v3-charlotte", "eleven-v3-george"},
-			[]string{"a1", "a2", "a3", "a4", "a5", "a6", "a7"}, "candidates", 0, ""},
+		{"over the cap with the custom ones", []string{"eleven-v3-rachel", "eleven-v3-sarah", "eleven-v3-roger", "eleven-v3-chris"},
+			[]string{"a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9"}, "candidates", 0, ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

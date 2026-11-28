@@ -725,9 +725,9 @@ voice speaks the SAME text, with an audio player per voice. Nothing is saved (fa
   the Thai system voices); **ElevenLabs v3 read it without a mistake, accent acceptable** (voice Rachel,
   `language_code: "th"` accepted on fal, no duration in the reply). The ElevenLabs **Multilingual v2 model
   does not support Thai**; the voices **Aria and Brian read Thai but not well** (first reported the other way
-  round, corrected by the owner), and all three were removed. The registry offers ElevenLabs v3 voices only
-  (Rachel, Sarah, Charlotte, Roger, Daniel, George); MiniMax stays supported in `generate/voice.go` but is
-  not offered. **Chosen model: ElevenLabs v3** ($0.10 per 1K characters). Still to choose: the narrator voice.
+  round, corrected by the owner), and all three were removed. After hearing every voice the owner KEPT four:
+  **Rachel, Sarah, Roger and Chris** (ElevenLabs v3; Charlotte, Daniel and George were dropped). MiniMax stays supported in `generate/voice.go` but is
+  not offered. **Chosen model: ElevenLabs v3** ($0.10 per 1K characters). The four voices are the choices a narrator is picked from (likely per profile, to decide).
 - **Choosing among voices that differ:** ElevenLabs' official per-voice descriptions (gender, age, accent,
   tone) were NOT reachable (help centre 403, voice library is script-rendered), so none is invented here; the
   authenticated `GET /v2/voices?category=premade` would return them. The screen instead lets the owner

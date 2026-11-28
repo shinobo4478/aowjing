@@ -18,12 +18,12 @@ const DEFAULT_TEXT =
 /** The voices ticked at the start: Rachel (heard 2026-11-28: no mistakes, accent OK) and
  *  a woman and two men beside her, to choose a narrator by ear. MiniMax read Thai with
  *  many mistakes and is no longer offered. */
-const DEFAULT_PICKS = ["eleven-v3-rachel", "eleven-v3-sarah", "eleven-v3-roger", "eleven-v3-daniel"];
+const DEFAULT_PICKS = ["eleven-v3-rachel", "eleven-v3-sarah", "eleven-v3-roger", "eleven-v3-chris"];
 
 /** Names from fal's own examples that are not in the list above, offered as one
  *  click to try. Whether each reads Thai well is for the ear to say (Aria and
  *  Brian read Thai but not well, which is why they are not listed). */
-const SUGGESTED_NAMES = ["Alice", "Matilda", "Jessica", "Lily", "Laura", "Eric", "Will", "Liam", "Chris", "Bill", "Charlie", "Callum", "River"];
+const SUGGESTED_NAMES = ["Alice", "Matilda", "Jessica", "Lily", "Laura", "Eric", "Will", "Liam", "Bill", "Charlie", "Callum", "River"];
 
 /** ElevenLabs v3 on fal, per 1000 characters. Mirrors studio.CustomVoice; the
  *  server's own figure is the one charged. */
