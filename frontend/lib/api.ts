@@ -25,6 +25,8 @@ import type {
   PromptTemplate,
   PromptTemplateInput,
   CastList,
+  VoiceCandidates,
+  VoiceSampleResult,
   CastMember,
   CastRole,
   Settings,
@@ -672,5 +674,20 @@ export function setPlacements(generationId: string, productIds: string[]) {
 export function getProductBlock(generationId: string) {
   return request<{ block: string; count: number }>(
     `/youtube/product-block?generationId=${encodeURIComponent(generationId)}`,
+  );
+}
+
+// --- Thai voice samples (listen to candidate voices before choosing one) ---
+
+export function getVoiceCandidates() {
+  return request<VoiceCandidates>("/voice/candidates");
+}
+
+/** Every chosen voice speaks the same text. Costs fal credits per character, so
+ *  the screen asks first. Can take up to a minute or two. */
+export function makeVoiceSamples(input: { text: string; candidates: string[] }) {
+  return request<{ results: VoiceSampleResult[]; chars: number; totalCostUsd: number }>(
+    "/voice/samples",
+    { method: "POST", body: JSON.stringify(input) },
   );
 }

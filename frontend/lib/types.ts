@@ -573,3 +573,33 @@ export interface Dashboard {
     unpinned: { id: string; name: string; createdAt: string }[];
   };
 }
+
+/** A Thai voice the owner can listen to (from GET /voice/candidates). */
+export interface VoiceCandidate {
+  key: string;
+  label: string;
+  /** What fal lists, in US dollars per 1000 characters. */
+  pricePer1kChars: number;
+  /** What is and is not known about this voice for Thai. */
+  note: string;
+}
+
+export interface VoiceCandidates {
+  candidates: VoiceCandidate[];
+  minChars: number;
+  maxChars: number;
+  maxVoices: number;
+}
+
+/** One voice's answer to the samples request; a failure carries its own error. */
+export interface VoiceSampleResult {
+  key: string;
+  label: string;
+  ok: boolean;
+  /** A fal file link (kept at least 7 days) or, in fake mode, a data URI. */
+  audioUrl?: string;
+  /** 0 when the model does not say (ElevenLabs on fal). */
+  durationMs: number;
+  costUsd: number;
+  error?: string;
+}

@@ -5,6 +5,7 @@ import { App, Button, Form, Input, Spin, Typography } from "antd";
 import { getSettings, updateSettings } from "@/lib/api";
 import type { Settings } from "@/lib/types";
 import { pageLede, pageTitle } from "@/lib/ui";
+import VoiceSamples from "./VoiceSamples";
 
 export default function SettingsPage() {
   const { message } = App.useApp();
@@ -110,6 +111,8 @@ export default function SettingsPage() {
           </Form>
         </Spin>
       </div>
+
+      <VoiceSamples />
     </>
   );
 }

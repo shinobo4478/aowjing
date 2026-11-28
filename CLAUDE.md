@@ -702,6 +702,30 @@ count ("exactly three bottles") and fewer than 3 pictures are asked for, a hint 
 models often get counts wrong. **Verified on screen:** clicking a cast picture opens it large. **Not
 looked at on screen:** the "ขยายดู" link and the count hint (they need candidate pictures; type-checked only).
 
+## Thai voice samples (built 2026-11-28)
+
+The voice-over plan is in the 2D / Thai voice section (research, candidates, order of work). This is its
+step "listen before choosing": Settings → **Thai voice samples**. The owner keeps or replaces a Thai text (a
+~300-character educational paragraph is the default), ticks candidate voices, confirms the price, and each
+voice speaks the SAME text, with an audio player per voice. Nothing is saved (fal keeps each file at least
+7 days); a voice that fails (ElevenLabs may refuse Thai) shows its own error and costs nothing.
+- Registry `studio/voices.go` (`VoiceCandidates`): MiniMax Speech 2.8 HD ($0.10 per 1K characters) with the
+  three Thai system voices from MiniMax's own list (`Thai_female_1_sample1` "Confident Woman",
+  `Thai_male_1_sample8` "Serene Man", `Thai_female_2_sample2` "Energetic Woman"), MiniMax 2.8 Turbo ($0.06)
+  with two of them, ElevenLabs v3 and Multilingual v2 (default voice Rachel, `language_code` "th"; $0.10).
+  A 400-character text on four voices is a few cents.
+- `generate.FalVoice` (`generate/voice.go`) builds the body per family: MiniMax 2.8 takes the text in
+  `prompt`, `language_boost: "Thai"`, `output_format: "url"` (the default is hex) and
+  `voice_setting.voice_id`; ElevenLabs takes `text`, `voice`, `language_code`. The reply holds `audio.url`
+  and, for MiniMax only, `duration_ms`. `FakeVoice` (AI_FAKE_FAL=1) returns a second of silence as a data URI.
+- API: `GET /voice/candidates` (voices, prices, limits), `POST /voice/samples` `{text, candidates[]}` →
+  `{results[{key,label,ok,audioUrl,durationMs,costUsd,error}], chars, totalCostUsd}`; 20–1500 characters, at
+  most 7 voices; the daily spending limit is checked first (402), the voices run at once.
+- **Unverified (the first run is the test):** that fal's MiniMax endpoints accept the Thai voice ids from
+  MiniMax's list in `voice_setting.voice_id` (fal's pages do not list the subfields), that ElevenLabs on fal
+  accepts `language_code: "th"`, and how any of them sounds in Thai. Samples are not counted in the daily
+  spend or the dashboard (like the Draft and translations), though fal credits drop.
+
 ## Explicitly OUT of scope for Phase 2 (do not build yet)
 
 - TikTok / Instagram integration — after YouTube is solid
