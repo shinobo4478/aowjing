@@ -915,6 +915,10 @@ func (h *Handler) draft(w http.ResponseWriter, r *http.Request) {
 		Shots     int    `json:"shots"`
 		Seconds   int    `json:"seconds"`
 		Title     string `json:"title"`
+		// Mode is general (default), product or film; ProductID is the catalog
+		// product a product video is about (required for that mode).
+		Mode      string `json:"mode"`
+		ProductID string `json:"productId"`
 	}
 	if !decode(w, r, &body) {
 		return
@@ -944,6 +948,27 @@ func (h *Handler) draft(w http.ResponseWriter, r *http.Request) {
 	brief := scriptwriter.Brief{
 		Topic: body.Topic, Shots: body.Shots, Seconds: body.Seconds,
 		ProfileName: profile.Name, Niche: profile.Niche, Description: profile.Description,
+		Mode: scriptwriter.Mode(body.Mode), VideoStyle: profile.VideoStyle,
+	}
+	if !scriptwriter.ValidMode(body.Mode) {
+		writeFieldError(w, "mode", "Choose general, product or film.")
+		return
+	}
+	if brief.Cast, err = h.castNotes(r.Context(), profileID); err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to load the cast.")
+		return
+	}
+	if brief.Mode == scriptwriter.ModeProduct {
+		product, msg, err := h.productNote(r.Context(), body.ProductID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Failed to load the product.")
+			return
+		}
+		if msg != "" {
+			writeFieldError(w, "productId", msg)
+			return
+		}
+		brief.Product = product
 	}
 	errs := brief.Validate()
 	if _, bad := errs["seconds"]; !bad && !model.ValidSeconds(body.Seconds) {
@@ -996,6 +1021,49 @@ func (h *Handler) draft(w http.ResponseWriter, r *http.Request) {
 		"costUsd": d.CostUSD,
 		"model":   d.Model,
 	})
+}
+
+// castNotes reads the profile's cast for the script helper (names and notes
+// only; the pictures are used later, when a shot's picture is made).
+func (h *Handler) castNotes(ctx context.Context, profileID pgtype.UUID) ([]scriptwriter.CastNote, error) {
+	members, err := h.q.ListCastMembers(ctx, profileID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]scriptwriter.CastNote, len(members))
+	for i, m := range members {
+		out[i] = scriptwriter.CastNote{Role: m.Role, Name: m.Name, Note: m.Note}
+	}
+	return out, nil
+}
+
+// productNote reads the catalog product a product video is about, with the
+// states its pictures show. A non-empty message is a validation problem for the
+// "productId" field (err is only for real failures).
+func (h *Handler) productNote(ctx context.Context, rawID string) (*scriptwriter.ProductNote, string, error) {
+	id, perr := pgconv.ParseUUID(rawID)
+	if perr != nil {
+		return nil, "Choose the product this video is about.", nil
+	}
+	p, err := h.q.GetProduct(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, "That product no longer exists.", nil
+	}
+	if err != nil {
+		return nil, "", err
+	}
+	pics, err := h.q.ListProductPictures(ctx, id)
+	if err != nil {
+		return nil, "", err
+	}
+	if len(pics) == 0 {
+		return nil, "Add pictures of the product first (Products page), so its real look can be kept.", nil
+	}
+	states := make([]string, len(pics))
+	for i, pic := range pics {
+		states[i] = pic.Label
+	}
+	return &scriptwriter.ProductNote{Name: p.Name, Note: p.Note, States: states}, "", nil
 }
 
 // truncateRunes cuts s to at most n characters (not bytes).

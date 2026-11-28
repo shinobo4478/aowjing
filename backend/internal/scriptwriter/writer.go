@@ -54,6 +54,12 @@ func (b *Brief) Validate() map[string]string {
 	if !studio.ValidClipSeconds(b.Seconds) {
 		errs["seconds"] = "A shot is 3 to 15 seconds long."
 	}
+	if !ValidMode(string(b.Mode)) {
+		errs["mode"] = "Choose general, product or film."
+	}
+	if b.Mode == ModeProduct && b.Product == nil {
+		errs["productId"] = "Choose the product this video is about."
+	}
 	return errs
 }
 
@@ -104,7 +110,7 @@ func (w *Writer) Draft(ctx context.Context, b Brief) (Draft, error) {
 func draftFrom(ctx context.Context, llm generate.LLM, model string, b Brief) (Draft, error) {
 	req := generate.LLMRequest{
 		Model:       model,
-		System:      systemPrompt,
+		System:      systemFor(b),
 		Prompt:      userPrompt(b),
 		MaxTokens:   1000 + 900*b.Shots, // room for the JSON with its Thai twins (Thai costs more tokens)
 		Temperature: 0.8,
