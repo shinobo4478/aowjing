@@ -181,10 +181,13 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		Model:          model.Key,
 		Count:          int16(body.Count),
 		ReferenceCount: int16(len(sceneIDs) + len(castImageIDs)),
-		ExtraImageIds:  sceneIDs,
-		CastImageIds:   castImageIDs,
+		// Never nil: both columns are NOT NULL and pgx sends a nil slice as NULL, so a
+		// request with no scene or cast picture would be refused by the database.
+		ExtraImageIds:  nonNilUUIDs(sceneIDs),
+		CastImageIds:   nonNilUUIDs(castImageIDs),
 	})
 	if err != nil {
+		log.Printf("keyframes: saving the request: %v", err)
 		writeError(w, http.StatusInternalServerError, "Failed to save the request.")
 		return
 	}
@@ -435,4 +438,13 @@ func writeFieldError(w http.ResponseWriter, field, msg string) {
 
 func writeError(w http.ResponseWriter, code int, msg string) {
 	writeJSON(w, code, map[string]string{"error": msg})
+}
+
+// nonNilUUIDs returns ids, or an empty (non-nil) slice when there are none. pgx
+// writes a nil slice as SQL NULL, which a NOT NULL uuid[] column refuses.
+func nonNilUUIDs(ids []pgtype.UUID) []pgtype.UUID {
+	if ids == nil {
+		return []pgtype.UUID{}
+	}
+	return ids
 }
