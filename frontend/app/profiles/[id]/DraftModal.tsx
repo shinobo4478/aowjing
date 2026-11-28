@@ -81,6 +81,8 @@ function DraftForm({
 }) {
   const { message, modal } = App.useApp();
   const [topic, setTopic] = useState("");
+  // Optional material the draft must be based on (a checked article, notes).
+  const [source, setSource] = useState("");
   const [shots, setShots] = useState(4);
   const [seconds, setSeconds] = useState(4);
   const [title, setTitle] = useState("");
@@ -179,6 +181,7 @@ function DraftForm({
       const r = await draftVideo({
         profileId,
         topic,
+        source: source.trim() || undefined,
         shots,
         seconds,
         title: title.trim() || undefined,
@@ -291,6 +294,29 @@ function DraftForm({
           {errors.topic}
         </Typography.Text>
       )}
+
+      <div style={{ marginTop: 20 }}>
+        <Typography.Text>เนื้อหาต้นทาง · Source material (ไม่บังคับ)</Typography.Text>
+        <Typography.Text type="secondary" style={{ display: "block", fontSize: 12 }}>
+          วางบทความหรือโน้ตที่คุณตรวจแล้วว่าถูกต้อง AI จะใช้ข้อเท็จจริงและตัวเลขจากข้อความนี้เท่านั้น ไม่เติมเอง
+          ส่วนที่เนื้อหาไม่ครอบคลุมจะถูกตัดออก ช่วยให้ตรวจบทพากย์เทียบกับต้นทางเดียวได้ (ภาษาไหนก็ได้)
+        </Typography.Text>
+        <Input.TextArea
+          value={source}
+          onChange={(e) => setSource(e.target.value)}
+          autoSize={{ minRows: 3, maxRows: 12 }}
+          maxLength={8000}
+          showCount
+          status={errors.source ? "error" : undefined}
+          placeholder="เช่น วางข้อความจากบทความหรือแนวทางโภชนาการที่เชื่อถือได้ที่นี่"
+          style={{ marginTop: 4 }}
+        />
+        {errors.source && (
+          <Typography.Text type="danger" style={{ display: "block", marginTop: 4 }}>
+            {errors.source}
+          </Typography.Text>
+        )}
+      </div>
 
       <div style={{ display: "flex", gap: 24, flexWrap: "wrap", marginTop: 28 }}>
         <div>

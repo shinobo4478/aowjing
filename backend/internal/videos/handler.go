@@ -930,9 +930,11 @@ func (h *Handler) draft(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		ProfileID string `json:"profileId"`
 		Topic     string `json:"topic"`
-		Shots     int    `json:"shots"`
-		Seconds   int    `json:"seconds"`
-		Title     string `json:"title"`
+		// Source is optional material (an article, notes) the draft must be based on.
+		Source  string `json:"source"`
+		Shots   int    `json:"shots"`
+		Seconds int    `json:"seconds"`
+		Title   string `json:"title"`
 		// Mode is general (default), product or film; ProductID is the catalog
 		// product a product video is about (required for that mode).
 		Mode      string `json:"mode"`
@@ -971,7 +973,7 @@ func (h *Handler) draft(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	brief := scriptwriter.Brief{
-		Topic: body.Topic, Shots: body.Shots, Seconds: body.Seconds,
+		Topic: body.Topic, Source: body.Source, Shots: body.Shots, Seconds: body.Seconds,
 		ProfileName: profile.Name, Niche: profile.Niche, Description: profile.Description,
 		Mode: scriptwriter.Mode(body.Mode), VideoStyle: profile.VideoStyle,
 		SecondsOptions: model.Seconds,

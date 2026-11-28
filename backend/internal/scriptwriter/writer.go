@@ -27,6 +27,10 @@ const (
 
 	minTopicRunes = 3
 	maxTopicRunes = 1000
+
+	// maxSourceRunes keeps the pasted source material (about a long article) to a
+	// size that is cheap to send with every draft.
+	maxSourceRunes = 8000
 )
 
 // Writer drafts shot lists. It reads the fal key and the chosen model from the
@@ -47,6 +51,10 @@ func (b *Brief) Validate() map[string]string {
 		errs["topic"] = "Describe what the video is about (at least 3 characters)."
 	} else if n > maxTopicRunes {
 		errs["topic"] = "The topic must be 1000 characters or fewer."
+	}
+	b.Source = strings.TrimSpace(b.Source)
+	if len([]rune(b.Source)) > maxSourceRunes {
+		errs["source"] = "The source material must be 8000 characters or fewer."
 	}
 	if b.Shots < 1 || b.Shots > MaxShots {
 		errs["shots"] = "Choose 1 to 12 shots."

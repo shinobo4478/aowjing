@@ -640,6 +640,16 @@ texts (no test framework is installed: `node --experimental-strip-types scripts/
 **Not detected** (needs the model): a start picture that already shows the action, and too many beats.
 Profile name / niche / description limits now count characters, not bytes (Thai is 3 bytes a letter).
 
+## Draft from the owner's source material (built 2026-11-29)
+
+Explainer narration on health topics must be right, and the model writes from memory. The Draft dialog now has an optional
+**"เนื้อหาต้นทาง · Source material"** box (≤ 8000 characters, any language): paste an article or notes you have checked and the
+draft may take facts, numbers and claims ONLY from it (`scriptwriter.userSourceBlock`, sent with the topic; `Brief.Source`,
+`POST /videos/draft` field `source`, error key `source`). What the material does not cover is left out, not filled in; it is never
+copied into picture/motion prompts as writing. No source = asked exactly as before. No schema change; the source is not stored
+(it is part of one draft request). **Unverified on a real model:** that it really stays inside the material (check the narration
+against the source by eye) and what a long source adds to the cost (input tokens only).
+
 ## Price check, daily limit and the rendering indicator (built 2026-11-27)
 
 - **Live prices.** `GET /studio/pricing` also asks fal's pricing API (`GET api.fal.ai/v1/models/pricing?endpoint_id=…`,

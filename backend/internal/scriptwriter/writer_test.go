@@ -267,3 +267,25 @@ func TestSystemPromptKeepsTheRulesTheFirstFilmDraftBroke(t *testing.T) {
 		t.Error("the example still combines a static camera with a zoom")
 	}
 }
+
+func TestSourceMaterial(t *testing.T) {
+	b := Brief{Topic: "calorie deficit", Shots: 3, Seconds: 6, Source: "  การขาดดุลแคลอรี่คือกินน้อยกว่าที่ใช้  "}
+	if errs := b.Validate(); len(errs) != 0 || b.Source != "การขาดดุลแคลอรี่คือกินน้อยกว่าที่ใช้" {
+		t.Fatalf("a source should be trimmed and accepted: %v %q", errs, b.Source)
+	}
+	long := Brief{Topic: "x y z", Shots: 3, Seconds: 6, Source: strings.Repeat("ก", maxSourceRunes+1)}
+	if errs := long.Validate(); errs["source"] == "" {
+		t.Error("a source over the limit must be refused")
+	}
+
+	p := userPrompt(b)
+	for _, want := range []string{"SOURCE MATERIAL", "ONLY source of facts", "การขาดดุลแคลอรี่คือกินน้อยกว่าที่ใช้", "leave it out instead of filling it in"} {
+		if !strings.Contains(p, want) {
+			t.Errorf("the prompt lacks %q", want)
+		}
+	}
+	// No source, no block: a draft from the topic alone is asked exactly as before.
+	if strings.Contains(userPrompt(Brief{Topic: "x y z", Shots: 3, Seconds: 6}), "SOURCE MATERIAL") {
+		t.Error("the source block must be absent without a source")
+	}
+}
