@@ -66,19 +66,11 @@ func (v VoiceCandidate) CostUSD(text string) float64 {
 // as Thai-specific, so how each reads Thai is the owner's to judge.
 var voiceCandidates = []VoiceCandidate{
 	elevenV3("rachel", "Rachel", "Heard 2026-11-28: read the Thai text without a mistake, accent acceptable. The default voice."),
-	elevenV3("aria", "Aria", ""),
 	elevenV3("sarah", "Sarah", ""),
 	elevenV3("charlotte", "Charlotte", ""),
 	elevenV3("roger", "Roger", ""),
-	elevenV3("brian", "Brian", ""),
 	elevenV3("daniel", "Daniel", ""),
 	elevenV3("george", "George", ""),
-	{
-		Key: "eleven-multilingual-v2-rachel", Label: "ElevenLabs Multilingual v2 · Rachel",
-		Family: VoiceElevenLabs, Model: "fal-ai/elevenlabs/tts/multilingual-v2", VoiceID: "Rachel",
-		PricePer1KChars: 0.10,
-		Note:            "The older ElevenLabs model with the same voice, to compare with v3. Not heard yet.",
-	},
 }
 
 // elevenV3 is an ElevenLabs v3 voice by name. An empty note gets the standard one.

@@ -16,9 +16,9 @@ const DEFAULT_TEXT =
   "ทุกครั้งที่ทบทวน ความจำจะแข็งแรงขึ้น ลองทำดูสักสัปดาห์ แล้วคุณจะรู้สึกได้เลยว่าจำได้แม่นขึ้นมาก";
 
 /** The voices ticked at the start: Rachel (heard 2026-11-28: no mistakes, accent OK) and
- *  three women and men beside her, to choose a narrator by ear. MiniMax read Thai with
+ *  a woman and two men beside her, to choose a narrator by ear. MiniMax read Thai with
  *  many mistakes and is no longer offered. */
-const DEFAULT_PICKS = ["eleven-v3-rachel", "eleven-v3-aria", "eleven-v3-sarah", "eleven-v3-roger", "eleven-v3-brian", "eleven-v3-daniel"];
+const DEFAULT_PICKS = ["eleven-v3-rachel", "eleven-v3-sarah", "eleven-v3-roger", "eleven-v3-daniel"];
 
 /**
  * Listen before choosing: the SAME Thai text is spoken by each candidate voice.

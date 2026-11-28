@@ -21,7 +21,7 @@ func TestValidate(t *testing.T) {
 		wantField string // "" = valid
 		wantN     int
 	}{
-		{"valid", ok, []string{"eleven-v3-aria", "eleven-v3-rachel"}, "", 2},
+		{"valid", ok, []string{"eleven-v3-sarah", "eleven-v3-rachel"}, "", 2},
 		{"text is trimmed before counting", "   " + ok + "  ", []string{"eleven-v3-rachel"}, "", 1},
 		{"too short", "สวัสดี", []string{"eleven-v3-rachel"}, "text", 0},
 		{"too long", long, []string{"eleven-v3-rachel"}, "text", 0},
