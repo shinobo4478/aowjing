@@ -889,6 +889,22 @@ owner wrote the Thai by hand and the shot lengths were guessed.
   with sound on) is muted on purpose: it is Chinese/English, not the narration. Drift is not tracked after a start, only
   re-aligned at each play/seek. **Not built:** playing every shot of the video in a row.
 
+## Pictures made for a shot are kept when the dialog closes (built 2026-11-29)
+
+Before, closing the picture dialog threw away the pictures just paid for. Now a request made for a shot's start or end
+picture is **kept** and shown again when the dialog reopens (with "รูปที่สร้างไว้ครั้งก่อน … กด Make new pictures เพื่อแทนที่").
+- `keyframes.context` (`shot:<shot id>:start` / `:end`, empty = the Generate dialog, which still throws its request away on
+  close). `POST /keyframes` takes `context`; the server then discards the earlier request kept for the same place (and the
+  pictures nothing else uses) — **one kept request per place**. `GET /keyframes/latest?profileId=&context=` returns the newest
+  non-failed one or `{"keyframe": null}`.
+- A kept request whose shot was deleted is swept away (with its unused pictures) the next time any request is made
+  (`ListOrphanKeyframes`); no foreign key, so a stray row is harmless until then.
+- Existing DBs need `ALTER TABLE keyframes ADD COLUMN context text NOT NULL DEFAULT ''; CREATE INDEX IF NOT EXISTS
+  keyframes_context_idx ON keyframes (profile_id, context) WHERE context <> '';` and the api AND worker restarted (the
+  worker reads `keyframes` with `SELECT *`, so an old worker fails on the new column).
+- **Verified** against Postgres with the fake generator (nothing spent): pictures reappear after close and reopen, a new
+  request replaces the old one and its pictures, one row per place. Not looked at: the end-picture dialog.
+
 ## Explicitly OUT of scope for Phase 2 (do not build yet)
 
 - TikTok / Instagram integration — after YouTube is solid
