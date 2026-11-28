@@ -730,7 +730,19 @@ it); **Azure Speech** th-TH (Premwadee, Niwat, Achara; MAI-Voice-2 HD voices in 
 from the page) and **Google Cloud TTS** th-TH (Standard, Neural2, Chirp 3 HD with ~30 voices; no SSML or rate
 in Chirp 3 HD; price not read). Not read: Botnoi (Thai-specific), OpenAI/Gemini TTS. fal-hosted options
 keep ONE key and one bill (Settings already holds it). Cost scale: a 30 s Thai narration is roughly 300–450
-characters, so a few cents on fal. **Plan:** (1) per-shot narration text (Thai, `narration_th`) — it, not the
+characters, so a few cents on fal. **Evidence on which Thai voice sounds most real (searched 2026-11-28): there is NO independent Thai
+ranking.** Artificial Analysis' Speech Arena (blind listener votes, Elo, 106 models; top at the time read:
+Qwen-Audio-3.1-TTS-Plus 1350, Eleven v4 Turbo 1344, Eleven v4 1340, StepAudio 3 1309, Cartesia Sonic 3.6 1297,
+Speechify Simba 3.5 1297, Gemini 3.8 Flash TTS 1285) is English-only (raters are US/UK natives; Thai is not on its
+language list). The one Thai head-to-head is the JaiTTS paper (arXiv 2604.27607, run by its own developers, 20
+native Thai listeners, 30 texts, blind pairs): JaiTTS beat ElevenLabs eleven_v3 161–19–20 and MiniMax
+speech-2.8-hd 122–40–38 (wins–ties–losses of 200 each; no MOS; newer ElevenLabs v4 not tested; JaiTTS is a
+voice-cloning model whose API/price are not stated). Read as weak evidence that MiniMax 2.8 HD is closer to
+that model than eleven_v3 is. Vendor claims only for ElevenLabs ("1m+ users", Thai page), MiniMax ("300+
+Thai voices") and Botnoi (page did not render). No Thai usage statistics for creators were found.
+**Therefore the choice is made by listening to the same Thai text** (step 2 below).
+
+**Plan:** (1) per-shot narration text (Thai, `narration_th`) — it, not the
 picture, sets the shot length (estimate from characters, calibrated on real audio; warn when it will not fit);
 (2) a "voice samples" step that speaks the SAME Thai paragraph with each candidate so the owner picks by
 listening (cents); (3) the chosen TTS behind a `Voice` interface in `internal/` like the generators, audio
