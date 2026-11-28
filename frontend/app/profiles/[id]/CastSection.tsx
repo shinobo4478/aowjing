@@ -14,6 +14,7 @@ import {
   removeCastImage,
   updateCastMember,
 } from "@/lib/api";
+import { ZoomableImage } from "@/components/ZoomableImage";
 import { CAST_ROLES, type CastList, type CastMember, type ProviderKey } from "@/lib/types";
 
 /** Checks a picked file before uploading it; null = fine. The backend checks
@@ -200,12 +201,12 @@ export default function CastSection({
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-start" }}>
                   {m.imageIds.map((id, i) => (
                     <div key={id} style={{ width: 96 }}>
-                      {/* Served by the API with the session cookie, so next/image cannot optimize it. */}
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
+                      <ZoomableImage
                         src={imageSrc(id)}
                         alt={`${m.name}, picture ${i + 1}`}
-                        style={{ width: 96, height: 128, objectFit: "cover", borderRadius: 8, display: "block" }}
+                        width={96}
+                        height={128}
+                        style={{ borderRadius: 8 }}
                       />
                       <Popconfirm
                         title="Remove this picture?"
@@ -276,9 +277,9 @@ export default function CastSection({
           <Form.Item
             label="โน้ต · Note (optional)"
             name="note"
-            extra="สภาพหรือรายละเอียดที่รูปแสดง เช่น “ชุดแข่งสีแดง”, “ฝาเปิด”"
+            extra="สภาพหรือรายละเอียดที่รูปแสดง เขียนเป็นภาษาอังกฤษ เช่น “red jersey”, “cap open” เพราะโน้ตถูกส่งให้โมเดลภาพตามที่พิมพ์ (ชื่อเป็นภาษาไทยได้)"
           >
-            <Input maxLength={120} autoComplete="off" />
+            <Input maxLength={120} autoComplete="off" placeholder="e.g. cap open" />
           </Form.Item>
         </Form>
       </Modal>

@@ -16,6 +16,7 @@ import { formatUsd } from "@/lib/format";
 import { hasThaiLetters, usePromptPair, type PromptPair, type PromptTexts } from "@/lib/promptPair";
 import { CAST_ROLES, type CastMember, type Keyframe, type KeyframeModels, type PickableProduct } from "@/lib/types";
 import { refreshCredits } from "../../CreditsBadge";
+import { ZoomLink } from "@/components/ZoomableImage";
 import PromptPairField from "./PromptPairField";
 
 const POLL_EVERY_MS = 3000;
@@ -195,6 +196,9 @@ export default function KeyframePicker({
   // A picture needs a description in either language (the Thai is translated
   // when the pictures are made).
   const promptTooShort = Math.max(pair.th.trim().length, pair.en.trim().length) < 3;
+  // A count in the description ("exactly three bottles"): image models often get
+  // it wrong, so a few candidates give a chance of one with the right number.
+  const countHint = pair.en.match(/\b(?:exactly\s+)?(?:two|three|four|five|six|seven|eight|nine|ten|[2-9]|10)\s+(?:[a-z-]+\s+){0,2}[a-z]+s\b/i)?.[0] ?? "";
 
   function toggleScene(imageId: string, on: boolean) {
     setSceneIds((cur) =>
@@ -325,6 +329,12 @@ export default function KeyframePicker({
           }))}
         />
       </div>
+      {countHint && count < 3 && (
+        <Typography.Text type="warning" style={{ display: "block", fontSize: 12, marginTop: 4 }}>
+          prompt ระบุจำนวน (“{countHint}”) โมเดลภาพนับจำนวนวัตถุไม่แม่น แนะนำสร้าง 3–4 ภาพ
+          แล้วเลือกภาพที่จำนวนถูก
+        </Typography.Text>
+      )}
 
       {scenePictures.length > 0 && (
         <div style={{ marginTop: 12 }}>
@@ -489,30 +499,35 @@ export default function KeyframePicker({
             {keyframe.imageIds.map((id) => {
               const selected = id === value;
               return (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => onChange(id)}
-                  aria-pressed={selected}
-                  aria-label={selected ? "Chosen picture" : "Choose this picture"}
-                  style={{
-                    padding: 0,
-                    background: "none",
-                    cursor: "pointer",
-                    borderRadius: 14,
-                    border: selected
-                      ? "3px solid var(--ant-color-primary, #1677ff)"
-                      : "3px solid transparent",
-                  }}
-                >
-                  {/* Served by the API with the session cookie, so next/image cannot optimize it. */}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={imageSrc(id)}
-                    alt="Candidate starting picture"
-                    style={{ width: 120, height: 213, objectFit: "cover", display: "block", borderRadius: 8 }}
-                  />
-                </button>
+                <div key={id} style={{ textAlign: "center" }}>
+                  <button
+                    type="button"
+                    onClick={() => onChange(id)}
+                    aria-pressed={selected}
+                    aria-label={selected ? "Chosen picture" : "Choose this picture"}
+                    style={{
+                      padding: 0,
+                      background: "none",
+                      cursor: "pointer",
+                      borderRadius: 14,
+                      border: selected
+                        ? "3px solid var(--ant-color-primary, #1677ff)"
+                        : "3px solid transparent",
+                    }}
+                  >
+                    {/* Served by the API with the session cookie, so next/image cannot optimize it. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={imageSrc(id)}
+                      alt="Candidate starting picture"
+                      style={{ width: 140, height: 249, objectFit: "cover", display: "block", borderRadius: 8 }}
+                    />
+                  </button>
+                  {/* Picking is the picture's own click, so enlarging has its own button. */}
+                  <div>
+                    <ZoomLink src={imageSrc(id)} label="ขยายดู" />
+                  </div>
+                </div>
               );
             })}
           </div>

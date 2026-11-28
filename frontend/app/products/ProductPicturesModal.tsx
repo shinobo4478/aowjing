@@ -11,6 +11,7 @@ import {
   removeProductPicture,
   updateProductPictureLabel,
 } from "@/lib/api";
+import { ZoomableImage } from "@/components/ZoomableImage";
 import type { ProductPicture, ProductWithUse } from "@/lib/types";
 
 /** The first validation message of an API error, else its own message. */
@@ -131,7 +132,7 @@ export default function ProductPicturesModal({
       <Typography.Paragraph type="secondary">
         รูปจริงของสินค้า หลายมุมและหลายสภาพ (เช่น ฝาปิด ฝาเปิด ถืออยู่ในมือ) ตอนสร้างภาพของช็อต
         เลือกได้ว่าจะส่งรูปไหนให้โมเดล โมเดลคัดลอกสภาพจากรูปด้วย ถ้าช็อตต้องการฝาเปิดต้องมีรูปที่ฝาเปิด
-        ใส่ชื่อบอกสภาพของรูปไว้ใต้รูป ใช้ได้ถึง {max} รูป (JPG หรือ PNG ขั้นต่ำ 300×300 px
+        ใส่ชื่อบอกสภาพของรูปไว้ใต้รูป เป็นภาษาอังกฤษ (ส่งให้โมเดลภาพตามที่พิมพ์) ใช้ได้ถึง {max} รูป (JPG หรือ PNG ขั้นต่ำ 300×300 px
         อัตราส่วน 0.4–2.5 ไม่เกิน {MAX_REFERENCE_BYTES / 1024 / 1024} MB) สินค้าสีเดียวกันทุกรูป
       </Typography.Paragraph>
 
@@ -141,17 +142,17 @@ export default function ProductPicturesModal({
         <div style={{ display: "flex", flexWrap: "wrap", gap: 16, margin: "12px 0" }}>
           {pictures.map((p) => (
             <div key={p.imageId} style={{ width: 120 }}>
-              {/* Served by the API with the session cookie, so next/image cannot optimize it. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <ZoomableImage
                 src={imageSrc(p.imageId)}
                 alt={p.label || "Product picture"}
-                style={{ width: 120, height: 150, objectFit: "contain", borderRadius: 8, display: "block", background: "rgba(128,128,128,0.12)" }}
+                width={120}
+                height={150}
+                style={{ objectFit: "contain", borderRadius: 8, background: "rgba(128,128,128,0.12)" }}
               />
               <Input
                 size="small"
                 value={drafts[p.imageId] ?? p.label}
-                placeholder="เช่น ฝาเปิด"
+                placeholder="e.g. cap open"
                 maxLength={60}
                 onChange={(e) => setDrafts((d) => ({ ...d, [p.imageId]: e.target.value }))}
                 onBlur={() => void saveLabel(p)}
@@ -177,7 +178,7 @@ export default function ProductPicturesModal({
         <Input
           value={newLabel}
           onChange={(e) => setNewLabel(e.target.value)}
-          placeholder="ชื่อบอกสภาพ เช่น ฝาเปิด (ไม่บังคับ)"
+          placeholder="สภาพเป็นภาษาอังกฤษ เช่น cap open"
           maxLength={60}
           disabled={full}
           style={{ width: 260 }}
