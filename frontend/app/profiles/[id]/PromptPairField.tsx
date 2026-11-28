@@ -12,9 +12,12 @@ const shorten = (s: string, n: number) => {
 
 /**
  * One prompt of a shot, written in Thai: a Thai box (what the owner edits) and,
- * folded under it, the English that the picture and video models receive, with
- * buttons to translate either way. The English box shows a preview even when
- * folded, so what will be sent is never hidden.
+ * folded under it, everything about the English that the picture and video
+ * models receive: the translate buttons, the prompt-rule warnings and the
+ * English box. It is closed by default so the card stays short; the fold's title
+ * keeps a preview of the English and flags anything that needs attention (not
+ * translated yet, warnings, Thai letters in the English), so what will be sent is
+ * never hidden.
  */
 export default function PromptPairField({
   pair,
@@ -71,68 +74,6 @@ export default function PromptPairField({
         style={{ marginTop: 4 }}
       />
 
-      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", margin: "6px 0" }}>
-        <Button
-          size="small"
-          loading={pair.busy}
-          disabled={pair.busy || pair.th.trim() === ""}
-          onClick={() => void run(pair.toEnglish, "The translation failed.")}
-        >
-          แปลเป็นอังกฤษ
-        </Button>
-        {pair.en.trim() !== "" &&
-          (pair.th.trim() === "" ? (
-            <Button
-              size="small"
-              type="text"
-              disabled={pair.busy}
-              onClick={() => void run(pair.toThai, "The translation failed.")}
-            >
-              ดูความหมายเป็นไทย
-            </Button>
-          ) : (
-            <Popconfirm
-              title="แทนที่ข้อความไทยด้วยคำแปลจากอังกฤษ?"
-              description="ข้อความไทยที่คุณพิมพ์จะถูกเขียนทับ"
-              okText="แทนที่"
-              cancelText="ยกเลิก"
-              onConfirm={() => void run(pair.toThai, "The translation failed.")}
-            >
-              <Button size="small" type="text" disabled={pair.busy}>
-                ดูความหมายเป็นไทย
-              </Button>
-            </Popconfirm>
-          ))}
-        {pair.stale && (
-          <Typography.Text type="warning" style={{ fontSize: 12 }}>
-            ยังไม่ได้แปลหลังแก้ไข (จะแปลให้อัตโนมัติเมื่อบันทึกหรือสร้าง)
-          </Typography.Text>
-        )}
-        {!pair.stale && pair.lastCostUsd !== null && (
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            แปลแล้ว ≈ {formatUsd(pair.lastCostUsd)}
-          </Typography.Text>
-        )}
-      </div>
-
-      {issues.map((issue) => (
-        <div key={issue.id} style={{ fontSize: 12, margin: "0 0 4px" }}>
-          <Typography.Text type="warning" style={{ fontSize: 12 }}>
-            ⚠ {issue.message}
-          </Typography.Text>
-          {issue.fix && (
-            <Button
-              size="small"
-              type="link"
-              onClick={() => pair.setEn(issue.fix!(pair.en))}
-              style={{ fontSize: 12 }}
-            >
-              {issue.fixLabel ?? "แก้ให้"}
-            </Button>
-          )}
-        </div>
-      ))}
-
       <Collapse
         size="small"
         ghost
@@ -141,14 +82,94 @@ export default function PromptPairField({
             key: "en",
             label: (
               <span style={{ fontSize: 12 }}>
-                English sent to the AI ·{" "}
+                การแปลเป็นอังกฤษ · English sent to the AI ·{" "}
                 <Typography.Text type={englishHasThai ? "danger" : "secondary"} style={{ fontSize: 12 }}>
                   {pair.en.trim() === "" ? "(none yet)" : shorten(pair.en, 80)}
                 </Typography.Text>
+                {englishHasThai && (
+                  <Typography.Text type="danger" style={{ fontSize: 12 }}>
+                    {" "}
+                    · ต้องแปลก่อน
+                  </Typography.Text>
+                )}
+                {pair.stale && (
+                  <Typography.Text type="warning" style={{ fontSize: 12 }}>
+                    {" "}
+                    · ยังไม่ได้แปลหลังแก้ไข
+                  </Typography.Text>
+                )}
+                {issues.length > 0 && (
+                  <Typography.Text type="warning" style={{ fontSize: 12 }}>
+                    {" "}
+                    · ⚠ {issues.length} คำเตือน
+                  </Typography.Text>
+                )}
               </span>
             ),
             children: (
               <>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 6 }}>
+                  <Button
+                    size="small"
+                    loading={pair.busy}
+                    disabled={pair.busy || pair.th.trim() === ""}
+                    onClick={() => void run(pair.toEnglish, "The translation failed.")}
+                  >
+                    แปลเป็นอังกฤษ
+                  </Button>
+                  {pair.en.trim() !== "" &&
+                    (pair.th.trim() === "" ? (
+                      <Button
+                        size="small"
+                        type="text"
+                        disabled={pair.busy}
+                        onClick={() => void run(pair.toThai, "The translation failed.")}
+                      >
+                        ดูความหมายเป็นไทย
+                      </Button>
+                    ) : (
+                      <Popconfirm
+                        title="แทนที่ข้อความไทยด้วยคำแปลจากอังกฤษ?"
+                        description="ข้อความไทยที่คุณพิมพ์จะถูกเขียนทับ"
+                        okText="แทนที่"
+                        cancelText="ยกเลิก"
+                        onConfirm={() => void run(pair.toThai, "The translation failed.")}
+                      >
+                        <Button size="small" type="text" disabled={pair.busy}>
+                          ดูความหมายเป็นไทย
+                        </Button>
+                      </Popconfirm>
+                    ))}
+                  {pair.stale && (
+                    <Typography.Text type="warning" style={{ fontSize: 12 }}>
+                      ยังไม่ได้แปลหลังแก้ไข (จะแปลให้อัตโนมัติเมื่อบันทึกหรือสร้าง)
+                    </Typography.Text>
+                  )}
+                  {!pair.stale && pair.lastCostUsd !== null && (
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                      แปลแล้ว ≈ {formatUsd(pair.lastCostUsd)}
+                    </Typography.Text>
+                  )}
+                </div>
+
+                {issues.map((issue) => (
+                  <div key={issue.id} style={{ fontSize: 12, margin: "0 0 4px" }}>
+                    <Typography.Text type="warning" style={{ fontSize: 12 }}>
+                      ⚠ {issue.message}
+                    </Typography.Text>
+                    {issue.fix && (
+                      <Button
+                        size="small"
+                        type="link"
+                        onClick={() => pair.setEn(issue.fix!(pair.en))}
+                        style={{ fontSize: 12 }}
+                      >
+                        {issue.fixLabel ?? "แก้ให้"}
+                      </Button>
+                    )}
+                  </div>
+                ))}
+
                 <Input.TextArea
                   value={pair.en}
                   onChange={(e) => pair.setEn(e.target.value)}
@@ -159,7 +180,7 @@ export default function PromptPairField({
                 />
                 {englishHasThai && (
                   <Typography.Text type="danger" style={{ fontSize: 12 }}>
-                    กล่องนี้ควรเป็นภาษาอังกฤษ: กด &quot;แปลเป็นอังกฤษ&quot; ที่ช่องไทยด้านบน
+                    กล่องนี้ควรเป็นภาษาอังกฤษ: กด &quot;แปลเป็นอังกฤษ&quot; ด้านบน
                   </Typography.Text>
                 )}
               </>
