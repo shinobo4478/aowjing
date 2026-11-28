@@ -195,6 +195,14 @@ function Themed({ children }: { children: React.ReactNode }) {
             colorTextDescription: c.ash,
           },
           Popover: { colorBgElevated: c.raised },
+          // The tooltip's text colour is antd's "text on a dark fill" token, which
+          // this theme sets to black for primary buttons (tungsten fill); that made
+          // tooltips black on black. Give the tooltip its own pair: a dark bubble
+          // with light text on paper, a raised grey one with chalk text on black.
+          Tooltip: {
+            colorBgSpotlight: dark ? "#2A2A2F" : "#1B1A17",
+            colorTextLightSolid: dark ? c.chalk : "#F4F2ED",
+          },
         },
       }}
     >

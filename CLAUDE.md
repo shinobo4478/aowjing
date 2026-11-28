@@ -750,6 +750,19 @@ per shot (decide where it is kept: Postgres like pictures, or R2), a play/downlo
 (4) an "Explainer" Draft format that writes the narration (hook question, 2–3 points, recap) with the
 shots. Joining audio and clips stays manual in CapCut (ffmpeg would be a new dependency: ask first).
 
+## 2D drafts: the scene is the background only, ideas inside the character are drawn on it (built 2026-11-29)
+
+Found on the owner's explainer draft ("ลดน้ำหนักแต่น้ำหนักขึ้น", shot 3): the model put the video's theme (a bathroom scale,
+"in the centre of the frame, nothing else around it") into the **scene line**, which is copied in front of EVERY shot's picture
+prompt, so the shot's own picture (a stomach icon "in the middle") fought it, and the character was pushed "nearby" instead of
+carrying the icons. `flatRules` (`scriptwriter/modes.go`, 2D only) now says: the scene is ONLY a background (colour, plain
+surface), no object, icon, symbol, character or negative; and when the idea happens on/inside the character (digestion,
+weight), draw the icons ON the character, which stays the main subject, with arrows and changes left to the motion prompt and
+the end picture (the starting picture is the moment before the action). Affects new drafts only: shots already drafted keep
+their scene sentence (edit it out, or use "แก้ช็อตนี้ด้วย AI" once built). The ⚠ on negatives in a picture prompt
+(`promptLint`) already covered the scene sentence, since the scene is part of the stored picture prompt. **Unverified on a real
+model:** that it follows the new rules; the scene is still stored per shot, not once on the video (still a to-do).
+
 ## Picture zoom and small hints (built 2026-11-28)
 
 AI pictures were too small to judge. `components/ZoomableImage.tsx` wraps antd's `Image` preview (full
@@ -889,18 +902,38 @@ owner wrote the Thai by hand and the shot lengths were guessed.
   with sound on) is muted on purpose: it is Chinese/English, not the narration. Drift is not tracked after a start, only
   re-aligned at each play/seek. **Not built:** playing every shot of the video in a row.
 
-## 2D drafts: the scene is the background only, ideas inside the character are drawn on it (built 2026-11-29)
+## Tooltips and the credit popover (built 2026-11-29)
 
-Found on the owner's explainer draft ("ลดน้ำหนักแต่น้ำหนักขึ้น", shot 3): the model put the video's theme (a bathroom scale,
-"in the centre of the frame, nothing else around it") into the **scene line**, which is copied in front of EVERY shot's picture
-prompt, so the shot's own picture (a stomach icon "in the middle") fought it, and the character was pushed "nearby" instead of
-carrying the icons. `flatRules` (`scriptwriter/modes.go`, 2D only) now says: the scene is ONLY a background (colour, plain
-surface), no object, icon, symbol, character or negative; and when the idea happens on/inside the character (digestion,
-weight), draw the icons ON the character, which stays the main subject, with arrows and changes left to the motion prompt and
-the end picture (the starting picture is the moment before the action). Affects new drafts only: shots already drafted keep
-their scene sentence (edit it out, or use "แก้ช็อตนี้ด้วย AI" once built). The ⚠ on negatives in a picture prompt
-(`promptLint`) already covered the scene sentence, since the scene is part of the stored picture prompt. **Unverified on a real
-model:** that it follows the new rules; the scene is still stored per shot, not once on the video (still a to-do).
+- **Tooltips were black on black:** antd draws tooltip text with `colorTextLightSolid`, which this theme sets to black
+  (text on the tungsten primary button). `providers.tsx` now gives `Tooltip` its own `colorBgSpotlight` and
+  `colorTextLightSolid` (dark bubble + light text on paper; grey bubble + chalk text on black). Anything else antd
+  draws with that token on a dark fill would have the same problem; none was found.
+- **Credit in the menu bar** (`app/CreditsBadge.tsx`) is a button; clicking it opens a popover with the balance, "เติมเครดิตที่ fal"
+  (`https://fal.ai/dashboard/billing`, the page fal's docs/FAQ send people to for adding credits), "เปิดเว็บ fal.ai"
+  (`https://fal.ai/dashboard`) and a refresh. Both open in a new tab. **No deeper link to a top-up dialog is known to exist**
+  (none is documented), so the first button lands on the Billing page; a signed-out visitor is asked to sign in by fal.
+  Not seen with the owner's fal account, so whether Billing opens straight to the add-credit control is unverified.
+
+## "ให้ AI แก้ช็อตนี้" — rewrite one shot's prompts from a sentence (built 2026-11-29)
+
+For a shot that came out wrong, the owner types one sentence of what it should show (Thai or English) instead of
+editing three prompts by hand. A button at the top of the shot card's Prompts box opens a small dialog.
+- `POST /videos/{id}/shots/{shotId}/revise` `{instruction}` → `{picturePrompt, picturePromptTh, endPicturePrompt,
+  endPicturePromptTh, prompt, promptTh, costUsd, model}`. **Saves nothing:** the screen puts the three pairs into the shot's
+  boxes (so Save is lit) and keeps what was there for "ย้อนกลับ". `scriptwriter.Writer.Revise` uses the same LLM route
+  and `scriptModel` as Draft; the system prompt is `systemFor(profile style + cast)` (all the studio's rules, incl. the 2D
+  ones) plus a "rewrite ONE shot, reply with this JSON" task. The user prompt carries the instruction, the shot's current
+  prompts, its narration, the previous/next shots' starting pictures (context only, not rewritten), the channel and the cast.
+  `picturePrompt` must be complete (it states the background; the stored text may start with the scene sentence copied to every
+  shot, whose stray object/negative the model drops). An end picture is kept only when the shot has a next shot. One retry,
+  told what was wrong (Thai letters in an English field, a missing Thai twin, empty prompt), costs added.
+- The dialog button says "ไม่กี่เซ็นต์ที่สุด" (an estimate: fal bills per token, known only afterwards; the toast shows the real
+  cost). Not counted in the daily limit or the dashboard (same as Draft and translations).
+- **Does not touch pictures:** a picture already made for the shot stays; the toast says to press Change to make a new one from
+  the new prompt. Fake mode (`AI_FAKE_FAL=1`) returns a fixed revision.
+- **Verified:** unit tests (request, prompt, parser, retry), and on screen with the fake model: boxes updated, Save lit, undo
+  restored the exact texts, nothing saved. **Not verified with a real model:** that it follows the instruction and the 2D rules
+  (the owner's case: the character stands on the scale with a stomach icon on it and a food icon on that).
 
 ## Explicitly OUT of scope for Phase 2 (do not build yet)
 
