@@ -28,9 +28,9 @@ func (q *Queries) AddKeyframeImage(ctx context.Context, arg AddKeyframeImagePara
 }
 
 const createKeyframe = `-- name: CreateKeyframe :one
-INSERT INTO keyframes (profile_id, prompt, model, count, reference_count, extra_image_ids, cast_image_ids, status)
-VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending')
-RETURNING id, profile_id, prompt, model, count, reference_count, extra_image_ids, cast_image_ids, status, error, created_at
+INSERT INTO keyframes (profile_id, prompt, model, count, reference_count, extra_image_ids, cast_image_ids, context, status)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')
+RETURNING id, profile_id, prompt, model, count, reference_count, extra_image_ids, cast_image_ids, context, status, error, created_at
 `
 
 type CreateKeyframeParams struct {
@@ -41,6 +41,7 @@ type CreateKeyframeParams struct {
 	ReferenceCount int16         `json:"reference_count"`
 	ExtraImageIds  []pgtype.UUID `json:"extra_image_ids"`
 	CastImageIds   []pgtype.UUID `json:"cast_image_ids"`
+	Context        string        `json:"context"`
 }
 
 func (q *Queries) CreateKeyframe(ctx context.Context, arg CreateKeyframeParams) (Keyframe, error) {
@@ -52,6 +53,7 @@ func (q *Queries) CreateKeyframe(ctx context.Context, arg CreateKeyframeParams) 
 		arg.ReferenceCount,
 		arg.ExtraImageIds,
 		arg.CastImageIds,
+		arg.Context,
 	)
 	var i Keyframe
 	err := row.Scan(
@@ -63,6 +65,7 @@ func (q *Queries) CreateKeyframe(ctx context.Context, arg CreateKeyframeParams) 
 		&i.ReferenceCount,
 		&i.ExtraImageIds,
 		&i.CastImageIds,
+		&i.Context,
 		&i.Status,
 		&i.Error,
 		&i.CreatedAt,
@@ -101,7 +104,7 @@ func (q *Queries) FinishKeyframe(ctx context.Context, arg FinishKeyframeParams) 
 }
 
 const getKeyframe = `-- name: GetKeyframe :one
-SELECT id, profile_id, prompt, model, count, reference_count, extra_image_ids, cast_image_ids, status, error, created_at FROM keyframes
+SELECT id, profile_id, prompt, model, count, reference_count, extra_image_ids, cast_image_ids, context, status, error, created_at FROM keyframes
 WHERE id = $1
 `
 
@@ -117,6 +120,41 @@ func (q *Queries) GetKeyframe(ctx context.Context, id pgtype.UUID) (Keyframe, er
 		&i.ReferenceCount,
 		&i.ExtraImageIds,
 		&i.CastImageIds,
+		&i.Context,
+		&i.Status,
+		&i.Error,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getLatestKeyframeByContext = `-- name: GetLatestKeyframeByContext :one
+SELECT id, profile_id, prompt, model, count, reference_count, extra_image_ids, cast_image_ids, context, status, error, created_at FROM keyframes
+WHERE profile_id = $1 AND context = $2 AND status <> 'failed'
+ORDER BY created_at DESC
+LIMIT 1
+`
+
+type GetLatestKeyframeByContextParams struct {
+	ProfileID pgtype.UUID `json:"profile_id"`
+	Context   string      `json:"context"`
+}
+
+// The newest request kept for a place (a shot's start or end picture) that has
+// not failed, so the dialog can show it again when it is reopened.
+func (q *Queries) GetLatestKeyframeByContext(ctx context.Context, arg GetLatestKeyframeByContextParams) (Keyframe, error) {
+	row := q.db.QueryRow(ctx, getLatestKeyframeByContext, arg.ProfileID, arg.Context)
+	var i Keyframe
+	err := row.Scan(
+		&i.ID,
+		&i.ProfileID,
+		&i.Prompt,
+		&i.Model,
+		&i.Count,
+		&i.ReferenceCount,
+		&i.ExtraImageIds,
+		&i.CastImageIds,
+		&i.Context,
 		&i.Status,
 		&i.Error,
 		&i.CreatedAt,
@@ -183,6 +221,65 @@ func (q *Queries) ListKeyframeImages(ctx context.Context, keyframeID pgtype.UUID
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOlderKeyframesByContext = `-- name: ListOlderKeyframesByContext :many
+SELECT id FROM keyframes
+WHERE profile_id = $1 AND context = $2 AND id <> $3
+`
+
+type ListOlderKeyframesByContextParams struct {
+	ProfileID pgtype.UUID `json:"profile_id"`
+	Context   string      `json:"context"`
+	ID        pgtype.UUID `json:"id"`
+}
+
+// Older requests kept for the same place, replaced by a new one.
+func (q *Queries) ListOlderKeyframesByContext(ctx context.Context, arg ListOlderKeyframesByContextParams) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listOlderKeyframesByContext, arg.ProfileID, arg.Context, arg.ID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOrphanKeyframes = `-- name: ListOrphanKeyframes :many
+SELECT k.id FROM keyframes k
+WHERE k.context LIKE 'shot:%'
+  AND NOT EXISTS (SELECT 1 FROM video_shots s WHERE s.id::text = split_part(k.context, ':', 2))
+`
+
+// Kept requests whose shot is gone ('shot:<id>:start|end'), to be swept away.
+func (q *Queries) ListOrphanKeyframes(ctx context.Context) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listOrphanKeyframes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

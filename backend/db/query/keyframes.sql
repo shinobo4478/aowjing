@@ -1,6 +1,6 @@
 -- name: CreateKeyframe :one
-INSERT INTO keyframes (profile_id, prompt, model, count, reference_count, extra_image_ids, cast_image_ids, status)
-VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending')
+INSERT INTO keyframes (profile_id, prompt, model, count, reference_count, extra_image_ids, cast_image_ids, context, status)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')
 RETURNING *;
 
 -- Pictures by id, for the worker to send as references. Order is the caller's
@@ -32,3 +32,22 @@ ORDER BY position;
 -- name: DeleteKeyframe :execrows
 DELETE FROM keyframes
 WHERE id = $1;
+
+-- The newest request kept for a place (a shot's start or end picture) that has
+-- not failed, so the dialog can show it again when it is reopened.
+-- name: GetLatestKeyframeByContext :one
+SELECT * FROM keyframes
+WHERE profile_id = $1 AND context = $2 AND status <> 'failed'
+ORDER BY created_at DESC
+LIMIT 1;
+
+-- Older requests kept for the same place, replaced by a new one.
+-- name: ListOlderKeyframesByContext :many
+SELECT id FROM keyframes
+WHERE profile_id = $1 AND context = $2 AND id <> $3;
+
+-- Kept requests whose shot is gone ('shot:<id>:start|end'), to be swept away.
+-- name: ListOrphanKeyframes :many
+SELECT k.id FROM keyframes k
+WHERE k.context LIKE 'shot:%'
+  AND NOT EXISTS (SELECT 1 FROM video_shots s WHERE s.id::text = split_part(k.context, ':', 2));

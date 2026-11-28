@@ -130,12 +130,19 @@ CREATE TABLE IF NOT EXISTS keyframes (
     -- sends exactly what the prompt describes even if the cast changes meanwhile.
     -- Not a foreign key, like extra_image_ids. reference_count includes them.
     cast_image_ids uuid[] NOT NULL DEFAULT '{}',
+    -- What the pictures are for, so the dialog can show the latest request again
+    -- when it is reopened: 'shot:<shot id>:start' or 'shot:<shot id>:end'. Empty
+    -- (the Generate dialog) = the request is thrown away when the dialog closes.
+    -- Not a foreign key: a request of a shot that no longer exists is swept away
+    -- (with the pictures nothing uses) the next time a request is made.
+    context    text        NOT NULL DEFAULT '',
     status     text        NOT NULL,
     error      text        NOT NULL DEFAULT '',
     created_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS keyframes_profile_id_idx ON keyframes (profile_id);
+CREATE INDEX IF NOT EXISTS keyframes_context_idx ON keyframes (profile_id, context) WHERE context <> '';
 
 CREATE TABLE IF NOT EXISTS keyframe_images (
     keyframe_id uuid     NOT NULL REFERENCES keyframes (id) ON DELETE CASCADE,

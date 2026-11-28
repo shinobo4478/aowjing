@@ -79,6 +79,7 @@ type Keyframe struct {
 	ReferenceCount int16              `json:"reference_count"`
 	ExtraImageIds  []pgtype.UUID      `json:"extra_image_ids"`
 	CastImageIds   []pgtype.UUID      `json:"cast_image_ids"`
+	Context        string             `json:"context"`
 	Status         string             `json:"status"`
 	Error          string             `json:"error"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
