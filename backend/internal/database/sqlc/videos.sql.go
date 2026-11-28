@@ -50,7 +50,7 @@ VALUES (
     $2,
     $3
 )
-RETURNING id, video_id, position, prompt, picture_prompt, end_picture_prompt, prompt_th, picture_prompt_th, end_picture_prompt_th, seconds, image_url, image_id, end_image_id, approved, created_at, updated_at, chosen_generation_id
+RETURNING id, video_id, position, prompt, picture_prompt, end_picture_prompt, prompt_th, picture_prompt_th, end_picture_prompt_th, narration_th, seconds, image_url, image_id, end_image_id, approved, created_at, updated_at, chosen_generation_id
 `
 
 type CreateShotParams struct {
@@ -73,6 +73,7 @@ func (q *Queries) CreateShot(ctx context.Context, arg CreateShotParams) (VideoSh
 		&i.PromptTh,
 		&i.PicturePromptTh,
 		&i.EndPicturePromptTh,
+		&i.NarrationTh,
 		&i.Seconds,
 		&i.ImageUrl,
 		&i.ImageID,
@@ -99,7 +100,7 @@ VALUES (
     $7,
     $8
 )
-RETURNING id, video_id, position, prompt, picture_prompt, end_picture_prompt, prompt_th, picture_prompt_th, end_picture_prompt_th, seconds, image_url, image_id, end_image_id, approved, created_at, updated_at, chosen_generation_id
+RETURNING id, video_id, position, prompt, picture_prompt, end_picture_prompt, prompt_th, picture_prompt_th, end_picture_prompt_th, narration_th, seconds, image_url, image_id, end_image_id, approved, created_at, updated_at, chosen_generation_id
 `
 
 type CreateShotWithPlanParams struct {
@@ -137,6 +138,7 @@ func (q *Queries) CreateShotWithPlan(ctx context.Context, arg CreateShotWithPlan
 		&i.PromptTh,
 		&i.PicturePromptTh,
 		&i.EndPicturePromptTh,
+		&i.NarrationTh,
 		&i.Seconds,
 		&i.ImageUrl,
 		&i.ImageID,
@@ -200,7 +202,7 @@ func (q *Queries) DeleteVideo(ctx context.Context, id pgtype.UUID) (int64, error
 }
 
 const getShot = `-- name: GetShot :one
-SELECT id, video_id, position, prompt, picture_prompt, end_picture_prompt, prompt_th, picture_prompt_th, end_picture_prompt_th, seconds, image_url, image_id, end_image_id, approved, created_at, updated_at, chosen_generation_id FROM video_shots
+SELECT id, video_id, position, prompt, picture_prompt, end_picture_prompt, prompt_th, picture_prompt_th, end_picture_prompt_th, narration_th, seconds, image_url, image_id, end_image_id, approved, created_at, updated_at, chosen_generation_id FROM video_shots
 WHERE id = $1
 `
 
@@ -217,6 +219,7 @@ func (q *Queries) GetShot(ctx context.Context, id pgtype.UUID) (VideoShot, error
 		&i.PromptTh,
 		&i.PicturePromptTh,
 		&i.EndPicturePromptTh,
+		&i.NarrationTh,
 		&i.Seconds,
 		&i.ImageUrl,
 		&i.ImageID,
@@ -413,7 +416,7 @@ func (q *Queries) ListShotTakes(ctx context.Context, videoID pgtype.UUID) ([]Lis
 }
 
 const listShots = `-- name: ListShots :many
-SELECT id, video_id, position, prompt, picture_prompt, end_picture_prompt, prompt_th, picture_prompt_th, end_picture_prompt_th, seconds, image_url, image_id, end_image_id, approved, created_at, updated_at, chosen_generation_id FROM video_shots
+SELECT id, video_id, position, prompt, picture_prompt, end_picture_prompt, prompt_th, picture_prompt_th, end_picture_prompt_th, narration_th, seconds, image_url, image_id, end_image_id, approved, created_at, updated_at, chosen_generation_id FROM video_shots
 WHERE video_id = $1
 ORDER BY position
 `
@@ -437,6 +440,7 @@ func (q *Queries) ListShots(ctx context.Context, videoID pgtype.UUID) ([]VideoSh
 			&i.PromptTh,
 			&i.PicturePromptTh,
 			&i.EndPicturePromptTh,
+			&i.NarrationTh,
 			&i.Seconds,
 			&i.ImageUrl,
 			&i.ImageID,
@@ -542,7 +546,7 @@ UPDATE video_shots
 SET approved = $2,
     updated_at = now()
 WHERE id = $1
-RETURNING id, video_id, position, prompt, picture_prompt, end_picture_prompt, prompt_th, picture_prompt_th, end_picture_prompt_th, seconds, image_url, image_id, end_image_id, approved, created_at, updated_at, chosen_generation_id
+RETURNING id, video_id, position, prompt, picture_prompt, end_picture_prompt, prompt_th, picture_prompt_th, end_picture_prompt_th, narration_th, seconds, image_url, image_id, end_image_id, approved, created_at, updated_at, chosen_generation_id
 `
 
 type SetShotApprovedParams struct {
@@ -563,6 +567,7 @@ func (q *Queries) SetShotApproved(ctx context.Context, arg SetShotApprovedParams
 		&i.PromptTh,
 		&i.PicturePromptTh,
 		&i.EndPicturePromptTh,
+		&i.NarrationTh,
 		&i.Seconds,
 		&i.ImageUrl,
 		&i.ImageID,
@@ -580,7 +585,7 @@ UPDATE video_shots
 SET chosen_generation_id = $2::uuid,
     updated_at = now()
 WHERE id = $1
-RETURNING id, video_id, position, prompt, picture_prompt, end_picture_prompt, prompt_th, picture_prompt_th, end_picture_prompt_th, seconds, image_url, image_id, end_image_id, approved, created_at, updated_at, chosen_generation_id
+RETURNING id, video_id, position, prompt, picture_prompt, end_picture_prompt, prompt_th, picture_prompt_th, end_picture_prompt_th, narration_th, seconds, image_url, image_id, end_image_id, approved, created_at, updated_at, chosen_generation_id
 `
 
 type SetShotChosenParams struct {
@@ -603,6 +608,7 @@ func (q *Queries) SetShotChosen(ctx context.Context, arg SetShotChosenParams) (V
 		&i.PromptTh,
 		&i.PicturePromptTh,
 		&i.EndPicturePromptTh,
+		&i.NarrationTh,
 		&i.Seconds,
 		&i.ImageUrl,
 		&i.ImageID,
@@ -649,9 +655,10 @@ SET approved = CASE
     prompt_th = $9::text,
     picture_prompt_th = $10::text,
     end_picture_prompt_th = $11::text,
+    narration_th = $12::text,
     updated_at = now()
 WHERE id = $1
-RETURNING id, video_id, position, prompt, picture_prompt, end_picture_prompt, prompt_th, picture_prompt_th, end_picture_prompt_th, seconds, image_url, image_id, end_image_id, approved, created_at, updated_at, chosen_generation_id
+RETURNING id, video_id, position, prompt, picture_prompt, end_picture_prompt, prompt_th, picture_prompt_th, end_picture_prompt_th, narration_th, seconds, image_url, image_id, end_image_id, approved, created_at, updated_at, chosen_generation_id
 `
 
 type UpdateShotParams struct {
@@ -666,6 +673,7 @@ type UpdateShotParams struct {
 	PromptTh           string      `json:"prompt_th"`
 	PicturePromptTh    string      `json:"picture_prompt_th"`
 	EndPicturePromptTh string      `json:"end_picture_prompt_th"`
+	NarrationTh        string      `json:"narration_th"`
 }
 
 // Changing the plan clears the approval: it applied to the plan that was
@@ -683,6 +691,7 @@ func (q *Queries) UpdateShot(ctx context.Context, arg UpdateShotParams) (VideoSh
 		arg.PromptTh,
 		arg.PicturePromptTh,
 		arg.EndPicturePromptTh,
+		arg.NarrationTh,
 	)
 	var i VideoShot
 	err := row.Scan(
@@ -695,6 +704,7 @@ func (q *Queries) UpdateShot(ctx context.Context, arg UpdateShotParams) (VideoSh
 		&i.PromptTh,
 		&i.PicturePromptTh,
 		&i.EndPicturePromptTh,
+		&i.NarrationTh,
 		&i.Seconds,
 		&i.ImageUrl,
 		&i.ImageID,

@@ -64,7 +64,7 @@ func New(db *pgxpool.Pool, cfg config.Config, q *queue.Client) http.Handler {
 		r.Mount("/credits", credits.NewHandler(queries).Routes())
 		r.Mount("/dashboard", dashboard.NewHandler(queries).Routes())
 		r.Mount("/images", images.NewHandler(queries).Routes())
-		r.Mount("/videos", videos.NewHandler(db, queries, q, scriptwriter.New(queries, cfg.FakeFal)).Routes())
+		r.Mount("/videos", videos.NewHandler(db, queries, q, scriptwriter.New(queries, cfg.FakeFal), cfg.FakeFal).Routes())
 		// POST only enqueues; cmd/worker makes the pictures.
 		r.Mount("/keyframes", keyframes.NewHandler(queries, q).Routes())
 		r.Mount("/products", products.NewHandler(queries).Routes())

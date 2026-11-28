@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Alert, App, Button, Checkbox, Input, Tag, Typography } from "antd";
-import { ApiError, getVoiceCandidates, makeVoiceSamples } from "@/lib/api";
+import { Alert, App, Button, Checkbox, Input, Select, Tag, Typography } from "antd";
+import { ApiError, getVoiceCandidates, listProfiles, makeVoiceSamples, updateProfile } from "@/lib/api";
+import { narratorInfo } from "@/lib/narration";
 import { formatUsd } from "@/lib/format";
-import type { VoiceCandidates, VoiceSampleResult } from "@/lib/types";
+import type { Profile, VoiceCandidates, VoiceSampleResult } from "@/lib/types";
 
 /** A Thai paragraph of about 300 characters to listen with: plain narration with
  *  numbers, a list and a question, which is what educational clips are made of.
@@ -66,6 +67,9 @@ export default function VoiceSamples() {
   const [custom, setCustom] = useState<string[]>([]);
   const [customDraft, setCustomDraft] = useState("");
   const [notes, setNotes] = useState<Record<string, string>>({});
+  // The fal profiles, each with its own narrator voice: a heard voice is given to a
+  // profile from here, or the profile's own form.
+  const [profiles, setProfiles] = useState<Profile[]>([]);
 
   useEffect(() => {
     // Read once on the client (localStorage does not exist on the server).
@@ -95,6 +99,44 @@ export default function VoiceSamples() {
     custom.length * priceOf(CUSTOM_PRICE_PER_1K);
   const tooShort = !!info && chars < info.minChars;
   const tooLong = !!info && chars > info.maxChars;
+
+  useEffect(() => {
+    let cancelled = false;
+    listProfiles()
+      .then((ps) => {
+        if (!cancelled) setProfiles(ps.filter((p) => p.provider === "fal"));
+      })
+      .catch(() => {
+        /* no profile list: the voices can still be heard */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Gives a heard voice to a profile as its narrator (saved with the profile).
+  async function giveToProfile(voiceKey: string, profileId: string) {
+    const p = profiles.find((x) => x.id === profileId);
+    if (!p) return;
+    try {
+      const saved = await updateProfile(p.id, {
+        name: p.name,
+        niche: p.niche,
+        description: p.description,
+        provider: p.provider,
+        videoStyle: p.videoStyle,
+        videoModel: p.videoModel,
+        videoAudio: p.videoAudio,
+        lookNotes: p.lookNotes,
+        narratorVoice: voiceKey,
+      });
+      setProfiles((cur) => cur.map((x) => (x.id === saved.id ? saved : x)));
+      message.success(`${p.name}: narrator voice saved.`);
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : "Could not save the narrator voice.");
+    }
+  }
+
 
   // Adds a voice the owner named (once; the server checks the characters too).
   function addCustom(raw: string) {
@@ -157,7 +199,14 @@ export default function VoiceSamples() {
   }
 
   return (
-    <div style={{ marginTop: 56, maxWidth: 640 }}>
+    <div
+      style={{ maxWidth: 640 }}
+      // This screen sits inside the Settings form: Enter in a text box here must not
+      // save the settings (the custom-voice box handles Enter itself).
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && (e.target as HTMLElement).tagName === "INPUT") e.preventDefault();
+      }}
+    >
       <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 8 }}>
         Thai voice samples
       </Typography.Title>
@@ -166,6 +215,8 @@ export default function VoiceSamples() {
         จึงเลือกด้วยหู ถ้าเสียงไหนขึ้นข้อผิดพลาดหรือสำเนียงเพี้ยน ก็ตัดทิ้งได้เลย
         เสียงไม่ถูกบันทึกในแอป (fal เก็บไฟล์อย่างน้อย 7 วัน)
       </Typography.Paragraph>
+
+<Typography.Paragraph type="secondary" style={{ fontSize: 13, marginBottom: 16 }}>        เสียงพากย์ของแต่ละ Profile (เปลี่ยนได้ที่ฟอร์ม Profile หรือกดใต้เสียงที่ฟังด้านล่าง):{" "}        {profiles.length === 0          ? "ยังไม่มี Profile ที่ใช้ fal"          : profiles              .map((p) => `${p.name} → ${narratorInfo(p.narratorVoice, info?.candidates ?? [])?.label ?? "ยังไม่เลือก"}`)              .join(" · ")}      </Typography.Paragraph>
 
       <Typography.Text>ข้อความที่ให้อ่าน · Text to speak</Typography.Text>
       <Input.TextArea
@@ -290,6 +341,18 @@ export default function VoiceSamples() {
                   {r.durationMs > 0 ? `${(r.durationMs / 1000).toFixed(1)} s · ` : ""}≈ {formatUsd(r.costUsd)}
                 </Typography.Text>
                 <audio controls preload="none" src={r.audioUrl} style={{ display: "block", width: "100%", marginTop: 4 }} />
+                <Select
+                  size="small"
+                  placeholder="ใช้เป็นเสียงพากย์ของ Profile…"
+                  disabled={profiles.length === 0}
+                  style={{ marginTop: 6, minWidth: 260 }}
+                  value={null}
+                  onChange={(profileId: string) => void giveToProfile(r.key, profileId)}
+                  options={profiles.map((p) => ({
+                    value: p.id,
+                    label: p.narratorVoice === r.key ? `${p.name} (ใช้เสียงนี้อยู่)` : p.name,
+                  }))}
+                />
                 <Input
                   size="small"
                   value={notes[r.key] ?? ""}

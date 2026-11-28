@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"fmt"
+	"io"
+	"net/http"
 	"strings"
 	"time"
 )
@@ -70,7 +73,7 @@ func voiceInput(req VoiceRequest) (map[string]any, error) {
 		}
 		return in, nil
 	case VoiceFamilyElevenLabs:
-		in := map[string]any{"text": req.Text, "language_code": "th"}
+		in := map[string]any{"text": req.Text, "language_code": "th", "output_format": ElevenLabsAudioFormat}
 		if req.VoiceID != "" {
 			in["voice"] = req.VoiceID
 		}
@@ -150,4 +153,69 @@ func silentWAVDataURI() string {
 	b = append(b, le32(len(data))...)
 	b = append(b, data...)
 	return "data:audio/wav;base64," + base64.StdEncoding.EncodeToString(b)
+}
+
+// ElevenLabsAudioFormat is the output we ask ElevenLabs for: a 128 kbps CONSTANT
+// bitrate MP3. Constant bitrate is what lets ApproxMP3DurationMs work out the
+// length from the size, because fal's reply for ElevenLabs carries no duration.
+const (
+	ElevenLabsAudioFormat = "mp3_44100_128"
+	mp3KbpsForFormat      = 128
+)
+
+// ApproxMP3DurationMs is the length of a constant-bitrate MP3 from its size:
+// bytes x 8 bits / (kbps x 1000 bits per second). Good to about a tenth of a
+// second (a tag or header adds a few bytes); not for variable-bitrate files.
+func ApproxMP3DurationMs(sizeBytes int) int {
+	if sizeBytes <= 0 {
+		return 0
+	}
+	return sizeBytes * 8 / mp3KbpsForFormat // x 8 bits, / (kbps x 1000), x 1000 ms
+}
+
+// maxAudioBytes caps a fetched audio file: a few minutes of speech is well under
+// 10 MB, so anything bigger is not what was asked for.
+const maxAudioBytes = 10 << 20
+
+// FetchAudio reads the audio a voice returned: a fal file link, or (in fake
+// mode) a data URI. It returns the bytes and their content type.
+func FetchAudio(ctx context.Context, url string) ([]byte, string, error) {
+	if rest, ok := strings.CutPrefix(url, "data:"); ok {
+		meta, payload, found := strings.Cut(rest, ",")
+		if !found || !strings.HasSuffix(meta, ";base64") {
+			return nil, "", errors.New("the audio data URI is not base64")
+		}
+		data, err := base64.StdEncoding.DecodeString(payload)
+		if err != nil {
+			return nil, "", err
+		}
+		return data, strings.TrimSuffix(meta, ";base64"), nil
+	}
+	if !strings.HasPrefix(url, "https://") {
+		return nil, "", errors.New("the audio link is not an https link")
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, "", err
+	}
+	resp, err := (&http.Client{Timeout: 60 * time.Second}).Do(req)
+	if err != nil {
+		return nil, "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, "", fmt.Errorf("fetching the audio: http %d", resp.StatusCode)
+	}
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxAudioBytes+1))
+	if err != nil {
+		return nil, "", err
+	}
+	if len(data) > maxAudioBytes {
+		return nil, "", errors.New("the audio file is too large")
+	}
+	ct := resp.Header.Get("Content-Type")
+	if ct == "" {
+		ct = "audio/mpeg"
+	}
+	return data, ct, nil
 }

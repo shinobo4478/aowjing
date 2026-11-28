@@ -12,20 +12,21 @@ import (
 )
 
 const createProfile = `-- name: CreateProfile :one
-INSERT INTO profiles (name, niche, description, provider, video_style, video_model, video_audio, look_notes)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, name, niche, description, provider, video_style, video_model, video_audio, look_notes, created_at, updated_at
+INSERT INTO profiles (name, niche, description, provider, video_style, video_model, video_audio, look_notes, narrator_voice)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, name, niche, description, provider, video_style, video_model, video_audio, look_notes, narrator_voice, created_at, updated_at
 `
 
 type CreateProfileParams struct {
-	Name        string `json:"name"`
-	Niche       string `json:"niche"`
-	Description string `json:"description"`
-	Provider    string `json:"provider"`
-	VideoStyle  string `json:"video_style"`
-	VideoModel  string `json:"video_model"`
-	VideoAudio  bool   `json:"video_audio"`
-	LookNotes   string `json:"look_notes"`
+	Name          string `json:"name"`
+	Niche         string `json:"niche"`
+	Description   string `json:"description"`
+	Provider      string `json:"provider"`
+	VideoStyle    string `json:"video_style"`
+	VideoModel    string `json:"video_model"`
+	VideoAudio    bool   `json:"video_audio"`
+	LookNotes     string `json:"look_notes"`
+	NarratorVoice string `json:"narrator_voice"`
 }
 
 func (q *Queries) CreateProfile(ctx context.Context, arg CreateProfileParams) (Profile, error) {
@@ -38,6 +39,7 @@ func (q *Queries) CreateProfile(ctx context.Context, arg CreateProfileParams) (P
 		arg.VideoModel,
 		arg.VideoAudio,
 		arg.LookNotes,
+		arg.NarratorVoice,
 	)
 	var i Profile
 	err := row.Scan(
@@ -50,6 +52,7 @@ func (q *Queries) CreateProfile(ctx context.Context, arg CreateProfileParams) (P
 		&i.VideoModel,
 		&i.VideoAudio,
 		&i.LookNotes,
+		&i.NarratorVoice,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -70,7 +73,7 @@ func (q *Queries) DeleteProfile(ctx context.Context, id pgtype.UUID) (int64, err
 }
 
 const getProfile = `-- name: GetProfile :one
-SELECT id, name, niche, description, provider, video_style, video_model, video_audio, look_notes, created_at, updated_at FROM profiles
+SELECT id, name, niche, description, provider, video_style, video_model, video_audio, look_notes, narrator_voice, created_at, updated_at FROM profiles
 WHERE id = $1
 `
 
@@ -87,6 +90,7 @@ func (q *Queries) GetProfile(ctx context.Context, id pgtype.UUID) (Profile, erro
 		&i.VideoModel,
 		&i.VideoAudio,
 		&i.LookNotes,
+		&i.NarratorVoice,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -94,7 +98,7 @@ func (q *Queries) GetProfile(ctx context.Context, id pgtype.UUID) (Profile, erro
 }
 
 const listProfiles = `-- name: ListProfiles :many
-SELECT id, name, niche, description, provider, video_style, video_model, video_audio, look_notes, created_at, updated_at FROM profiles
+SELECT id, name, niche, description, provider, video_style, video_model, video_audio, look_notes, narrator_voice, created_at, updated_at FROM profiles
 ORDER BY created_at DESC
 `
 
@@ -117,6 +121,7 @@ func (q *Queries) ListProfiles(ctx context.Context) ([]Profile, error) {
 			&i.VideoModel,
 			&i.VideoAudio,
 			&i.LookNotes,
+			&i.NarratorVoice,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -140,21 +145,23 @@ SET name = $2,
     video_model = $7,
     video_audio = $8,
     look_notes = $9,
+    narrator_voice = $10,
     updated_at = now()
 WHERE id = $1
-RETURNING id, name, niche, description, provider, video_style, video_model, video_audio, look_notes, created_at, updated_at
+RETURNING id, name, niche, description, provider, video_style, video_model, video_audio, look_notes, narrator_voice, created_at, updated_at
 `
 
 type UpdateProfileParams struct {
-	ID          pgtype.UUID `json:"id"`
-	Name        string      `json:"name"`
-	Niche       string      `json:"niche"`
-	Description string      `json:"description"`
-	Provider    string      `json:"provider"`
-	VideoStyle  string      `json:"video_style"`
-	VideoModel  string      `json:"video_model"`
-	VideoAudio  bool        `json:"video_audio"`
-	LookNotes   string      `json:"look_notes"`
+	ID            pgtype.UUID `json:"id"`
+	Name          string      `json:"name"`
+	Niche         string      `json:"niche"`
+	Description   string      `json:"description"`
+	Provider      string      `json:"provider"`
+	VideoStyle    string      `json:"video_style"`
+	VideoModel    string      `json:"video_model"`
+	VideoAudio    bool        `json:"video_audio"`
+	LookNotes     string      `json:"look_notes"`
+	NarratorVoice string      `json:"narrator_voice"`
 }
 
 func (q *Queries) UpdateProfile(ctx context.Context, arg UpdateProfileParams) (Profile, error) {
@@ -168,6 +175,7 @@ func (q *Queries) UpdateProfile(ctx context.Context, arg UpdateProfileParams) (P
 		arg.VideoModel,
 		arg.VideoAudio,
 		arg.LookNotes,
+		arg.NarratorVoice,
 	)
 	var i Profile
 	err := row.Scan(
@@ -180,6 +188,7 @@ func (q *Queries) UpdateProfile(ctx context.Context, arg UpdateProfileParams) (P
 		&i.VideoModel,
 		&i.VideoAudio,
 		&i.LookNotes,
+		&i.NarratorVoice,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

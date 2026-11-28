@@ -111,17 +111,18 @@ type ProductImage struct {
 }
 
 type Profile struct {
-	ID          pgtype.UUID        `json:"id"`
-	Name        string             `json:"name"`
-	Niche       string             `json:"niche"`
-	Description string             `json:"description"`
-	Provider    string             `json:"provider"`
-	VideoStyle  string             `json:"video_style"`
-	VideoModel  string             `json:"video_model"`
-	VideoAudio  bool               `json:"video_audio"`
-	LookNotes   string             `json:"look_notes"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	ID            pgtype.UUID        `json:"id"`
+	Name          string             `json:"name"`
+	Niche         string             `json:"niche"`
+	Description   string             `json:"description"`
+	Provider      string             `json:"provider"`
+	VideoStyle    string             `json:"video_style"`
+	VideoModel    string             `json:"video_model"`
+	VideoAudio    bool               `json:"video_audio"`
+	LookNotes     string             `json:"look_notes"`
+	NarratorVoice string             `json:"narrator_voice"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 }
 
 type PromptTemplate struct {
@@ -146,6 +147,17 @@ type Setting struct {
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
+type ShotAudio struct {
+	ShotID      pgtype.UUID        `json:"shot_id"`
+	Voice       string             `json:"voice"`
+	Text        string             `json:"text"`
+	ContentType string             `json:"content_type"`
+	SizeBytes   int32              `json:"size_bytes"`
+	DurationMs  int32              `json:"duration_ms"`
+	Data        []byte             `json:"data"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
 type Video struct {
 	ID        pgtype.UUID        `json:"id"`
 	ProfileID pgtype.UUID        `json:"profile_id"`
@@ -164,6 +176,7 @@ type VideoShot struct {
 	PromptTh           string             `json:"prompt_th"`
 	PicturePromptTh    string             `json:"picture_prompt_th"`
 	EndPicturePromptTh string             `json:"end_picture_prompt_th"`
+	NarrationTh        string             `json:"narration_th"`
 	Seconds            int16              `json:"seconds"`
 	ImageUrl           string             `json:"image_url"`
 	ImageID            pgtype.UUID        `json:"image_id"`

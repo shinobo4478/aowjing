@@ -80,3 +80,35 @@ func TestLookNotesLimitCountsCharacters(t *testing.T) {
 		t.Errorf("look notes should be trimmed, got %q", trim.LookNotes)
 	}
 }
+
+func TestNarratorVoiceIsAKnownVoiceOrEmpty(t *testing.T) {
+	base := profileInput{Name: "ช่องความรู้", Niche: "การเรียนรู้", Provider: "fal", VideoStyle: "2d", VideoModel: "kling-v3"}
+	tests := []struct {
+		voice string
+		ok    bool
+	}{
+		{"", true},                 // none chosen yet
+		{"eleven-v3-rachel", true}, // a listed voice
+		{"  eleven-v3-sarah  ", true},
+		{"custom:Alice", true}, // a voice the owner named
+		{"custom:21m00Tcm4TlvDq8ikWAM", true},
+		{"eleven-v3-aria", false}, // removed after the owner's listening test
+		{"custom:bad;name", false},
+		{"custom:", false},
+		{"nope", false},
+	}
+	for _, tt := range tests {
+		in := base
+		in.NarratorVoice = tt.voice
+		errs := in.normalizeAndValidate()
+		if got := errs["narratorVoice"] == ""; got != tt.ok {
+			t.Errorf("narrator %q: valid = %v, want %v (%v)", tt.voice, got, tt.ok, errs)
+		}
+	}
+	in := base
+	in.NarratorVoice = "  eleven-v3-roger  "
+	in.normalizeAndValidate()
+	if in.NarratorVoice != "eleven-v3-roger" {
+		t.Errorf("the narrator voice should be trimmed, got %q", in.NarratorVoice)
+	}
+}

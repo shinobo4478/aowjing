@@ -65,6 +65,9 @@ export interface Profile {
   /** This profile's OWN look in English (line, colours, how things are drawn),
    *  added to every picture prompt of the profile. */
   lookNotes: string;
+  /** The voice that speaks this profile's narration: a voice key or "custom:<name>"
+   *  ("" = none chosen). Can be changed at any time. */
+  narratorVoice: string;
   createdAt: string; // ISO 8601
   updatedAt: string; // ISO 8601
 }
@@ -72,7 +75,7 @@ export interface Profile {
 /** Fields the client sends when creating or editing a Profile. */
 export type ProfileInput = Pick<
   Profile,
-  "name" | "niche" | "description" | "provider" | "videoStyle" | "videoModel" | "videoAudio" | "lookNotes"
+  "name" | "niche" | "description" | "provider" | "videoStyle" | "videoModel" | "videoAudio" | "lookNotes" | "narratorVoice"
 >;
 
 export interface Channel {
@@ -200,6 +203,11 @@ export interface Shot {
   promptTh: string;
   picturePromptTh: string;
   endPicturePromptTh: string;
+  /** What the narrator says over this shot, in Thai (never sent to a picture or
+   *  video model). */
+  narrationTh: string;
+  /** The voice-over made from it, null when none. */
+  voice: ShotVoice | null;
   seconds: number;
   /** A public link the shot starts from, or "" . */
   imageUrl: string;
@@ -234,6 +242,7 @@ export interface ShotInput {
   promptTh: string;
   picturePromptTh: string;
   endPicturePromptTh: string;
+  narrationTh: string;
   seconds: number;
   imageUrl: string;
   imageId: string;
@@ -607,4 +616,18 @@ export interface VoiceSampleResult {
   durationMs: number;
   costUsd: number;
   error?: string;
+}
+
+/** The voice-over made for a shot (GET /videos/{id}: shot.voice), null when none. */
+export interface ShotVoice {
+  /** The voice key it was spoken with. */
+  voice: string;
+  /** Exactly what was spoken. */
+  text: string;
+  /** Approximate: the MP3's length from its size (128 kbps constant bitrate). */
+  durationMs: number;
+  sizeBytes: number;
+  createdAt: string;
+  /** The narration has not changed since this audio was made. */
+  current: boolean;
 }

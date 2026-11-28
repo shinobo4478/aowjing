@@ -128,3 +128,16 @@ func CustomVoice(name string) (VoiceCandidate, bool) {
 		Note:            "A voice you named. If fal does not know it, it answers with an error and costs nothing.",
 	}, true
 }
+
+// ResolveVoice finds a voice by its key: a listed one, or "custom:<name>" for a
+// voice the owner named (see CustomVoice). It is how the narrator voice saved in
+// Settings is read back.
+func ResolveVoice(key string) (VoiceCandidate, bool) {
+	if c, ok := VoiceCandidateFor(key); ok {
+		return c, true
+	}
+	if name, ok := strings.CutPrefix(key, "custom:"); ok {
+		return CustomVoice(name)
+	}
+	return VoiceCandidate{}, false
+}

@@ -21,11 +21,14 @@ export default function VideosSection({
   provider,
   videoModel,
   videoAudio,
+  narratorVoice,
 }: {
   profileId: string;
   provider: ProviderKey;
   videoModel: string;
   videoAudio: boolean;
+  /** The profile's narrator voice key ("" = none): who speaks the narration. */
+  narratorVoice: string;
 }) {
   const { message } = App.useApp();
   const router = useRouter();
@@ -99,6 +102,7 @@ export default function VideosSection({
         profileId={profileId}
         videoModel={videoModel}
         videoAudio={videoAudio}
+        narratorVoice={narratorVoice}
         onBack={backToList}
       />
     );

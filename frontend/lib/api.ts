@@ -691,3 +691,24 @@ export function makeVoiceSamples(input: { text: string; candidates: string[]; cu
     { method: "POST", body: JSON.stringify(input) },
   );
 }
+
+// --- The voice-over of a shot (narration spoken by the narrator voice) ---
+
+/** Speaks the shot's SAVED narration with the narrator voice chosen in Settings,
+ *  replacing any earlier audio. Costs fal credits per character, so the screen
+ *  asks first. Answers with the updated shot. */
+export function makeShotVoice(videoId: string, shotId: string) {
+  return request<{ shot: Shot }>(`/videos/${videoId}/shots/${shotId}/voice`, {
+    method: "POST",
+  }).then((r) => r.shot);
+}
+
+/** Removes a shot's voice-over (the narration text stays). */
+export function deleteShotVoice(videoId: string, shotId: string) {
+  return request<void>(`/videos/${videoId}/shots/${shotId}/voice`, { method: "DELETE" });
+}
+
+/** Where the browser plays a shot's voice-over. `version` (the audio's creation
+ *  time) changes when it is spoken again, so the browser does not play an old one. */
+export const shotVoiceSrc = (videoId: string, shotId: string, version: string) =>
+  `${API_BASE}/videos/${videoId}/shots/${shotId}/voice/audio?v=${encodeURIComponent(version)}`;

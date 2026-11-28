@@ -141,6 +141,7 @@ export default function ProfileDetailPage({
                 provider={profile.provider}
                 videoModel={profile.videoModel}
                 videoAudio={profile.videoAudio}
+                narratorVoice={profile.narratorVoice}
               />
             ),
           },
@@ -193,6 +194,7 @@ export default function ProfileDetailPage({
             videoModel: profile.videoModel,
             videoAudio: profile.videoAudio,
             lookNotes: profile.lookNotes,
+            narratorVoice: profile.narratorVoice,
           }}
           submitLabel="Save changes"
           onSubmit={async (input) => {

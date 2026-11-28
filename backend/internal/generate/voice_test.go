@@ -1,6 +1,7 @@
 package generate
 
 import (
+	"context"
 	"reflect"
 	"testing"
 )
@@ -31,7 +32,7 @@ func TestVoiceInputElevenLabs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]any{"text": "สวัสดี", "language_code": "th", "voice": "Rachel"}
+	want := map[string]any{"text": "สวัสดี", "language_code": "th", "voice": "Rachel", "output_format": "mp3_44100_128"}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("elevenlabs body:\n got %v\nwant %v", got, want)
 	}
@@ -40,5 +41,26 @@ func TestVoiceInputElevenLabs(t *testing.T) {
 func TestVoiceInputUnknownFamily(t *testing.T) {
 	if _, err := voiceInput(VoiceRequest{Family: "nope", Text: "x"}); err == nil {
 		t.Error("an unknown family must be an error")
+	}
+}
+
+func TestApproxMP3DurationMs(t *testing.T) {
+	// 128 kbps = 16000 bytes per second.
+	for size, want := range map[int]int{0: 0, -5: 0, 16000: 1000, 80000: 5000, 160000: 10000, 8000: 500} {
+		if got := ApproxMP3DurationMs(size); got != want {
+			t.Errorf("ApproxMP3DurationMs(%d) = %d, want %d", size, got, want)
+		}
+	}
+}
+
+func TestFetchAudioDataURI(t *testing.T) {
+	data, ct, err := FetchAudio(context.Background(), silentWAVDataURI())
+	if err != nil || ct != "audio/wav" || len(data) < 8000 || string(data[:4]) != "RIFF" {
+		t.Fatalf("fake audio: %d bytes, %q, %v", len(data), ct, err)
+	}
+	for _, bad := range []string{"data:audio/wav,notbase64", "http://x/y.mp3", "ftp://x", "", "data:audio/wav;base64,!!!"} {
+		if _, _, err := FetchAudio(context.Background(), bad); err == nil {
+			t.Errorf("FetchAudio(%q) should fail", bad)
+		}
 	}
 }
