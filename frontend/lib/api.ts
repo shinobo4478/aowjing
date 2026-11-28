@@ -373,6 +373,30 @@ export function translatePrompt(input: {
   });
 }
 
+/** A shot's three prompts rewritten by the script helper (English for the models,
+ *  Thai for the owner) and what the call cost. Nothing is saved by the call. */
+export interface ShotRevision {
+  picturePrompt: string;
+  picturePromptTh: string;
+  /** "" when the shot has no end picture. */
+  endPicturePrompt: string;
+  endPicturePromptTh: string;
+  /** The clip's motion prompt. */
+  prompt: string;
+  promptTh: string;
+  costUsd: number;
+  model: string;
+}
+
+/** Asks the script helper to rewrite ONE shot's prompts from a sentence of the
+ *  owner's. Saves nothing: the screen puts the result into the shot's boxes. */
+export function reviseShot(videoId: string, shotId: string, instruction: string) {
+  return request<ShotRevision>(`/videos/${videoId}/shots/${shotId}/revise`, {
+    method: "POST",
+    body: JSON.stringify({ instruction }),
+  });
+}
+
 /** Asks the script helper to write a shot list and makes a Video from it: the
  *  scene and each shot's picture prompt, motion prompt and length come filled
  *  in. It makes no pictures and no clips; the only cost is the model's reply,

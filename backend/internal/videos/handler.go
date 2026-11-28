@@ -62,6 +62,7 @@ func (h *Handler) Routes() http.Handler {
 	r.Patch("/{id}/shots/{shotId}", h.updateShot)
 	r.Delete("/{id}/shots/{shotId}", h.deleteShot)
 	r.Post("/{id}/shots/{shotId}/generate", h.generateShot)
+	r.Post("/{id}/shots/{shotId}/revise", h.reviseShot)
 	// The voice-over of a shot: speak it, play it, remove it.
 	r.Post("/{id}/shots/{shotId}/voice", h.makeVoice)
 	r.Get("/{id}/shots/{shotId}/voice/audio", h.voiceAudio)
@@ -879,6 +880,7 @@ func writeError(w http.ResponseWriter, code int, msg string) {
 type Drafter interface {
 	Draft(ctx context.Context, b scriptwriter.Brief) (scriptwriter.Draft, error)
 	Translate(ctx context.Context, r scriptwriter.TranslateRequest) (scriptwriter.Translation, error)
+	Revise(ctx context.Context, r scriptwriter.ReviseRequest) (scriptwriter.Revision, error)
 }
 
 // translateTimeout covers one translation (a short text; fal's queue wait is
