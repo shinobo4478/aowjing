@@ -750,6 +750,19 @@ per shot (decide where it is kept: Postgres like pictures, or R2), a play/downlo
 (4) an "Explainer" Draft format that writes the narration (hook question, 2–3 points, recap) with the
 shots. Joining audio and clips stays manual in CapCut (ffmpeg would be a new dependency: ask first).
 
+## 2D drafts: the scene is the background only, ideas inside the character are drawn on it (built 2026-11-29)
+
+Found on the owner's explainer draft ("ลดน้ำหนักแต่น้ำหนักขึ้น", shot 3): the model put the video's theme (a bathroom scale,
+"in the centre of the frame, nothing else around it") into the **scene line**, which is copied in front of EVERY shot's picture
+prompt, so the shot's own picture (a stomach icon "in the middle") fought it, and the character was pushed "nearby" instead of
+carrying the icons. `flatRules` (`scriptwriter/modes.go`, 2D only) now says: the scene is ONLY a background (colour, plain
+surface), no object, icon, symbol, character or negative; and when the idea happens on/inside the character (digestion,
+weight), draw the icons ON the character, which stays the main subject, with arrows and changes left to the motion prompt and
+the end picture (the starting picture is the moment before the action). Affects new drafts only: shots already drafted keep
+their scene sentence (edit it out, or use "แก้ช็อตนี้ด้วย AI" once built). The ⚠ on negatives in a picture prompt
+(`promptLint`) already covered the scene sentence, since the scene is part of the stored picture prompt. **Unverified on a real
+model:** that it follows the new rules; the scene is still stored per shot, not once on the video (still a to-do).
+
 ## Picture zoom and small hints (built 2026-11-28)
 
 AI pictures were too small to judge. `components/ZoomableImage.tsx` wraps antd's `Image` preview (full
