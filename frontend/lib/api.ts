@@ -389,6 +389,9 @@ export function draftVideo(input: {
   mode?: "general" | "product" | "film" | "explainer";
   /** The catalog product a product video is about; it must have pictures. */
   productId?: string;
+  /** Material the draft must be based on (an article, notes): the only place
+   *  facts and numbers may come from. At most 8000 characters. */
+  source?: string;
 }) {
   return request<{ video: Video; costUsd: number; model: string; tooLongShots?: number }>("/videos/draft", {
     method: "POST",

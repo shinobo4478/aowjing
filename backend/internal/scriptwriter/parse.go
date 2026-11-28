@@ -23,6 +23,11 @@ type Brief struct {
 	Shots   int
 	Seconds int // the length of each shot
 
+	// Source is material the owner pasted (an article, notes, a script) that the
+	// video must be based on: it is the only place facts, numbers and claims may
+	// come from. Empty = the model writes from the topic alone.
+	Source string
+
 	// What the profile says about itself, so the shots fit its channel.
 	ProfileName string
 	Niche       string

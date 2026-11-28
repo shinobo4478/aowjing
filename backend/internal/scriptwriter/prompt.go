@@ -79,6 +79,22 @@ func userPrompt(b Brief) string {
 	}
 	s.WriteString(userCastBlock(b.Cast))
 	s.WriteString(userProductBlock(b.Product))
+	s.WriteString(userSourceBlock(b.Source))
 	s.WriteString("\nReply with the JSON only.")
 	return s.String()
+}
+
+// userSourceBlock gives the model the owner's source material and the rule that
+// goes with it: it is the only place facts may come from. The owner checks facts
+// BEFORE pasting them, so the draft stays checkable against one text.
+func userSourceBlock(source string) string {
+	source = strings.TrimSpace(source)
+	if source == "" {
+		return ""
+	}
+	return "\nSOURCE MATERIAL from the owner (any language; between the lines of three quotation marks). It is the ONLY source of facts for this video:\n\"\"\"\n" +
+		source + "\n\"\"\"\n" +
+		"Every fact, number, percentage, study, name or health claim you state must come from this material, and you add none of your own. " +
+		"If the material does not cover something the topic asks for, leave it out instead of filling it in. " +
+		"Use it for what the video says (the narration, when there is one) and for what it shows; never copy its sentences into a picture or motion prompt as writing, and keep the English fields free of Thai letters.\n"
 }

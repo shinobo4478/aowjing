@@ -889,6 +889,16 @@ owner wrote the Thai by hand and the shot lengths were guessed.
   with sound on) is muted on purpose: it is Chinese/English, not the narration. Drift is not tracked after a start, only
   re-aligned at each play/seek. **Not built:** playing every shot of the video in a row.
 
+## Draft from the owner's source material (built 2026-11-29)
+
+Explainer narration on health topics must be right, and the model writes from memory. The Draft dialog now has an optional
+**"เนื้อหาต้นทาง · Source material"** box (≤ 8000 characters, any language): paste an article or notes you have checked and the
+draft may take facts, numbers and claims ONLY from it (`scriptwriter.userSourceBlock`, sent with the topic; `Brief.Source`,
+`POST /videos/draft` field `source`, error key `source`). What the material does not cover is left out, not filled in; it is never
+copied into picture/motion prompts as writing. No source = asked exactly as before. No schema change; the source is not stored
+(it is part of one draft request). **Unverified on a real model:** that it really stays inside the material (check the narration
+against the source by eye) and what a long source adds to the cost (input tokens only).
+
 ## Explicitly OUT of scope for Phase 2 (do not build yet)
 
 - TikTok / Instagram integration — after YouTube is solid
