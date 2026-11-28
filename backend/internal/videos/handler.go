@@ -291,7 +291,7 @@ func (h *Handler) addShot(w http.ResponseWriter, r *http.Request) {
 			ImageUrl: in.ImageURL, ImageID: imageID, EndImageID: endID,
 			PicturePrompt: in.PicturePrompt, EndPicturePrompt: in.EndPicturePrompt,
 			PromptTh: in.PromptTh, PicturePromptTh: in.PicturePromptTh, EndPicturePromptTh: in.EndPicturePromptTh,
-		NarrationTh: in.NarrationTh,
+			NarrationTh: in.NarrationTh,
 		})
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "The shot was added but its picture was not.")
@@ -328,7 +328,7 @@ func (h *Handler) updateShot(w http.ResponseWriter, r *http.Request) {
 		ImageUrl: in.ImageURL, ImageID: imageID, EndImageID: endID,
 		PicturePrompt: in.PicturePrompt, EndPicturePrompt: in.EndPicturePrompt,
 			PromptTh: in.PromptTh, PicturePromptTh: in.PicturePromptTh, EndPicturePromptTh: in.EndPicturePromptTh,
-		NarrationTh: in.NarrationTh,
+			NarrationTh: in.NarrationTh,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to update the shot.")
@@ -958,17 +958,21 @@ func (h *Handler) draft(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	model := studio.ModelFor(profile.VideoModel)
+	if !scriptwriter.ValidMode(body.Mode) {
+		writeFieldError(w, "mode", "Choose general, product, film or explainer.")
+		return
+	}
 	if body.Seconds == 0 {
 		body.Seconds = model.DefaultSeconds
+		if scriptwriter.Mode(body.Mode) == scriptwriter.ModeExplainer {
+			body.Seconds = studio.ExplainerSeconds(model.Seconds)
+		}
 	}
 	brief := scriptwriter.Brief{
 		Topic: body.Topic, Shots: body.Shots, Seconds: body.Seconds,
 		ProfileName: profile.Name, Niche: profile.Niche, Description: profile.Description,
 		Mode: scriptwriter.Mode(body.Mode), VideoStyle: profile.VideoStyle,
-	}
-	if !scriptwriter.ValidMode(body.Mode) {
-		writeFieldError(w, "mode", "Choose general, product or film.")
-		return
+		SecondsOptions: model.Seconds,
 	}
 	if brief.Cast, err = h.castNotes(r.Context(), profileID); err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to load the cast.")
@@ -1026,16 +1030,27 @@ func (h *Handler) draft(w http.ResponseWriter, r *http.Request) {
 		if _, err := h.q.CreateShotWithPlan(r.Context(), sqlc.CreateShotWithPlanParams{
 			VideoID: v.ID, Prompt: s.MotionPrompt, Seconds: int16(s.Seconds), PicturePrompt: s.PicturePrompt, EndPicturePrompt: s.EndPicturePrompt,
 			PromptTh: s.MotionPromptTh, PicturePromptTh: s.PicturePromptTh, EndPicturePromptTh: s.EndPicturePromptTh,
+			NarrationTh: s.NarrationTh,
 		}); err != nil {
 			_, _ = h.q.DeleteVideo(r.Context(), v.ID) // no half-filled video left behind
 			writeError(w, http.StatusInternalServerError, "The draft was written but its shots were not saved.")
 			return
 		}
 	}
+	// A narrated shot's length comes from its narration, so add the real ones up.
+	totalSeconds, tooLong := 0, 0
+	for _, s := range d.Shots {
+		totalSeconds += s.Seconds
+		if s.NarrationTooLong {
+			tooLong++
+		}
+	}
 	writeJSON(w, http.StatusCreated, map[string]any{
-		"video":   toVideoDTO(v, len(d.Shots), len(d.Shots)*brief.Seconds),
+		"video":   toVideoDTO(v, len(d.Shots), totalSeconds),
 		"costUsd": d.CostUSD,
 		"model":   d.Model,
+		// How many shots have a narration too long for the longest allowed shot.
+		"tooLongShots": tooLong,
 	})
 }
 

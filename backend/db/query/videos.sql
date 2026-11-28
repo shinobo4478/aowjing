@@ -67,7 +67,7 @@ RETURNING *;
 -- prompt already filled in.
 -- name: CreateShotWithPlan :one
 INSERT INTO video_shots (video_id, position, prompt, seconds, picture_prompt, end_picture_prompt,
-                         prompt_th, picture_prompt_th, end_picture_prompt_th)
+                         prompt_th, picture_prompt_th, end_picture_prompt_th, narration_th)
 VALUES (
     $1,
     (SELECT COALESCE(MAX(position), 0) + 1 FROM video_shots WHERE video_id = $1),
@@ -77,7 +77,8 @@ VALUES (
     $5,
     $6,
     $7,
-    $8
+    $8,
+    $9
 )
 RETURNING *;
 

@@ -18,13 +18,17 @@ const (
 	// ModeFilm is a short satirical film told in visual gags (no dialogue; the
 	// owner adds Thai captions in the editor).
 	ModeFilm Mode = "film"
+	// ModeExplainer is an educational clip with a narrator: the script is the
+	// Thai narration, one idea per shot, and the pictures illustrate it. The clip
+	// is silent; the narration is spoken by the profile's narrator voice later.
+	ModeExplainer Mode = "explainer"
 )
 
 // ValidMode reports whether s names a mode. The empty string is accepted and
 // means ModeGeneral.
 func ValidMode(s string) bool {
 	switch Mode(s) {
-	case "", ModeGeneral, ModeProduct, ModeFilm:
+	case "", ModeGeneral, ModeProduct, ModeFilm, ModeExplainer:
 		return true
 	}
 	return false
@@ -73,9 +77,29 @@ FORMAT: SHORT FILM WITH A JOKE. A short story with a dry, satirical twist, told 
 - One location, one main character and at most one other character, so every shot can look like the same film.
 - The satire is aimed at behaviour or situations, never at real people, brands or groups of people; nothing harmful or demeaning.
 - Keep every action simple enough for an AI clip: plain movements, one clear beat per shot.`
+	case ModeExplainer:
+		return explainerRules
 	}
 	return ""
 }
+
+// explainerRules is the format of a narrated educational video. The narration is
+// written first and decides the picture: one idea per shot, said in one or two
+// short sentences, shown as a simple diagram-like picture. The Thai rules come
+// from the first real voice-overs (ElevenLabs reads Thai well but takes its
+// accent from the first words, and drifts into English sounds on Latin letters
+// or digits).
+const explainerRules = `
+FORMAT: NARRATED EXPLAINER. An educational video with a narrator. Every shot object in the JSON has ONE MORE field, "narrationTh" (a string): the exact Thai words the narrator speaks over that shot, written to be HEARD. It has no English twin. The clip itself is silent and the narration is spoken afterwards by a Thai text-to-speech voice, so these rules matter:
+- Structure: shot 1 is a hook (a question or a surprising, true fact the viewer wants answered); the middle shots each teach ONE point, in the order a learner needs them; the last shots recap in one sentence and, when the topic touches health, money or safety, add one short sentence of caution (for example to ask a professional). Do not pad: fewer, clearer points beat many.
+- One idea per shot. The narration of a shot says that idea in one or two short sentences. The picture of that shot shows the same idea as a simple diagram-like drawing (a symbol, a comparison of two things, a scale, an arrow, a character doing one thing), never a scene full of detail.
+- Length: each shot's narration has a character limit given in the request (spaces not counted). Stay inside it, ideally using 70 to 95 percent of it. A shot's length is worked out from its narration afterwards, so never pad a short line to fill time.
+- START every narration with a Thai word, never with a loanword or a name that comes from English written in Thai letters (the voice takes its accent from the first words: a sentence that starts with a loanword is read with an English accent). Put a loanword in the middle or at the end of the sentence, after Thai words, for example "คำว่า ... คือ ..." or "... เรียกว่า ...". Spell each loanword in Thai letters the same way every time it appears in the video.
+- Write ONLY in Thai letters. No Latin letters and no digits at all in narrationTh: spell numbers out in Thai words as they are spoken ("เจ็ดพันเจ็ดร้อย", not "7,700"), write abbreviations as their spoken letters in Thai script, and use no symbols such as %, +, = or emoji.
+- Plain spoken Thai that a general audience understands, in short sentences; no filler greetings; nothing that has to be read as a list.
+- Facts: write only things that are widely established and that you are sure of. Never invent statistics, studies, sources or quantities; when unsure, say it more generally. Never give medical, legal or financial advice as a command; explain what is generally true and say that individual cases differ.
+- The narration is never put in the pictures or in the motion prompts: pictures hold no words, numbers or labels (the owner adds captions in the editor).
+- Write the picture prompts and the motion prompts as usual (English; one idea per picture; plain cut-out motion). A motion may be as small as a gentle slide or a scale; the owner may leave a shot as a still.`
 
 // realisticRules are added whatever the mode when the profile's style is
 // realistic: the pictures are photographs, not drawings.
@@ -85,7 +109,7 @@ STYLE: PHOTOGRAPHIC LIVE ACTION. The pictures are photographs of real life, so p
 // flatRules are added when the profile's style is the 2D flat vector one: the
 // pictures are simple diagram-like drawings and the clips are cut-out animation.
 const flatRules = `
-STYLE: FLAT 2D EDUCATIONAL ANIMATION. Every picture is a simple flat vector drawing, closer to a clear diagram than to a scene from a film: one idea per shot, a few big simple shapes, a plain background, nothing crowded. Motion is cut-out style: things slide, bounce, grow or shrink, and a character can move arms or head; never perspective changes, never realistic physics, never 3D turns. Keep each shot to one clear visual idea that a narrator can speak over. Never put words, numbers or labels in a picture (captions are added in the editor).`
+STYLE: FLAT 2D EDUCATIONAL ANIMATION. Every picture is a simple flat vector drawing, closer to a clear diagram than to a scene from a film: one idea per shot, a few big simple shapes, a plain background, nothing crowded. Motion is cut-out style: things slide, bounce, grow or shrink, and a character can move arms or head; never perspective changes, never realistic physics, never 3D turns. Keep each shot to one clear visual idea that a narrator can speak over. Never put words, numbers or labels in a picture (captions are added in the editor). Show an idea with plain symbols instead of writing it: a quantity by how many or how big simple shapes are (a tall stack against a short one), a comparison by two things side by side or on a balance, a direction or a change by an arrow, a cause and effect by two pictures joined by an arrow, a warning by a simple triangle symbol, a food or a body part by one clear icon-like drawing. If there is a recurring character, keep it the same from shot to shot.`
 
 // castRules tells the writer about the profile's cast: who exists and how to
 // refer to each in the English text. The reference pictures fix how they look,

@@ -10,7 +10,7 @@ import { mobileModal } from "@/lib/ui";
 import { refreshCredits } from "../../CreditsBadge";
 
 /** The kinds of video the AI can draft. Mirrors scriptwriter.Mode. */
-type DraftMode = "general" | "product" | "film";
+type DraftMode = "general" | "product" | "film" | "explainer";
 
 const MODE_OPTIONS: { value: DraftMode; label: string; hint: string }[] = [
   {
@@ -27,6 +27,11 @@ const MODE_OPTIONS: { value: DraftMode; label: string; hint: string }[] = [
     value: "film",
     label: "หนังสั้น · Film",
     hint: "เรื่องสั้นตลกเสียดสี เล่าด้วยภาพ ไม่มีบทพูด: ตั้งเรื่อง → ตึงขึ้น → ตบมุก → ปิดท้าย (ใส่คำบรรยายภายหลังในโปรแกรมตัดต่อ)",
+  },
+  {
+    value: "explainer",
+    label: "ให้ความรู้ · Explainer",
+    hint: "คลิปให้ความรู้ที่มีคนพากย์: AI เขียนบทพากย์ภาษาไทยให้ทุกช็อต (ช็อตละหนึ่งแนวคิด: คำถามเปิด → ประเด็น → สรุป → ข้อควรระวัง) แล้วคำนวณความยาวช็อตจากบท ภาพเป็นไดอะแกรมง่ายๆ ไม่มีตัวหนังสือในภาพ ตรวจข้อเท็จจริงในบทก่อนใช้เสมอ",
   },
 ];
 
@@ -129,6 +134,18 @@ function DraftForm({
   const chosenProduct = products?.find((p) => p.id === productId);
   const modeHint = MODE_OPTIONS.find((m) => m.value === mode)?.hint ?? "";
   const needsProduct = mode === "product" && !chosenProduct;
+  const explainer = mode === "explainer";
+
+  // A narrated shot is as long as its narration needs, up to the length chosen
+  // here. 4 seconds holds under 40 Thai characters, too little for a sentence, so
+  // switching to Explainer starts from about 8 seconds (the nearest the model takes).
+  function changeMode(next: DraftMode) {
+    setMode(next);
+    if (next === "explainer" && seconds < 6) {
+      const eight = secondsOptions.filter((s) => s <= 8);
+      setSeconds(eight.length ? Math.max(...eight) : seconds);
+    }
+  }
 
   // The draft costs a few cents (fal bills per token), so ask first.
   function confirmDraft() {
@@ -137,8 +154,10 @@ function DraftForm({
       content: (
         <>
           <p style={{ margin: "0 0 8px" }}>
-            The AI writes the shot list for {shots} shot{shots === 1 ? "" : "s"} of{" "}
-            {seconds} s ({totalSeconds} s in all). It costs a few cents at most,
+            {explainer
+              ? `The AI writes the shot list and the Thai narration for ${shots} shot${shots === 1 ? "" : "s"} of up to ${seconds} s each (each shot's length follows its narration). `
+              : `The AI writes the shot list for ${shots} shot${shots === 1 ? "" : "s"} of ${seconds} s (${totalSeconds} s in all). `}
+            It costs a few cents at most,
             charged to your fal.ai credits; fal bills per token, so the exact cost
             is shown once it is done.
           </p>
@@ -168,6 +187,12 @@ function DraftForm({
       });
       refreshCredits();
       message.success(`Drafted with ${r.model}. It cost ${formatUsd(r.costUsd)}.`);
+      if (r.tooLongShots) {
+        message.warning(
+          `บทพากย์ ${r.tooLongShots} ช็อตยาวกว่าช็อตที่ยาวที่สุด (${seconds} วินาที) ย่อบทหรือเพิ่มความยาวช็อตในหน้าวิดีโอ`,
+          8,
+        );
+      }
       onDrafted(r.video);
     } catch (err) {
       if (err instanceof ApiError && err.fieldErrors) {
@@ -192,7 +217,7 @@ function DraftForm({
       <div style={{ marginTop: 4 }}>
         <Segmented<DraftMode>
           value={mode}
-          onChange={setMode}
+          onChange={changeMode}
           options={MODE_OPTIONS.map((m) => ({ value: m.value, label: m.label }))}
         />
       </div>
@@ -255,7 +280,11 @@ function DraftForm({
         maxLength={1000}
         showCount
         status={errors.topic ? "error" : undefined}
-        placeholder="e.g. A cat is startled by a plastic bag, plays with it, and ends up proud of it. Funny, quick, loops."
+        placeholder={
+          explainer
+            ? "เช่น อธิบายว่า การขาดดุลแคลอรี่คืออะไร ทำไมลดน้ำหนักได้ และข้อควรระวัง สำหรับคนที่เพิ่งเริ่มดูแลตัวเอง"
+            : "e.g. A cat is startled by a plastic bag, plays with it, and ends up proud of it. Funny, quick, loops."
+        }
       />
       {errors.topic && (
         <Typography.Text type="danger" style={{ display: "block", marginTop: 4 }}>
@@ -272,14 +301,16 @@ function DraftForm({
           {errors.shots && <Typography.Text type="danger">{errors.shots}</Typography.Text>}
         </div>
         <div>
-          <Typography.Text>Seconds per shot</Typography.Text>
+          <Typography.Text>{explainer ? "Longest shot (seconds)" : "Seconds per shot"}</Typography.Text>
           <div>
             <SecondsField options={secondsOptions} value={seconds} onChange={setSeconds} />
           </div>
           {errors.seconds && <Typography.Text type="danger">{errors.seconds}</Typography.Text>}
         </div>
         <div style={{ alignSelf: "end" }}>
-          <Typography.Text type="secondary">{totalSeconds} seconds in all</Typography.Text>
+          <Typography.Text type="secondary">
+            {explainer ? `up to ${totalSeconds} seconds in all` : `${totalSeconds} seconds in all`}
+          </Typography.Text>
         </div>
       </div>
 

@@ -1,7 +1,7 @@
 // Smoke test for lib/narration.ts. No test framework is installed, so it runs on
 // plain node:   node --experimental-strip-types scripts/narration.smoke.mjs
 // Exit code 1 when a case fails.
-import { estimateSpeechSeconds, narratorInfo, secondsForAudio, speechChars } from "../lib/narration.ts";
+import { estimateSpeechSeconds, narrationWarnings, narratorInfo, secondsForAudio, speechChars } from "../lib/narration.ts";
 
 let bad = 0;
 const check = (name, ok, detail = "") => {
@@ -35,4 +35,12 @@ check("a custom voice is v3 at 0.10", narratorInfo("custom:Alice", list)?.priceP
 check("none chosen", narratorInfo("", list) === null);
 check("unknown key", narratorInfo("eleven-v3-aria", list) === null);
 check("custom with no name", narratorInfo("custom:", list) === null);
+
+check("plain Thai has no warning", narrationWarnings("คำว่า แคลอรี่ ดีฟิซิท คือการกินน้อยกว่าที่ใช้").length === 0);
+check("empty has no warning", narrationWarnings("  ").length === 0);
+check("starting with Latin letters", narrationWarnings("TDEE คือพลังงานทั้งวัน").length === 1);
+check("Latin in the middle", narrationWarnings("คำว่า calorie deficit").length === 1);
+check("a digit in the middle", narrationWarnings("ไขมัน 1 กิโลกรัม").length === 1);
+check("a Thai digit at the start", narrationWarnings("๗ วันที่แล้ว").length === 1);
+check("Latin and a digit give two", narrationWarnings("ลดได้ 5 kg").length === 2);
 process.exit(bad ? 1 : 0);
