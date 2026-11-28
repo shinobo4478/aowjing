@@ -148,7 +148,7 @@ export default function SettingsPage() {
             ]}
             extra="Stops clips and pictures from being started once today's fal.ai spend (real bills, plus the estimated price of anything still rendering or not billed yet) would pass this amount. The day starts at midnight in this browser's time zone. Leave empty for no limit."
           >
-            <Input addonBefore="$" inputMode="decimal" autoComplete="off" placeholder="e.g. 10" />
+            <Input prefix="$" inputMode="decimal" autoComplete="off" placeholder="e.g. 10" />
           </Form.Item>
           {saveButton}
         </div>
