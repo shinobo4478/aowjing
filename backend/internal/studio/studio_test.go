@@ -114,8 +114,40 @@ func TestStyle2DIsFlatAndStaysFlatInClips(t *testing.T) {
 	if !strings.Contains(r.ImageSuffix, "no 3D rotation") || !strings.Contains(r.ImageSuffix, "no shading") {
 		t.Errorf("2d ImageSuffix must keep the clip flat: %q", r.ImageSuffix)
 	}
-	// One look for every 2D profile: the palette lives in the recipe, once.
-	if !strings.Contains(r.KeyframeSuffix, "cream background") {
-		t.Errorf("the palette should be in the recipe: %q", r.KeyframeSuffix)
+}
+
+// Each profile has its OWN look: the recipe holds only what all flat drawings
+// share (no palette, no outline colour), and WithLook adds a profile's notes.
+func TestRecipeHoldsNoPaletteAndWithLookAddsTheProfilesOwn(t *testing.T) {
+	r := For("2d")
+	for _, banned := range []string{"navy", "teal", "coral", "cream", "palette"} {
+		if strings.Contains(strings.ToLower(r.KeyframeSuffix), banned) {
+			t.Errorf("the 2d recipe must not fix a colour (%q): each profile has its own: %s", banned, r.KeyframeSuffix)
+		}
+	}
+	notes := "thick black outlines, warm pastel palette: peach, mint, butter yellow"
+	got := r.WithLook("  " + notes + "  ")
+	for name, s := range map[string]string{"KeyframeSuffix": got.KeyframeSuffix, "TextSuffix": got.TextSuffix} {
+		if !strings.HasSuffix(s, "This channel's own look: "+notes) {
+			t.Errorf("%s should end with the profile's notes: %s", name, s)
+		}
+	}
+	// A clip made from a picture is left alone: the picture carries the look.
+	if got.ImageSuffix != r.ImageSuffix {
+		t.Errorf("ImageSuffix must not change: %q", got.ImageSuffix)
+	}
+	// The original recipe is not changed (Recipe is a value).
+	if strings.Contains(r.KeyframeSuffix, "own look") {
+		t.Error("WithLook must return a copy, not edit the registry")
+	}
+	// Empty or blank notes change nothing.
+	for _, blank := range []string{"", "   ", "\n"} {
+		if w := r.WithLook(blank); w.KeyframeSuffix != r.KeyframeSuffix || w.TextSuffix != r.TextSuffix {
+			t.Errorf("WithLook(%q) should change nothing", blank)
+		}
+	}
+	// The notes reach the final picture prompt.
+	if p := got.KeyframePrompt("a cat teaches", 0, nil, false); !strings.Contains(p, notes) {
+		t.Errorf("the keyframe prompt must carry the notes: %s", p)
 	}
 }

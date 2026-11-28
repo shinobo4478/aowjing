@@ -13,6 +13,8 @@
 // the voice-over step (item 5) exists.
 package studio
 
+import "strings"
+
 // Style is the name of a video style, as stored on a Profile.
 type Style string
 
@@ -91,22 +93,39 @@ var recipes = []Recipe{
 		Style: Style2D,
 		Label: "2D flat vector (educational)",
 
-		// ONE look for every 2D profile, so this is the single place that defines
-		// the line, the colour and the way of drawing; change it here and every
-		// profile follows. A first guess, not tried on real output yet: AI pictures
-		// drift toward 3D shading and clips tend to add depth, so the wording is
-		// strict, and a profile's "style" cast picture (an example frame) pins the
-		// look harder than words can. The palette is the owner's to replace.
-		// Unlike realistic, ImageSuffix is NOT empty: a clip made from a flat
-		// picture still needs telling to stay flat and to move like cut-outs.
+		// What ALL flat drawings share. Each 2D profile has its OWN look (line,
+		// colours, how things are drawn): the profile's look notes are added by
+		// Recipe.WithLook and its "style" cast picture (an example frame) pins the
+		// look harder than words can. A first guess, not tried on real output yet:
+		// AI pictures drift toward 3D shading and clips tend to add depth, so the
+		// wording is strict. Unlike realistic, ImageSuffix is NOT empty: a clip
+		// made from a flat picture still needs telling to stay flat and to move
+		// like cut-outs.
 		TextSuffix:     "Flat 2D vector animation in one consistent style: " + flatLook + " Shapes slide, bounce and scale smoothly like cut-out animation.",
 		ImageSuffix:    "Flat 2D vector animation: shapes slide, bounce and scale smoothly like cut-out animation. Keep the drawing flat, with the same outlines and solid colours; no 3D rotation, no shading, no change of perspective.",
 		KeyframeSuffix: "Flat 2D vector illustration in one consistent style: " + flatLook,
 	},
 }
 
-// flatLook is the drawing rules of the 2D style: line, colour, shapes, background.
-const flatLook = "uniform medium-weight dark navy outlines with rounded ends, solid flat colour fills only, a limited palette (cream background, navy, teal, coral, sunny yellow, soft purple), matte and two-dimensional, simple geometric shapes, a plain uncluttered background, no gradients, no shading, no 3D look. No text or letters anywhere in the picture."
+// flatLook is what every flat 2D drawing shares: solid fills, two-dimensional,
+// simple shapes, no depth. The outline weight and the palette are NOT here: they
+// are each profile's own (look notes, style reference picture).
+const flatLook = "outlines of one consistent weight, solid flat colour fills only, matte and two-dimensional, simple shapes, a plain uncluttered background, no gradients, no shading, no 3D look. No text or letters anywhere in the picture."
+
+// WithLook returns the recipe with a profile's own look notes added to the
+// wording of pictures and of text-only clips, so every picture of that profile
+// is drawn the way ITS notes say. Empty notes change nothing. The clip-from-a-
+// picture wording is left alone: the picture already carries the look.
+func (r Recipe) WithLook(notes string) Recipe {
+	notes = strings.TrimSpace(notes)
+	if notes == "" {
+		return r
+	}
+	add := " This channel's own look: " + notes
+	r.KeyframeSuffix += add
+	r.TextSuffix += add
+	return r
+}
 
 // Recipes lists every style in display order. The slice is a copy.
 func Recipes() []Recipe { return append([]Recipe(nil), recipes...) }

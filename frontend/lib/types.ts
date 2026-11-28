@@ -62,6 +62,9 @@ export interface Profile {
   videoModel: VideoModel;
   /** Whether its clips are made with sound (fal profiles). Off by default. */
   videoAudio: boolean;
+  /** This profile's OWN look in English (line, colours, how things are drawn),
+   *  added to every picture prompt of the profile. */
+  lookNotes: string;
   createdAt: string; // ISO 8601
   updatedAt: string; // ISO 8601
 }
@@ -69,7 +72,7 @@ export interface Profile {
 /** Fields the client sends when creating or editing a Profile. */
 export type ProfileInput = Pick<
   Profile,
-  "name" | "niche" | "description" | "provider" | "videoStyle" | "videoModel" | "videoAudio"
+  "name" | "niche" | "description" | "provider" | "videoStyle" | "videoModel" | "videoAudio" | "lookNotes"
 >;
 
 export interface Channel {

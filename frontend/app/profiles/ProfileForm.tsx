@@ -26,6 +26,7 @@ const EMPTY: ProfileInput = {
   videoStyle: DEFAULT_VIDEO_STYLE,
   videoModel: DEFAULT_VIDEO_MODEL,
   videoAudio: false,
+  lookNotes: "",
 };
 
 export default function ProfileForm({ initial, submitLabel, onSubmit }: Props) {
@@ -48,6 +49,7 @@ export default function ProfileForm({ initial, submitLabel, onSubmit }: Props) {
         videoStyle: form.getFieldValue("videoStyle") ?? DEFAULT_VIDEO_STYLE,
         videoModel: form.getFieldValue("videoModel") ?? DEFAULT_VIDEO_MODEL,
         videoAudio: !!form.getFieldValue("videoAudio"),
+        lookNotes: String(form.getFieldValue("lookNotes") ?? "").trim(),
       });
     } catch (err) {
       if (err instanceof ApiError && err.fieldErrors) {
@@ -133,6 +135,24 @@ export default function ProfileForm({ initial, submitLabel, onSubmit }: Props) {
               extra="How this profile's clips look. The style decides the wording added to prompts; the video model is chosen below."
             >
               <Select options={VIDEO_STYLE_OPTIONS} />
+            </Form.Item>
+          ) : null
+        }
+      </Form.Item>
+
+      <Form.Item noStyle dependencies={["provider"]}>
+        {({ getFieldValue }) =>
+          getFieldValue("provider") === "fal" ? (
+            <Form.Item
+              label="Look notes (optional)"
+              name="lookNotes"
+              rules={[{ max: 1200, message: "Look notes must be 1200 characters or fewer." }]}
+              extra="This profile's OWN look, written in English: outline weight, colours (names or hex codes), how things are drawn. Added to every picture prompt of this profile, on top of the style above. Every profile can look different. A picture of the look (a “style” member in the Cast tab) holds it better than words."
+            >
+              <Input.TextArea
+                rows={4}
+                placeholder="e.g. thick black outlines, warm pastel palette (peach #FFB88C, mint #A8E6CF, butter yellow #FFE29A), rounded friendly shapes, paper-cut feel"
+              />
             </Form.Item>
           ) : null
         }

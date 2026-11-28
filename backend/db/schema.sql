@@ -24,6 +24,10 @@ CREATE TABLE IF NOT EXISTS profiles (
     -- Ask the model for sound too. Off by default: Thai narration is added
     -- separately, and sound costs more.
     video_audio boolean     NOT NULL DEFAULT false,
+    -- This profile's OWN look, in English (line, colours, how things are drawn): added
+    -- to every picture prompt of the profile, whatever the style. Each 2D profile
+    -- has its own; the style recipe only holds what all flat drawings share.
+    look_notes  text        NOT NULL DEFAULT '',
     created_at  timestamptz NOT NULL DEFAULT now(),
     updated_at  timestamptz NOT NULL DEFAULT now()
 );

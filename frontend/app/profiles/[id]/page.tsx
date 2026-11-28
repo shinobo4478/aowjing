@@ -192,6 +192,7 @@ export default function ProfileDetailPage({
             videoStyle: profile.videoStyle,
             videoModel: profile.videoModel,
             videoAudio: profile.videoAudio,
+            lookNotes: profile.lookNotes,
           }}
           submitLabel="Save changes"
           onSubmit={async (input) => {

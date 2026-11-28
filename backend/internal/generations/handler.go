@@ -205,7 +205,7 @@ func (h *Handler) run(w http.ResponseWriter, r *http.Request) {
 	// A video clip gets its style's wording added to the prompt. Done here, not
 	// in the worker, so the stored prompt is exactly what fal receives.
 	if profile.Provider == "fal" {
-		prompt = studio.For(profile.VideoStyle).Compose(prompt, imageURL != "" || imageID.Valid)
+		prompt = studio.For(profile.VideoStyle).WithLook(profile.LookNotes).Compose(prompt, imageURL != "" || imageID.Valid)
 	}
 
 	row, err := h.q.CreateGeneration(r.Context(), sqlc.CreateGenerationParams{

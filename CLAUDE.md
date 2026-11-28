@@ -692,25 +692,32 @@ consent) and Shopee clicks/orders/commission (Phase 3 B).
 
 ## The 2D style and Thai voice-over (2D built 2026-11-28; voice researched, not built)
 
-**2D = flat vector cartoon for educational clips, ONE look for every 2D profile** (owner, 2026-11-28:
-line work, colouring and the way of telling are the same everywhere). Where that lives:
-- `studio.Style2D` recipe (`studio.go`, `flatLook`): uniform medium navy outlines with rounded ends, solid
-  flat fills only, a limited palette (cream background, navy, teal, coral, sunny yellow, soft purple — the
-  owner's to replace), matte, simple geometric shapes, plain background, no gradients/shading/3D, no text
-  or letters. The clip wording (`ImageSuffix`, NOT empty unlike realistic) says shapes move like cut-outs and
-  nothing turns in 3D or changes perspective. Change it there and every 2D profile follows.
+**2D = flat vector cartoon for educational clips, and EACH 2D profile has its OWN look** (owner,
+2026-11-28, correcting my first reading, which made one shared look: line work, colouring and the way of
+telling belong to the profile). Where each part lives:
+- `studio.Style2D` recipe (`studio.go`, `flatLook`) holds only what ALL flat drawings share: outlines of
+  one weight, solid flat fills, matte, two-dimensional, simple shapes, plain background, no
+  gradients/shading/3D, no text or letters (a test forbids fixing any colour there). The clip wording
+  (`ImageSuffix`, NOT empty unlike realistic) says shapes move like cut-outs and nothing turns in 3D or
+  changes perspective.
+- **The profile's own look:** `profiles.look_notes` (English, ≤ 1200 characters; "Look notes" on the profile
+  form for fal profiles): outline weight, colours (names or hex), how things are drawn. `Recipe.WithLook`
+  adds them to every picture prompt and text-only clip of that profile (not to clips made from a picture:
+  the picture carries the look). Works for any style.
 - **Style reference picture:** a new cast role `style` (an example frame of the look). It is sent with
   every picture request (ticked by default, like the hero), described as "the style reference (copy only
   its drawing style, line weight and colours, never its content)" plus an instruction to draw in exactly
-  that style. A picture pins the look harder than words; upload the same frame to each 2D profile. The
-  Draft writer is not told about it (`storyCast`). Existing DBs need `ALTER TABLE cast_members DROP
-  CONSTRAINT cast_members_role_check, ADD CONSTRAINT cast_members_role_check CHECK (role IN ('hero',
-  'costar','prop','place','style'));`.
-- Draft: a `2d` profile gets `flatRules` (one visual idea per shot, diagram-like pictures, cut-out motion,
-  no words in pictures, a shot a narrator can speak over).
-- **Unverified:** that Kling keeps a flat picture flat in a clip (it tends to add depth/shading), that the
-  wording and a style frame hold the line and palette across shots and profiles; needs a real test
-  (about $1–3).
+  that style. A picture pins the look harder than words; each profile uploads its own frame. The Draft
+  writer is not told about it (`storyCast`).
+- **The way of telling** is the profile's `description` (tone, audience, pacing, do/don't), which Draft
+  already receives, plus the `flatRules` Draft adds for `2d` (one visual idea per shot, diagram-like
+  pictures, cut-out motion, no words in pictures, a shot a narrator can speak over).
+- Existing DBs need `ALTER TABLE cast_members DROP CONSTRAINT cast_members_role_check, ADD CONSTRAINT
+  cast_members_role_check CHECK (role IN ('hero','costar','prop','place','style'));` and `ALTER TABLE
+  profiles ADD COLUMN look_notes text NOT NULL DEFAULT '';`.
+- **Unverified:** that Kling keeps a flat picture flat in a clip (it tends to add depth/shading), and that
+  the wording, the notes and a style frame hold line and colour across shots; needs a real test (about
+  $1–3).
 
 **Thai voice-over — what is needed (research 2026-11-28, from the model pages):** clips stay silent
 (Kling's own audio is Chinese/English only); narration is added by a Thai TTS. Candidates and what the pages
