@@ -690,6 +690,66 @@ shown as "Not connected"):** YouTube views/likes (the Data API `videos.list` sta
 `youtube.readonly` scope already granted — to be tried; watch time and revenue need `yt-analytics.readonly`, a new
 consent) and Shopee clicks/orders/commission (Phase 3 B).
 
+## The 2D style and Thai voice-over (2D built 2026-11-28; voice researched, not built)
+
+**2D = flat vector cartoon for educational clips, and EACH 2D profile has its OWN look** (owner,
+2026-11-28, correcting my first reading, which made one shared look: line work, colouring and the way of
+telling belong to the profile). Where each part lives:
+- `studio.Style2D` recipe (`studio.go`, `flatLook`) holds only what ALL flat drawings share: outlines of
+  one weight, solid flat fills, matte, two-dimensional, simple shapes, plain background, no
+  gradients/shading/3D, no text or letters (a test forbids fixing any colour there). The clip wording
+  (`ImageSuffix`, NOT empty unlike realistic) says shapes move like cut-outs and nothing turns in 3D or
+  changes perspective.
+- **The profile's own look:** `profiles.look_notes` (English, ≤ 1200 characters; "Look notes" on the profile
+  form for fal profiles): outline weight, colours (names or hex), how things are drawn. `Recipe.WithLook`
+  adds them to every picture prompt and text-only clip of that profile (not to clips made from a picture:
+  the picture carries the look). Works for any style.
+- **Style reference picture:** a new cast role `style` (an example frame of the look). It is sent with
+  every picture request (ticked by default, like the hero), described as "the style reference (copy only
+  its drawing style, line weight and colours, never its content)" plus an instruction to draw in exactly
+  that style. A picture pins the look harder than words; each profile uploads its own frame. The Draft
+  writer is not told about it (`storyCast`).
+- **The way of telling** is the profile's `description` (tone, audience, pacing, do/don't), which Draft
+  already receives, plus the `flatRules` Draft adds for `2d` (one visual idea per shot, diagram-like
+  pictures, cut-out motion, no words in pictures, a shot a narrator can speak over).
+- Existing DBs need `ALTER TABLE cast_members DROP CONSTRAINT cast_members_role_check, ADD CONSTRAINT
+  cast_members_role_check CHECK (role IN ('hero','costar','prop','place','style'));` and `ALTER TABLE
+  profiles ADD COLUMN look_notes text NOT NULL DEFAULT '';`.
+- **Unverified:** that Kling keeps a flat picture flat in a clip (it tends to add depth/shading), and that
+  the wording, the notes and a style frame hold line and colour across shots; needs a real test (about
+  $1–3).
+
+**Thai voice-over — what is needed (research 2026-11-28, from the model pages):** clips stay silent
+(Kling's own audio is Chinese/English only); narration is added by a Thai TTS. Candidates and what the pages
+state: **fal MiniMax Speech-02 HD** (`fal-ai/minimax-tts/text-to-speech`, $0.10 per 1K characters; Thai is
+in `language_boost`, a recognition hint; returns `duration_ms`) and **Speech 2.8 Turbo**
+(`fal-ai/minimax/speech-2.8-turbo`, $0.06 per 1K; input field is `prompt`; `duration_ms`; `<#x#>` pauses);
+**fal ElevenLabs** Multilingual v2 and Eleven v3 ($0.10 per 1K; per-word `timestamps`; the fal pages do NOT
+list Thai, only a `language_code` that errors if unsupported — ElevenLabs' own site advertises Thai, so test
+it); **Azure Speech** th-TH (Premwadee, Niwat, Achara; MAI-Voice-2 HD voices in preview; price not readable
+from the page) and **Google Cloud TTS** th-TH (Standard, Neural2, Chirp 3 HD with ~30 voices; no SSML or rate
+in Chirp 3 HD; price not read). Not read: Botnoi (Thai-specific), OpenAI/Gemini TTS. fal-hosted options
+keep ONE key and one bill (Settings already holds it). Cost scale: a 30 s Thai narration is roughly 300–450
+characters, so a few cents on fal. **Evidence on which Thai voice sounds most real (searched 2026-11-28): there is NO independent Thai
+ranking.** Artificial Analysis' Speech Arena (blind listener votes, Elo, 106 models; top at the time read:
+Qwen-Audio-3.1-TTS-Plus 1350, Eleven v4 Turbo 1344, Eleven v4 1340, StepAudio 3 1309, Cartesia Sonic 3.6 1297,
+Speechify Simba 3.5 1297, Gemini 3.8 Flash TTS 1285) is English-only (raters are US/UK natives; Thai is not on its
+language list). The one Thai head-to-head is the JaiTTS paper (arXiv 2604.27607, run by its own developers, 20
+native Thai listeners, 30 texts, blind pairs): JaiTTS beat ElevenLabs eleven_v3 161–19–20 and MiniMax
+speech-2.8-hd 122–40–38 (wins–ties–losses of 200 each; no MOS; newer ElevenLabs v4 not tested; JaiTTS is a
+voice-cloning model whose API/price are not stated). Read as weak evidence that MiniMax 2.8 HD is closer to
+that model than eleven_v3 is. Vendor claims only for ElevenLabs ("1m+ users", Thai page), MiniMax ("300+
+Thai voices") and Botnoi (page did not render). No Thai usage statistics for creators were found.
+**Therefore the choice is made by listening to the same Thai text** (step 2 below).
+
+**Plan:** (1) per-shot narration text (Thai, `narration_th`) — it, not the
+picture, sets the shot length (estimate from characters, calibrated on real audio; warn when it will not fit);
+(2) a "voice samples" step that speaks the SAME Thai paragraph with each candidate so the owner picks by
+listening (cents); (3) the chosen TTS behind a `Voice` interface in `internal/` like the generators, audio
+per shot (decide where it is kept: Postgres like pictures, or R2), a play/download list for the editor;
+(4) an "Explainer" Draft format that writes the narration (hook question, 2–3 points, recap) with the
+shots. Joining audio and clips stays manual in CapCut (ffmpeg would be a new dependency: ask first).
+
 ## Picture zoom and small hints (built 2026-11-28)
 
 AI pictures were too small to judge. `components/ZoomableImage.tsx` wraps antd's `Image` preview (full

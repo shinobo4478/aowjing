@@ -18,11 +18,12 @@ export const providerShort = (v: string) =>
 /** How a profile's video clips look. Keep in sync with the recipes in
  *  backend/internal/studio — a new style is added there and here. Only used by
  *  profiles whose generator is fal. */
-export type VideoStyle = "3d" | "realistic";
+export type VideoStyle = "3d" | "realistic" | "2d";
 
 export const VIDEO_STYLE_OPTIONS: { value: VideoStyle; label: string }[] = [
   { value: "3d", label: "3D (Pixar-like)" },
   { value: "realistic", label: "Realistic (product / live action)" },
+  { value: "2d", label: "2D flat vector (educational)" },
 ];
 
 export const DEFAULT_VIDEO_STYLE: VideoStyle = "3d";
@@ -61,6 +62,9 @@ export interface Profile {
   videoModel: VideoModel;
   /** Whether its clips are made with sound (fal profiles). Off by default. */
   videoAudio: boolean;
+  /** This profile's OWN look in English (line, colours, how things are drawn),
+   *  added to every picture prompt of the profile. */
+  lookNotes: string;
   createdAt: string; // ISO 8601
   updatedAt: string; // ISO 8601
 }
@@ -68,7 +72,7 @@ export interface Profile {
 /** Fields the client sends when creating or editing a Profile. */
 export type ProfileInput = Pick<
   Profile,
-  "name" | "niche" | "description" | "provider" | "videoStyle" | "videoModel" | "videoAudio"
+  "name" | "niche" | "description" | "provider" | "videoStyle" | "videoModel" | "videoAudio" | "lookNotes"
 >;
 
 export interface Channel {
@@ -244,13 +248,14 @@ export interface ShotInput {
 }
 
 /** What a cast member is in a picture. Mirrors studio.CastRole. */
-export type CastRole = "hero" | "costar" | "prop" | "place";
+export type CastRole = "hero" | "costar" | "prop" | "place" | "style";
 
 export const CAST_ROLES: { value: CastRole; label: string; hint: string }[] = [
   { value: "hero", label: "พระเอก · Hero", hint: "ตัวเอกของช่อง คนหรือตัวละครเดิมในทุกคลิป" },
   { value: "costar", label: "ตัวประกอบ · Co-star", hint: "ตัวละครอื่นที่อยู่ในภาพด้วย เช่น อีกคน สัตว์เลี้ยง" },
   { value: "prop", label: "ของประกอบ · Prop", hint: "สิ่งของที่ต้องหน้าตาเหมือนเดิมทุกครั้ง" },
   { value: "place", label: "สถานที่ · Place", hint: "ฉากหรือสถานที่ที่ต้องคงไว้" },
+  { value: "style", label: "สไตล์ภาพ · Style", hint: "ภาพตัวอย่างลายเส้นและสีของช่อง (ใช้ลอกวิธีวาด ไม่ใช่เนื้อหา)" },
 ];
 
 /** One recurring character, object or place of a profile (the Cast tab), with
