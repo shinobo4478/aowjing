@@ -65,6 +65,9 @@ export interface Profile {
   /** This profile's OWN look in English (line, colours, how things are drawn),
    *  added to every picture prompt of the profile. */
   lookNotes: string;
+  /** The voice that speaks this profile's narration: a voice key or "custom:<name>"
+   *  ("" = none chosen). Can be changed at any time. */
+  narratorVoice: string;
   createdAt: string; // ISO 8601
   updatedAt: string; // ISO 8601
 }
@@ -72,7 +75,7 @@ export interface Profile {
 /** Fields the client sends when creating or editing a Profile. */
 export type ProfileInput = Pick<
   Profile,
-  "name" | "niche" | "description" | "provider" | "videoStyle" | "videoModel" | "videoAudio" | "lookNotes"
+  "name" | "niche" | "description" | "provider" | "videoStyle" | "videoModel" | "videoAudio" | "lookNotes" | "narratorVoice"
 >;
 
 export interface Channel {
@@ -327,9 +330,6 @@ export interface Settings {
    *  zone, saved with it so "today" starts at the owner's midnight. */
   dailyCapUsd: string;
   dailyCapTz: string;
-  /** The voice that speaks every shot's narration: a key from the voice list or
-   *  "custom:<name>"; "" = none chosen. */
-  narratorVoice: string;
 }
 
 /** One video model as GET /studio/pricing describes it. */

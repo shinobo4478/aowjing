@@ -9,32 +9,34 @@ import (
 // from sqlc.Profile: camelCase keys, plain strings for the id and timestamps,
 // so the frontend's Profile type maps 1:1.
 type profileDTO struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Niche       string `json:"niche"`
-	Description string `json:"description"`
-	Provider    string `json:"provider"`
-	VideoStyle  string `json:"videoStyle"`
-	VideoModel  string `json:"videoModel"`
-	VideoAudio  bool   `json:"videoAudio"`
-	LookNotes   string `json:"lookNotes"`
-	CreatedAt   string `json:"createdAt"`
-	UpdatedAt   string `json:"updatedAt"`
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	Niche         string `json:"niche"`
+	Description   string `json:"description"`
+	Provider      string `json:"provider"`
+	VideoStyle    string `json:"videoStyle"`
+	VideoModel    string `json:"videoModel"`
+	VideoAudio    bool   `json:"videoAudio"`
+	LookNotes     string `json:"lookNotes"`
+	NarratorVoice string `json:"narratorVoice"`
+	CreatedAt     string `json:"createdAt"`
+	UpdatedAt     string `json:"updatedAt"`
 }
 
 func toDTO(p sqlc.Profile) profileDTO {
 	return profileDTO{
-		ID:          pgconv.UUIDString(p.ID),
-		Name:        p.Name,
-		Niche:       p.Niche,
-		Description: p.Description,
-		Provider:    p.Provider,
-		VideoStyle:  p.VideoStyle,
-		VideoModel:  p.VideoModel,
-		VideoAudio:  p.VideoAudio,
-		LookNotes:   p.LookNotes,
-		CreatedAt:   pgconv.TimeString(p.CreatedAt),
-		UpdatedAt:   pgconv.TimeString(p.UpdatedAt),
+		ID:            pgconv.UUIDString(p.ID),
+		Name:          p.Name,
+		Niche:         p.Niche,
+		Description:   p.Description,
+		Provider:      p.Provider,
+		VideoStyle:    p.VideoStyle,
+		VideoModel:    p.VideoModel,
+		VideoAudio:    p.VideoAudio,
+		LookNotes:     p.LookNotes,
+		NarratorVoice: p.NarratorVoice,
+		CreatedAt:     pgconv.TimeString(p.CreatedAt),
+		UpdatedAt:     pgconv.TimeString(p.UpdatedAt),
 	}
 }
 

@@ -10,7 +10,6 @@ import {
   deleteVideo,
   generateShot,
   generateShots,
-  getSettings,
   getVoiceCandidates,
   getStudioPricing,
   getVideo,
@@ -61,6 +60,7 @@ export default function VideoEditor({
   profileId,
   videoModel,
   videoAudio,
+  narratorVoice,
   onBack,
 }: {
   videoId: string;
@@ -68,6 +68,8 @@ export default function VideoEditor({
   /** The profile's video model and sound setting: the lengths and the price. */
   videoModel: string;
   videoAudio: boolean;
+  /** The profile's narrator voice key ("" = none): who speaks the narration. */
+  narratorVoice: string;
   onBack: () => void;
 }) {
   const { message, modal } = App.useApp();
@@ -116,11 +118,19 @@ export default function VideoEditor({
       .catch(() => {
         /* the cards say the price is not known */
       });
-    // The narrator voice chosen in Settings, so a card can say who speaks and what
-    // it costs; without one the cards say to choose one.
-    Promise.all([getSettings(), getVoiceCandidates()])
-      .then(([s, c]) => {
-        if (!cancelled) setNarrator(narratorInfo(s.narratorVoice ?? "", c.candidates));
+    return () => {
+      cancelled = true;
+    };
+  }, [videoId]);
+
+  // The profile's narrator voice: its label and price (null: none chosen). Runs
+  // again when the profile's voice is changed, so the change shows without a
+  // reload (the video itself is not reloaded).
+  useEffect(() => {
+    let cancelled = false;
+    getVoiceCandidates()
+      .then((c) => {
+        if (!cancelled) setNarrator(narratorInfo(narratorVoice, c.candidates));
       })
       .catch(() => {
         /* no narrator shown */
@@ -128,7 +138,7 @@ export default function VideoEditor({
     return () => {
       cancelled = true;
     };
-  }, [videoId]);
+  }, [narratorVoice]);
 
   // While a shot is being made, poll for the worker to finish it; when the last
   // one finishes fal has charged for it, so refresh the balance in the menu.

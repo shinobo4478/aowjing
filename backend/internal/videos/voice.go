@@ -60,18 +60,18 @@ func (h *Handler) audioByShot(ctx context.Context, videoID pgtype.UUID) (map[str
 	return out, nil
 }
 
-// narrator reads the narrator voice chosen in Settings: a listed voice, or one
-// the owner named (stored as "custom:<name>"). ok is false when none is chosen
-// or the stored value no longer names a voice.
-func (h *Handler) narrator(ctx context.Context) (studio.VoiceCandidate, bool, error) {
-	key, err := h.q.GetSetting(ctx, "narratorVoice")
+// narrator reads the voice chosen for the video's PROFILE: a listed voice, or one
+// the owner named (stored as "custom:<name>"). ok is false when the profile has
+// none or the stored value no longer names a voice.
+func (h *Handler) narrator(ctx context.Context, profileID pgtype.UUID) (studio.VoiceCandidate, bool, error) {
+	p, err := h.q.GetProfile(ctx, profileID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return studio.VoiceCandidate{}, false, nil
 	}
 	if err != nil {
 		return studio.VoiceCandidate{}, false, err
 	}
-	c, ok := studio.ResolveVoice(strings.TrimSpace(key))
+	c, ok := studio.ResolveVoice(strings.TrimSpace(p.NarratorVoice))
 	return c, ok, nil
 }
 
@@ -91,7 +91,7 @@ func (h *Handler) speaker(ctx context.Context) (generate.Voice, error) {
 	return generate.NewFalVoice(strings.TrimSpace(key)), nil // reports a missing key itself
 }
 
-// makeVoice speaks the shot's narration with the narrator voice and keeps the
+// makeVoice speaks the shot's narration with this profile's narrator voice and keeps the
 // audio, replacing any earlier one. It is paid for per character, so the daily
 // limit is checked first, and the screen asks for confirmation (with the price)
 // before calling. It answers with the updated shot.
@@ -113,13 +113,13 @@ func (h *Handler) makeVoice(w http.ResponseWriter, r *http.Request) {
 		writeFieldError(w, "narrationTh", "The narration must be "+strconv.Itoa(studio.MaxVoiceSampleChars)+" characters or fewer.")
 		return
 	}
-	voice, ok, err := h.narrator(r.Context())
+	voice, ok, err := h.narrator(r.Context(), v.ProfileID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to read the settings.")
 		return
 	}
 	if !ok {
-		writeFieldError(w, "voice", "Choose the narrator voice first (Settings, Thai voice samples).")
+		writeFieldError(w, "voice", "Choose this profile's narrator voice first (edit the profile).")
 		return
 	}
 

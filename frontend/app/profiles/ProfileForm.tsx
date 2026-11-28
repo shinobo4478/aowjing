@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Alert, Button, Form, Input, Select, Switch } from "antd";
 import { ApiError } from "@/lib/api";
+import NarratorField from "./NarratorField";
 import {
   DEFAULT_VIDEO_MODEL,
   DEFAULT_VIDEO_STYLE,
@@ -27,6 +28,7 @@ const EMPTY: ProfileInput = {
   videoModel: DEFAULT_VIDEO_MODEL,
   videoAudio: false,
   lookNotes: "",
+  narratorVoice: "",
 };
 
 export default function ProfileForm({ initial, submitLabel, onSubmit }: Props) {
@@ -50,6 +52,7 @@ export default function ProfileForm({ initial, submitLabel, onSubmit }: Props) {
         videoModel: form.getFieldValue("videoModel") ?? DEFAULT_VIDEO_MODEL,
         videoAudio: !!form.getFieldValue("videoAudio"),
         lookNotes: String(form.getFieldValue("lookNotes") ?? "").trim(),
+        narratorVoice: String(form.getFieldValue("narratorVoice") ?? "").trim(),
       });
     } catch (err) {
       if (err instanceof ApiError && err.fieldErrors) {
@@ -169,6 +172,13 @@ export default function ProfileForm({ initial, submitLabel, onSubmit }: Props) {
                 extra="Which model makes this profile's clips. Models differ in price, in the clip lengths they take (Veo: 4, 6 or 8 seconds) and in how realistic they look."
               >
                 <Select options={VIDEO_MODEL_OPTIONS} />
+              </Form.Item>
+              <Form.Item
+                label="เสียงพากย์ · Narrator voice (optional)"
+                name="narratorVoice"
+                extra="เสียงที่พูดบทพากย์ของช็อตทุกช็อตของ Profile นี้ เปลี่ยนได้ตลอดเวลา ช็อตที่สร้างเสียงไปแล้วยังใช้เสียงเดิมจนกว่าจะสร้างใหม่ ฟังและเลือกเสียงได้ที่ Settings → Thai voice samples เสียงมาตรฐานของ ElevenLabs จะหมดอายุ 31 ธ.ค. 2026"
+              >
+                <NarratorField />
               </Form.Item>
               <Form.Item
                 label="Sound"

@@ -67,6 +67,9 @@ type profileInput struct {
 	// This profile's own look, in English; added to every picture prompt (see
 	// studio.Recipe.WithLook).
 	LookNotes string `json:"lookNotes"`
+	// NarratorVoice is the voice that speaks this profile's narration: a key from
+	// studio/voices.go or "custom:<name>"; empty = none chosen.
+	NarratorVoice string `json:"narratorVoice"`
 }
 
 // normalizeAndValidate trims fields and returns a map of field -> message.
@@ -77,6 +80,7 @@ func (in *profileInput) normalizeAndValidate() map[string]string {
 	in.Niche = strings.TrimSpace(in.Niche)
 	in.Description = strings.TrimSpace(in.Description)
 	in.LookNotes = strings.TrimSpace(in.LookNotes)
+	in.NarratorVoice = strings.TrimSpace(in.NarratorVoice)
 	in.Provider = strings.TrimSpace(in.Provider)
 	if in.Provider == "" {
 		in.Provider = "text"
@@ -100,6 +104,11 @@ func (in *profileInput) normalizeAndValidate() map[string]string {
 	}
 	if utf8.RuneCountInString(in.Niche) < 2 {
 		errs["niche"] = "Niche must be at least 2 characters."
+	}
+	if in.NarratorVoice != "" {
+		if _, ok := studio.ResolveVoice(in.NarratorVoice); !ok {
+			errs["narratorVoice"] = "That is not a voice the app knows."
+		}
 	}
 	if utf8.RuneCountInString(in.LookNotes) > maxLookNotesRunes {
 		errs["lookNotes"] = "Look notes must be " + strconv.Itoa(maxLookNotesRunes) + " characters or fewer."
@@ -159,14 +168,15 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	row, err := h.q.CreateProfile(r.Context(), sqlc.CreateProfileParams{
-		Name:        in.Name,
-		Niche:       in.Niche,
-		Description: in.Description,
-		Provider:    in.Provider,
-		VideoStyle:  in.VideoStyle,
-		VideoModel:  in.VideoModel,
-		VideoAudio:  in.VideoAudio,
-		LookNotes:   in.LookNotes,
+		Name:          in.Name,
+		Niche:         in.Niche,
+		Description:   in.Description,
+		Provider:      in.Provider,
+		VideoStyle:    in.VideoStyle,
+		VideoModel:    in.VideoModel,
+		VideoAudio:    in.VideoAudio,
+		LookNotes:     in.LookNotes,
+		NarratorVoice: in.NarratorVoice,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to create profile.")
@@ -191,15 +201,16 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	row, err := h.q.UpdateProfile(r.Context(), sqlc.UpdateProfileParams{
-		ID:          id,
-		Name:        in.Name,
-		Niche:       in.Niche,
-		Description: in.Description,
-		Provider:    in.Provider,
-		VideoStyle:  in.VideoStyle,
-		VideoModel:  in.VideoModel,
-		VideoAudio:  in.VideoAudio,
-		LookNotes:   in.LookNotes,
+		ID:            id,
+		Name:          in.Name,
+		Niche:         in.Niche,
+		Description:   in.Description,
+		Provider:      in.Provider,
+		VideoStyle:    in.VideoStyle,
+		VideoModel:    in.VideoModel,
+		VideoAudio:    in.VideoAudio,
+		LookNotes:     in.LookNotes,
+		NarratorVoice: in.NarratorVoice,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		writeError(w, http.StatusNotFound, "Profile not found.")

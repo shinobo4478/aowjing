@@ -28,6 +28,11 @@ CREATE TABLE IF NOT EXISTS profiles (
     -- to every picture prompt of the profile, whatever the style. Each 2D profile
     -- has its own; the style recipe only holds what all flat drawings share.
     look_notes  text        NOT NULL DEFAULT '',
+    -- The voice that speaks this profile's narration (a key from internal/studio
+    -- voices.go, or 'custom:<name>' for a voice the owner named); '' = none chosen.
+    -- Checked by the API. Changeable at any time: shots already spoken keep their
+    -- audio until they are spoken again.
+    narrator_voice text     NOT NULL DEFAULT '',
     created_at  timestamptz NOT NULL DEFAULT now(),
     updated_at  timestamptz NOT NULL DEFAULT now()
 );

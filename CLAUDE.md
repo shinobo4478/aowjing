@@ -818,10 +818,16 @@ and joined in the editor. Order: write the narration → speak it → set the sh
   `duration_ms`. **The duration is approximate**: fal's ElevenLabs reply carries none, so it is worked out from the
   size of the 128 kbps CONSTANT-bitrate MP3 we ask for (`output_format: mp3_44100_128`,
   `generate.ApproxMP3DurationMs`, about ±0.1 s). MiniMax would return a real `duration_ms` (used when present).
-- **Narrator voice = a global setting** `narratorVoice` (a key from `studio/voices.go` or `custom:<name>`),
-  chosen with "ใช้เป็นเสียงพากย์" under a voice in Settings → Thai voice samples. It is global for now because
-  the per-profile choice needs the Profile columns of the 2D PR (look notes); a per-profile narrator is the next
-  small step. ElevenLabs' Default voices expire 2026-12-31 (see above), so the narrator is a setting, not code.
+- **Narrator voice = per profile, and changeable:** `profiles.narrator_voice` (a key from `studio/voices.go`, or
+  `custom:<name>` for a voice the owner named; "" = none), set in the profile form ("เสียงพากย์ · Narrator
+  voice": the kept voices, "none", or "other voice…" with a name/id) or by "ใช้เป็นเสียงพากย์ของ Profile…" under a
+  voice heard in Settings → Voice. Changing it later is fine: shots already spoken keep their audio until
+  spoken again. The voice of a video's shots is its profile's (`videos.narrator`). ElevenLabs' Default voices
+  expire 2026-12-31 (see above), so the narrator is data, not code. (A first version of this PR had one global
+  `narratorVoice` setting; the owner asked for per profile, and it was removed.)
+- **Settings is now vertical tabs** (top tabs on a narrow screen): Keys, AI models, Spending (one form, one Save
+  button in each, all panes rendered so a tab never opened keeps its values) and Voice (the voice samples, not part
+  of the form; Enter in its text boxes does not save the settings).
 - API: `POST /videos/{id}/shots/{shotId}/voice` (speaks the saved narration with the narrator; 422 without
   narration or narrator; the daily limit is checked first, 402; returns the shot), `GET …/voice/audio` (the MP3),
   `DELETE …/voice`. The shot DTO has `narrationTh` and `voice {voice, text, durationMs, sizeBytes, createdAt,
@@ -831,7 +837,7 @@ and joined in the editor. Order: write the narration → speak it → set the sh
   will not fit the shot; "สร้างเสียง" (confirms with the price, saves the plan first, replaces the old audio); a
   player with the real length; "ตั้งความยาวช็อตเป็น N วินาที ตามเสียง" (the shortest length the video model takes that
   holds the audio plus 0.5 s; not saved until Save); "ลบเสียง". `scripts/narration.smoke.mjs` checks the helpers.
-- Existing DBs need `ALTER TABLE video_shots ADD COLUMN narration_th text NOT NULL DEFAULT '';` and `CREATE TABLE
+- Existing DBs need `ALTER TABLE video_shots ADD COLUMN narration_th text NOT NULL DEFAULT '';`, `ALTER TABLE profiles ADD COLUMN narrator_voice text NOT NULL DEFAULT '';` and `CREATE TABLE
   shot_audio …` (see `db/schema.sql`). Restart the api.
 - **Not done / unverified:** a real voice made from a narration (the first one also tests that fal returns an
   https MP3 link that `FetchAudio` can read, and that the 128 kbps duration is right), the characters-per-second

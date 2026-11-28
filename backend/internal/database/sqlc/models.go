@@ -111,17 +111,18 @@ type ProductImage struct {
 }
 
 type Profile struct {
-	ID          pgtype.UUID        `json:"id"`
-	Name        string             `json:"name"`
-	Niche       string             `json:"niche"`
-	Description string             `json:"description"`
-	Provider    string             `json:"provider"`
-	VideoStyle  string             `json:"video_style"`
-	VideoModel  string             `json:"video_model"`
-	VideoAudio  bool               `json:"video_audio"`
-	LookNotes   string             `json:"look_notes"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	ID            pgtype.UUID        `json:"id"`
+	Name          string             `json:"name"`
+	Niche         string             `json:"niche"`
+	Description   string             `json:"description"`
+	Provider      string             `json:"provider"`
+	VideoStyle    string             `json:"video_style"`
+	VideoModel    string             `json:"video_model"`
+	VideoAudio    bool               `json:"video_audio"`
+	LookNotes     string             `json:"look_notes"`
+	NarratorVoice string             `json:"narrator_voice"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 }
 
 type PromptTemplate struct {
