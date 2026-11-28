@@ -170,3 +170,25 @@ func TestSystemForFlatStyleAndStyleReferences(t *testing.T) {
 		t.Errorf("the cast block should list the hero and hide the style reference:\n%s", block)
 	}
 }
+
+// The 2D rules keep the scene to a bare background and put the icons of an idea
+// that happens inside the character ON the character (found on a real draft: a
+// bathroom scale in the scene, copied in front of every shot, fought the shot's
+// own picture).
+func TestFlatRulesKeepSceneToBackgroundAndLayerIdeasOnTheCharacter(t *testing.T) {
+	got := systemFor(Brief{VideoStyle: "2d", Mode: ModeExplainer})
+	for _, want := range []string{
+		`"scene" (this replaces the scene rule above) is ONLY the background`,
+		"no negative such as",
+		"draw it on the character",
+		"never set beside it as a separate diagram",
+		"the starting picture is the moment before the action",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the 2d rules lost %q", want)
+		}
+	}
+	if strings.Contains(systemFor(Brief{VideoStyle: "3d"}), "ONLY the background") {
+		t.Error("other styles keep the place-style scene")
+	}
+}
