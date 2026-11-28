@@ -67,7 +67,7 @@ export default function KeyframePicker({
   const [info, setInfo] = useState<KeyframeModels | null>(null);
   const [cast, setCast] = useState<CastMember[]>([]);
   // What the owner ticked or unticked by hand; a member not in here follows the
-  // default (the hero is ticked, everyone else is not).
+  // default (the hero and the style reference are ticked, everyone else is not).
   const [ticks, setTicks] = useState<Record<string, boolean>>({});
   // Products that have pictures, and which of those pictures are ticked (by image
   // id). Nothing is ticked by default: the owner picks the state a shot needs.
@@ -182,7 +182,7 @@ export default function KeyframePicker({
   const chosenModel = info?.models.find((m) => m.key === model);
   // Who appears: the hero by default (if it has a picture), or what was ticked.
   const isTicked = (m: CastMember) =>
-    m.imageIds.length > 0 && (ticks[m.id] ?? m.role === "hero");
+    m.imageIds.length > 0 && (ticks[m.id] ?? (m.role === "hero" || m.role === "style"));
   const tickedCast = cast.filter(isTicked);
   const castPictures = tickedCast.reduce((n, m) => n + m.imageIds.length, 0);
   // The ticked product pictures, in the list's order (the order they are sent).

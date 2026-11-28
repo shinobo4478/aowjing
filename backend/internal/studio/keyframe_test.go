@@ -160,3 +160,31 @@ func TestProductIsNotACastRole(t *testing.T) {
 		t.Error("product must not be a valid cast_members role (the table's CHECK would refuse it)")
 	}
 }
+
+func TestKeyframePromptStyleReference(t *testing.T) {
+	bare := Recipe{}
+	// A style reference alone: described as a style, with the style instruction,
+	// and without the "same face" instruction that is for characters.
+	got := bare.KeyframePrompt("a cat teaches", 0, []CastRef{{Role: RoleStyle, Name: "Frame", Pictures: 1}}, false)
+	if !strings.Contains(got, `Picture 1 is "Frame", the style reference (copy only its drawing style, line weight and colours, never its content).`) {
+		t.Errorf("style reference not described:\n%s", got)
+	}
+	if !strings.Contains(got, keepStyleInstruction) {
+		t.Errorf("style instruction missing:\n%s", got)
+	}
+	if strings.Contains(got, keepCastInstruction) {
+		t.Errorf("a style reference alone must not get the same-face instruction:\n%s", got)
+	}
+
+	// With a character: both instructions, the character is not "the style".
+	got = bare.KeyframePrompt("x", 0, []CastRef{
+		{Role: RoleHero, Name: "Mo", Pictures: 1},
+		{Role: RoleStyle, Name: "Frame", Pictures: 1},
+	}, false)
+	if !strings.Contains(got, keepCastInstruction) || !strings.Contains(got, keepStyleInstruction) {
+		t.Errorf("both instructions expected:\n%s", got)
+	}
+	if !ValidCastRole("style") {
+		t.Error("style must be a valid cast role")
+	}
+}

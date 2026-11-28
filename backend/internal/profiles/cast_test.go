@@ -60,3 +60,23 @@ func TestProfileLimitsCountCharactersNotBytes(t *testing.T) {
 		t.Error("a one-letter niche must be refused")
 	}
 }
+
+func TestLookNotesLimitCountsCharacters(t *testing.T) {
+	base := profileInput{Name: "ช่องการ์ตูน", Niche: "ความรู้", Provider: "text", VideoStyle: "2d", VideoModel: "kling-v3"}
+	ok := base
+	ok.LookNotes = strings.Repeat("ก", maxLookNotesRunes) // chars, not bytes
+	if errs := ok.normalizeAndValidate(); errs["lookNotes"] != "" {
+		t.Errorf("%d characters must be accepted, got %v", maxLookNotesRunes, errs)
+	}
+	long := base
+	long.LookNotes = strings.Repeat("a", maxLookNotesRunes+1)
+	if errs := long.normalizeAndValidate(); errs["lookNotes"] == "" {
+		t.Error("one character over the limit must be refused")
+	}
+	trim := base
+	trim.LookNotes = "  thick outlines  "
+	trim.normalizeAndValidate()
+	if trim.LookNotes != "thick outlines" {
+		t.Errorf("look notes should be trimmed, got %q", trim.LookNotes)
+	}
+}

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -48,6 +49,9 @@ func (h *Handler) Routes() http.Handler {
 
 // --- request payloads -------------------------------------------------------
 
+// maxLookNotesRunes caps a profile's look notes (counted in characters).
+const maxLookNotesRunes = 1200
+
 type profileInput struct {
 	Name        string `json:"name"`
 	Niche       string `json:"niche"`
@@ -60,6 +64,9 @@ type profileInput struct {
 	VideoModel string `json:"videoModel"`
 	// Whether clips are made with sound. Left out means off.
 	VideoAudio bool `json:"videoAudio"`
+	// This profile's own look, in English; added to every picture prompt (see
+	// studio.Recipe.WithLook).
+	LookNotes string `json:"lookNotes"`
 }
 
 // normalizeAndValidate trims fields and returns a map of field -> message.
@@ -69,6 +76,7 @@ func (in *profileInput) normalizeAndValidate() map[string]string {
 	in.Name = strings.TrimSpace(in.Name)
 	in.Niche = strings.TrimSpace(in.Niche)
 	in.Description = strings.TrimSpace(in.Description)
+	in.LookNotes = strings.TrimSpace(in.LookNotes)
 	in.Provider = strings.TrimSpace(in.Provider)
 	if in.Provider == "" {
 		in.Provider = "text"
@@ -92,6 +100,9 @@ func (in *profileInput) normalizeAndValidate() map[string]string {
 	}
 	if utf8.RuneCountInString(in.Niche) < 2 {
 		errs["niche"] = "Niche must be at least 2 characters."
+	}
+	if utf8.RuneCountInString(in.LookNotes) > maxLookNotesRunes {
+		errs["lookNotes"] = "Look notes must be " + strconv.Itoa(maxLookNotesRunes) + " characters or fewer."
 	}
 	if utf8.RuneCountInString(in.Description) > 600 {
 		errs["description"] = "Description must be 600 characters or fewer."
@@ -155,6 +166,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		VideoStyle:  in.VideoStyle,
 		VideoModel:  in.VideoModel,
 		VideoAudio:  in.VideoAudio,
+		LookNotes:   in.LookNotes,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to create profile.")
@@ -187,6 +199,7 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 		VideoStyle:  in.VideoStyle,
 		VideoModel:  in.VideoModel,
 		VideoAudio:  in.VideoAudio,
+		LookNotes:   in.LookNotes,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		writeError(w, http.StatusNotFound, "Profile not found.")

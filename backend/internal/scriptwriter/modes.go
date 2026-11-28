@@ -82,6 +82,11 @@ FORMAT: SHORT FILM WITH A JOKE. A short story with a dry, satirical twist, told 
 const realisticRules = `
 STYLE: PHOTOGRAPHIC LIVE ACTION. The pictures are photographs of real life, so people and things must behave like real life: believable light, believable physics, ordinary places. Avoid what AI footage gets wrong: fast hand actions, crowds, mirrors, screens, readable text, and people seen from several angles in one shot. Prefer one clear subject and slow, simple movement.`
 
+// flatRules are added when the profile's style is the 2D flat vector one: the
+// pictures are simple diagram-like drawings and the clips are cut-out animation.
+const flatRules = `
+STYLE: FLAT 2D EDUCATIONAL ANIMATION. Every picture is a simple flat vector drawing, closer to a clear diagram than to a scene from a film: one idea per shot, a few big simple shapes, a plain background, nothing crowded. Motion is cut-out style: things slide, bounce, grow or shrink, and a character can move arms or head; never perspective changes, never realistic physics, never 3D turns. Keep each shot to one clear visual idea that a narrator can speak over. Never put words, numbers or labels in a picture (captions are added in the editor).`
+
 // castRules tells the writer about the profile's cast: who exists and how to
 // refer to each in the English text. The reference pictures fix how they look,
 // and the picture step names each picture ("Picture 1 is "Name", the lead
@@ -94,6 +99,7 @@ CAST: the channel has these recurring subjects. Reference pictures fix how each 
 
 // userCastBlock lists the cast for the user prompt.
 func userCastBlock(cast []CastNote) string {
+	cast = storyCast(cast)
 	if len(cast) == 0 {
 		return ""
 	}
@@ -153,8 +159,24 @@ func systemFor(b Brief) string {
 	if b.VideoStyle == "realistic" {
 		s += "\n" + realisticRules
 	}
-	if len(b.Cast) > 0 {
+	if b.VideoStyle == "2d" {
+		s += "\n" + flatRules
+	}
+	if len(storyCast(b.Cast)) > 0 {
 		s += "\n" + castRules
 	}
 	return s
+}
+
+// storyCast is the cast without style references: an example frame of the
+// drawing style is not part of any story, so the writer is not told about it
+// (the picture step sends it on its own).
+func storyCast(cast []CastNote) []CastNote {
+	var out []CastNote
+	for _, c := range cast {
+		if c.Role != "style" {
+			out = append(out, c)
+		}
+	}
+	return out
 }

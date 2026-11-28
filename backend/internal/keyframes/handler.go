@@ -177,7 +177,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		ProfileID: profileID,
 		// The style's wording is added here, not in the worker, so the stored
 		// prompt is exactly what the image model receives.
-		Prompt:         studio.For(profile.VideoStyle).KeyframePrompt(prompt, len(sceneIDs), cast, body.SameCamera),
+		Prompt:         studio.For(profile.VideoStyle).WithLook(profile.LookNotes).KeyframePrompt(prompt, len(sceneIDs), cast, body.SameCamera),
 		Model:          model.Key,
 		Count:          int16(body.Count),
 		ReferenceCount: int16(len(sceneIDs) + len(castImageIDs)),
