@@ -889,6 +889,18 @@ owner wrote the Thai by hand and the shot lengths were guessed.
   with sound on) is muted on purpose: it is Chinese/English, not the narration. Drift is not tracked after a start, only
   re-aligned at each play/seek. **Not built:** playing every shot of the video in a row.
 
+## Tooltips and the credit popover (built 2026-11-29)
+
+- **Tooltips were black on black:** antd draws tooltip text with `colorTextLightSolid`, which this theme sets to black
+  (text on the tungsten primary button). `providers.tsx` now gives `Tooltip` its own `colorBgSpotlight` and
+  `colorTextLightSolid` (dark bubble + light text on paper; grey bubble + chalk text on black). Anything else antd
+  draws with that token on a dark fill would have the same problem; none was found.
+- **Credit in the menu bar** (`app/CreditsBadge.tsx`) is a button; clicking it opens a popover with the balance, "เติมเครดิตที่ fal"
+  (`https://fal.ai/dashboard/billing`, the page fal's docs/FAQ send people to for adding credits), "เปิดเว็บ fal.ai"
+  (`https://fal.ai/dashboard`) and a refresh. Both open in a new tab. **No deeper link to a top-up dialog is known to exist**
+  (none is documented), so the first button lands on the Billing page; a signed-out visitor is asked to sign in by fal.
+  Not seen with the owner's fal account, so whether Billing opens straight to the add-credit control is unverified.
+
 ## Explicitly OUT of scope for Phase 2 (do not build yet)
 
 - TikTok / Instagram integration — after YouTube is solid
