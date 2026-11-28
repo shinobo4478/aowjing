@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { App, Button, Card, Input, Popconfirm, Space, Typography } from "antd";
 import SecondsField from "@/components/SecondsField";
 import Tally from "@/components/Tally";
@@ -10,6 +10,7 @@ import { estimateSpeechSeconds, narrationWarnings, secondsForAudio, speechChars 
 import { hasThaiLetters, usePromptPair, useTyped } from "@/lib/promptPair";
 import type { Shot } from "@/lib/types";
 import PromptPairField from "./PromptPairField";
+import ShotPlayer from "./ShotPlayer";
 import { ZoomableImage } from "@/components/ZoomableImage";
 
 /** The part of a shot's plan typed on the card. The picture is chosen in its
@@ -168,6 +169,9 @@ export default function ShotCard({
     !busy &&
     !translating;
 
+
+  const voiceSrc = shot.voice ? shotVoiceSrc(shot.videoId, shot.id, shot.voice.createdAt) : undefined;
+
   return (
     <Card
       id={`shot-${shot.id}`}
@@ -208,152 +212,146 @@ export default function ShotCard({
         </Space>
       }
     >
-      <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-        {/* Starting picture */}
-        <div style={{ width: 108 }}>
-          {hasPicture ? (
-            <ZoomableImage
-              src={shot.imageId ? imageSrc(shot.imageId) : shot.imageUrl}
-              alt={`Starting picture of shot ${shot.position}`}
-              width={108}
-              height={192}
-            />
-          ) : (
-            <div
-              style={{
-                width: 108,
-                height: 192,
-                border: "1px dashed var(--acmp-dashed)",
-                borderRadius: 10,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                textAlign: "center",
-                padding: 8,
-              }}
-            >
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                No starting picture yet
-              </Typography.Text>
-            </div>
-          )}
-          <Space size={4} style={{ marginTop: 4 }} wrap>
-            <Button size="small" disabled={busy} onClick={() => void withFresh(onChoosePicture)()}>
-              {hasPicture ? "Change" : "Choose…"}
-            </Button>
-            {hasPicture && (
-              <Button size="small" type="text" disabled={busy} onClick={() => void withFresh(onRemovePicture)()}>
-                Remove
-              </Button>
-            )}
-            {hasPreviousEnd && (
-              <Button size="small" type="text" disabled={busy} onClick={() => void withFresh(onStartFromPreviousEnd)()}>
-                Use previous end
-              </Button>
-            )}
-          </Space>
-        </div>
+      {/* Four sections, in the order the work goes: pictures, what they say and
+          do (prompts), what the narrator says, then the clip itself. */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "stretch" }}>
+          <Section n={1} title="ภาพ · Pictures" subtitle="ภาพเริ่มต้น และภาพจบ (ไม่บังคับ)" style={{ flex: "0 0 auto" }}>
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+              {/* Starting picture */}
+              <div style={{ width: 108 }}>
+                <Typography.Text type="secondary" style={{ display: "block", fontSize: 12, marginBottom: 4 }}>
+                  เริ่มต้น · Start
+                </Typography.Text>
+                {hasPicture ? (
+                  <ZoomableImage
+                    src={shot.imageId ? imageSrc(shot.imageId) : shot.imageUrl}
+                    alt={`Starting picture of shot ${shot.position}`}
+                    width={108}
+                    height={192}
+                  />
+                ) : (
+                  <EmptyPicture>No starting picture yet</EmptyPicture>
+                )}
+                <Space size={4} style={{ marginTop: 4 }} wrap>
+                  <Button size="small" disabled={busy} onClick={() => void withFresh(onChoosePicture)()}>
+                    {hasPicture ? "Change" : "Choose…"}
+                  </Button>
+                  {hasPicture && (
+                    <Button size="small" type="text" disabled={busy} onClick={() => void withFresh(onRemovePicture)()}>
+                      Remove
+                    </Button>
+                  )}
+                  {hasPreviousEnd && (
+                    <Button
+                      size="small"
+                      type="text"
+                      disabled={busy}
+                      onClick={() => void withFresh(onStartFromPreviousEnd)()}
+                    >
+                      Use previous end
+                    </Button>
+                  )}
+                </Space>
+              </div>
 
-        {/* End picture: the clip flows from the starting picture to this one. */}
-        <div style={{ width: 108 }}>
-          {shot.endImageId ? (
-            <ZoomableImage
-              src={imageSrc(shot.endImageId)}
-              alt={`End picture of shot ${shot.position}`}
-              width={108}
-              height={192}
-            />
-          ) : (
-            <div
-              style={{
-                width: 108,
-                height: 192,
-                border: "1px dashed var(--acmp-dashed)",
-                borderRadius: 10,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                textAlign: "center",
-                padding: 8,
-              }}
-            >
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                {hasPicture
-                  ? "No end picture (optional): the clip decides how it ends"
-                  : "Choose a starting picture first"}
-              </Typography.Text>
+              {/* End picture: the clip flows from the starting picture to this one. */}
+              <div style={{ width: 108 }}>
+                <Typography.Text type="secondary" style={{ display: "block", fontSize: 12, marginBottom: 4 }}>
+                  จบ · End
+                </Typography.Text>
+                {shot.endImageId ? (
+                  <ZoomableImage
+                    src={imageSrc(shot.endImageId)}
+                    alt={`End picture of shot ${shot.position}`}
+                    width={108}
+                    height={192}
+                  />
+                ) : (
+                  <EmptyPicture>
+                    {hasPicture
+                      ? "No end picture (optional): the clip decides how it ends"
+                      : "Choose a starting picture first"}
+                  </EmptyPicture>
+                )}
+                <Space size={4} style={{ marginTop: 4 }} wrap>
+                  <Button
+                    size="small"
+                    disabled={busy || !hasPicture}
+                    onClick={() => void withFresh(onChooseEnd)()}
+                  >
+                    {shot.endImageId ? "Change end" : "End picture…"}
+                  </Button>
+                  {canUseNextAsEnd && (
+                    <Button
+                      size="small"
+                      type="text"
+                      disabled={busy || !hasPicture}
+                      onClick={() => void withFresh(onUseNextAsEnd)()}
+                    >
+                      Use next shot&apos;s
+                    </Button>
+                  )}
+                  {shot.endImageId && (
+                    <Button size="small" type="text" disabled={busy} onClick={() => void withFresh(onRemoveEnd)()}>
+                      Remove
+                    </Button>
+                  )}
+                </Space>
+              </div>
             </div>
-          )}
-          <Space size={4} style={{ marginTop: 4 }} wrap>
-            <Button
-              size="small"
-              disabled={busy || !hasPicture}
-              onClick={() => void withFresh(onChooseEnd)()}
-            >
-              {shot.endImageId ? "Change end" : "End picture…"}
-            </Button>
-            {canUseNextAsEnd && (
-              <Button
-                size="small"
-                type="text"
-                disabled={busy || !hasPicture}
-                onClick={() => void withFresh(onUseNextAsEnd)()}
-              >
-                Use next shot&apos;s
-              </Button>
-            )}
-            {shot.endImageId && (
-              <Button size="small" type="text" disabled={busy} onClick={() => void withFresh(onRemoveEnd)()}>
-                Remove
-              </Button>
-            )}
-          </Space>
-        </div>
+          </Section>
 
-        {/* Plan */}
-        <div style={{ flex: "1 1 320px", minWidth: 0 }}>
-          <PromptPairField
-            pair={motion}
-            kind="motion"
-            title="การเคลื่อนไหวของคลิป · Motion"
-            hint="บอกว่าอะไรขยับ กล้องทำอะไร และจบอย่างไร (ไม่ต้องบรรยายหน้าตา ภาพกำหนดไว้แล้ว)"
-            placeholder="เช่น แมวส่ายก้น กระโจนใส่ถุง ตีลังกาแล้วลุกขึ้น กล้องนิ่ง"
-            minRows={3}
-            maxRows={10}
-          />
-          <PromptPairField
-            pair={picture}
-            kind="picture"
-            title="ภาพเริ่มต้น · Picture"
-            hint="ใครอยู่ในภาพ ทำอะไร มุมกล้อง บรรยากาศ (หน้าต่าง Make with AI เริ่มจากข้อความนี้)"
-            placeholder="เช่น ภาพระยะกลางของแมวนั่งตัวตรงกลางพรม มองกล้อง มีถุงพลาสติกสีขาวลอยลงมา"
-          />
-          {(hasPicture || endPic.th.trim() !== "" || endPic.en.trim() !== "") && (
+          <Section
+            n={2}
+            title="พรอมต์ · Prompts"
+            subtitle="พิมพ์ไทย ระบบแปลเป็นอังกฤษให้โมเดลก่อนสร้าง"
+            style={{ flex: "1 1 360px", minWidth: 0 }}
+          >
             <PromptPairField
-              pair={endPic}
-              kind="endPicture"
-              title="ภาพจบ · End picture"
-              hint="เฉพาะสิ่งที่เปลี่ยนเมื่อจบช็อต (ท่าหรือตำแหน่ง) กล้องและห้องเหมือนเดิม เว้นว่างถ้าช็อตนี้ไม่มีภาพจบ"
-              placeholder="เช่น เปลี่ยนเฉพาะท่าของแมว: ก้มตัวต่ำ หางตั้ง ถุงยุบอยู่บนพรมตรงหน้าจมูก"
-              maxRows={6}
+              pair={motion}
+              kind="motion"
+              title="การเคลื่อนไหวของคลิป · Motion"
+              hint="บอกว่าอะไรขยับ กล้องทำอะไร และจบอย่างไร (ไม่ต้องบรรยายหน้าตา ภาพกำหนดไว้แล้ว)"
+              placeholder="เช่น แมวส่ายก้น กระโจนใส่ถุง ตีลังกาแล้วลุกขึ้น กล้องนิ่ง"
+              minRows={3}
+              maxRows={10}
             />
-          )}
+            <PromptPairField
+              pair={picture}
+              kind="picture"
+              title="ภาพเริ่มต้น · Picture"
+              hint="ใครอยู่ในภาพ ทำอะไร มุมกล้อง บรรยากาศ (หน้าต่าง Make with AI เริ่มจากข้อความนี้)"
+              placeholder="เช่น ภาพระยะกลางของแมวนั่งตัวตรงกลางพรม มองกล้อง มีถุงพลาสติกสีขาวลอยลงมา"
+            />
+            {(hasPicture || endPic.th.trim() !== "" || endPic.en.trim() !== "") && (
+              <PromptPairField
+                pair={endPic}
+                kind="endPicture"
+                title="ภาพจบ · End picture"
+                hint="เฉพาะสิ่งที่เปลี่ยนเมื่อจบช็อต (ท่าหรือตำแหน่ง) กล้องและห้องเหมือนเดิม เว้นว่างถ้าช็อตนี้ไม่มีภาพจบ"
+                placeholder="เช่น เปลี่ยนเฉพาะท่าของแมว: ก้มตัวต่ำ หางตั้ง ถุงยุบอยู่บนพรมตรงหน้าจมูก"
+                maxRows={6}
+              />
+            )}
+          </Section>
+        </div>
+
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "stretch" }}>
           {/* The narration and its voice-over. The narration is plain Thai: the voice
               reads it directly, so there is no English twin to keep. */}
-          <div style={{ marginTop: 12 }}>
-            <Typography.Text strong style={{ fontSize: 13 }}>
-              บทพากย์ · Narration
-            </Typography.Text>
-            <Typography.Text type="secondary" style={{ display: "block", fontSize: 12 }}>
-              สิ่งที่คนเล่าเรื่องพูดทับช็อตนี้ พิมพ์ไทยตรงๆ ไม่ส่งให้โมเดลภาพหรือคลิป ใช้สร้างเสียงเท่านั้น
-            </Typography.Text>
+          <Section
+            n={3}
+            title="บทพากย์ · Narration"
+            subtitle="สิ่งที่คนเล่าเรื่องพูดทับช็อตนี้ พิมพ์ไทยตรงๆ ไม่ส่งให้โมเดลภาพหรือคลิป ใช้สร้างเสียงเท่านั้น"
+            style={{ flex: "1 1 340px", minWidth: 0 }}
+          >
             <Input.TextArea
               value={narration}
               onChange={(e) => setNarration(e.target.value)}
               autoSize={{ minRows: 2, maxRows: 8 }}
               maxLength={1500}
               placeholder="เช่น หลายคนอ่านหนังสือรวดเดียวก่อนสอบ แต่สมองของเรากลับลืมเร็วกว่าที่คิด"
-              style={{ marginTop: 4 }}
             />
             <Typography.Text
               type={narrationTooLong ? "danger" : "secondary"}
@@ -372,7 +370,7 @@ export default function ShotCard({
               </Typography.Text>
             ))}
 
-            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 6 }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 8 }}>
               <Button
                 size="small"
                 disabled={!narrator || narration.trim() === "" || busy || translating}
@@ -396,12 +394,7 @@ export default function ShotCard({
 
             {shot.voice && (
               <div style={{ marginTop: 8 }}>
-                <audio
-                  controls
-                  preload="none"
-                  src={shotVoiceSrc(shot.videoId, shot.id, shot.voice.createdAt)}
-                  style={{ display: "block", width: "100%" }}
-                />
+                <audio controls preload="none" src={voiceSrc} style={{ display: "block", width: "100%" }} />
                 <Typography.Text
                   type={shot.voice.current ? "secondary" : "warning"}
                   style={{ fontSize: 12, display: "block", marginTop: 2 }}
@@ -434,95 +427,188 @@ export default function ShotCard({
                 </Space>
               </div>
             )}
-          </div>
+          </Section>
 
-          <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginTop: 8 }}>
-            <Typography.Text type="secondary">Length</Typography.Text>
-            <SecondsField options={secondsOptions} value={seconds} onChange={setSeconds} />
-            <Typography.Text type="secondary">
-              {price !== undefined
-                ? `≈ ${formatUsd(price)} per attempt`
-                : "price not known"}
-            </Typography.Text>
-          </div>
+          {/* The clip: its length and price, the button that spends, and what came out. */}
+          <Section
+            n={4}
+            title="คลิป · Clip"
+            subtitle="ความยาว ราคา และผลที่ได้ กดเล่นเพื่อฟังพร้อมเสียงพากย์"
+            style={{ flex: "1 1 340px", minWidth: 0 }}
+          >
+            <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+              <Typography.Text type="secondary">Length</Typography.Text>
+              <SecondsField options={secondsOptions} value={seconds} onChange={setSeconds} />
+              <Typography.Text type="secondary">
+                {price !== undefined ? `≈ ${formatUsd(price)} per attempt` : "price not known"}
+              </Typography.Text>
+            </div>
+            <Space style={{ marginTop: 8 }} wrap>
+              <Button type="primary" disabled={!canGenerate} onClick={() => void withFresh(onGenerate)()}>
+                {shot.attempts > 0 ? "Generate again" : "Generate"}
+                {price !== undefined ? ` (≈ ${formatUsd(price)})` : ""}
+              </Button>
+            </Space>
+            {!hasPicture && (
+              <Typography.Paragraph type="secondary" style={{ margin: "8px 0 0" }}>
+                Choose a starting picture to generate this shot.
+              </Typography.Paragraph>
+            )}
 
-          <Space style={{ marginTop: 12 }} wrap>
-            <Button
-              disabled={!dirty || busy || translating}
-              loading={translating}
-              onClick={() => void withFresh(onSave)()}
-            >
-              Save{dirty ? "" : "d"}
-            </Button>
-            <Button
-              type="primary"
-              disabled={!canGenerate}
-              onClick={() => void withFresh(onGenerate)()}
-            >
-              {shot.attempts > 0 ? "Generate again" : "Generate"}
-              {price !== undefined ? ` (≈ ${formatUsd(price)})` : ""}
-            </Button>
-          </Space>
-          {!hasPicture && (
-            <Typography.Paragraph type="secondary" style={{ margin: "8px 0 0" }}>
-              Choose a starting picture to generate this shot.
-            </Typography.Paragraph>
-          )}
+            {/* The newest attempt's state, and the take in use */}
+            <div style={{ borderTop: "1px solid var(--acmp-rule-soft)", marginTop: 12, paddingTop: 12 }}>
+              {shot.latest ? (
+                <>
+                  <Tally status={shot.latest.status} />
+                  <Typography.Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+                    {shot.attempts} attempt{shot.attempts === 1 ? "" : "s"}
+                  </Typography.Text>
+                  {shot.latest.status === "failed" && (
+                    <Typography.Paragraph type="danger" style={{ margin: "8px 0 0", fontSize: 12 }}>
+                      {shot.latest.error || "It failed."}
+                    </Typography.Paragraph>
+                  )}
+                  {shot.take?.output && (
+                    <div style={{ marginTop: 8, maxWidth: 260 }}>
+                      <ShotPlayer
+                        videoSrc={shot.take.output}
+                        voiceSrc={voiceSrc}
+                        voiceCurrent={shot.voice?.current}
+                      />
+                      <Typography.Text type="secondary" style={{ fontSize: 12, display: "block", marginTop: 4 }}>
+                        {shot.takeChosen ? "Your chosen take" : "Newest take"}
+                        {shot.latest.status === "pending" ? " (a new one is being made)" : ""}
+                        {shot.takeChosen &&
+                        shot.latest.status === "succeeded" &&
+                        shot.latest.id !== shot.take.id
+                          ? " · a newer take exists"
+                          : ""}
+                      </Typography.Text>
+                      <Space size={8} wrap>
+                        <a href={shot.take.output} target="_blank" rel="noreferrer">
+                          Open clip
+                        </a>
+                        {shot.attempts > 1 && (
+                          <Button size="small" type="link" style={{ padding: 0 }} onClick={onOpenTakes}>
+                            Compare takes ({shot.attempts})
+                          </Button>
+                        )}
+                      </Space>
+                      <Typography.Paragraph type="secondary" style={{ margin: "4px 0 0", fontSize: 12 }}>
+                        fal keeps the file at least 7 days. Download what you want to keep.
+                      </Typography.Paragraph>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  Not generated yet.
+                </Typography.Text>
+              )}
+            </div>
+          </Section>
         </div>
 
-        {/* The newest attempt's state, and the take in use */}
-        <div style={{ flex: "0 1 220px", minWidth: 160 }}>
-          {shot.latest ? (
-            <>
-              <Tally status={shot.latest.status} />
-              <Typography.Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
-                {shot.attempts} attempt{shot.attempts === 1 ? "" : "s"}
-              </Typography.Text>
-              {shot.latest.status === "failed" && (
-                <Typography.Paragraph type="danger" style={{ margin: "8px 0 0", fontSize: 12 }}>
-                  {shot.latest.error || "It failed."}
-                </Typography.Paragraph>
-              )}
-              {shot.take?.output && (
-                <div style={{ marginTop: 8 }}>
-                  <video
-                    controls
-                    preload="metadata"
-                    src={shot.take.output}
-                    style={{ width: "100%", maxHeight: 260, borderRadius: 10, background: "#000" }}
-                  />
-                  <Typography.Text type="secondary" style={{ fontSize: 12, display: "block" }}>
-                    {shot.takeChosen ? "Your chosen take" : "Newest take"}
-                    {shot.latest.status === "pending" ? " (a new one is being made)" : ""}
-                    {shot.takeChosen &&
-                    shot.latest.status === "succeeded" &&
-                    shot.latest.id !== shot.take.id
-                      ? " · a newer take exists"
-                      : ""}
-                  </Typography.Text>
-                  <Space size={8} wrap>
-                    <a href={shot.take.output} target="_blank" rel="noreferrer">
-                      Open clip
-                    </a>
-                    {shot.attempts > 1 && (
-                      <Button size="small" type="link" style={{ padding: 0 }} onClick={onOpenTakes}>
-                        Compare takes ({shot.attempts})
-                      </Button>
-                    )}
-                  </Space>
-                  <Typography.Paragraph type="secondary" style={{ margin: "4px 0 0", fontSize: 12 }}>
-                    fal keeps the file at least 7 days. Download what you want to keep.
-                  </Typography.Paragraph>
-                </div>
-              )}
-            </>
-          ) : (
-            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              Not generated yet.
-            </Typography.Text>
-          )}
+        {/* Saves everything typed above (prompts, narration, length). */}
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <Typography.Text type={dirty ? "warning" : "secondary"} style={{ fontSize: 12 }}>
+            {dirty ? "มีการแก้ไขที่ยังไม่ได้บันทึก" : "บันทึกแล้ว"}
+          </Typography.Text>
+          <Button disabled={!dirty || busy || translating} loading={translating} onClick={() => void withFresh(onSave)()}>
+            Save{dirty ? "" : "d"}
+          </Button>
         </div>
       </div>
     </Card>
+  );
+}
+
+/** One boxed part of the shot card: a numbered title and what it is for, so the
+ *  parts of a long card read as separate steps. */
+function Section({
+  n,
+  title,
+  subtitle,
+  style,
+  children,
+}: {
+  n: number;
+  title: string;
+  subtitle: string;
+  style?: CSSProperties;
+  children: ReactNode;
+}) {
+  return (
+    <section
+      style={{
+        border: "1px solid var(--acmp-rule)",
+        background: "var(--acmp-inset)",
+        borderRadius: 12,
+        padding: 12,
+        ...style,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          alignItems: "flex-start",
+          paddingBottom: 8,
+          marginBottom: 10,
+          borderBottom: "1px solid var(--acmp-rule-soft)",
+        }}
+      >
+        <span
+          aria-hidden
+          style={{
+            flex: "0 0 auto",
+            width: 22,
+            height: 22,
+            borderRadius: "50%",
+            background: "var(--acmp-tungsten)",
+            color: "#000",
+            fontSize: 12,
+            fontWeight: 700,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {n}
+        </span>
+        <div style={{ minWidth: 0 }}>
+          <Typography.Text strong style={{ fontSize: 14, display: "block" }}>
+            {title}
+          </Typography.Text>
+          <Typography.Text type="secondary" style={{ fontSize: 12, display: "block" }}>
+            {subtitle}
+          </Typography.Text>
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/** The dashed box shown where a picture is not set yet. */
+function EmptyPicture({ children }: { children: ReactNode }) {
+  return (
+    <div
+      style={{
+        width: 108,
+        height: 192,
+        border: "1px dashed var(--acmp-dashed)",
+        borderRadius: 10,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        textAlign: "center",
+        padding: 8,
+      }}
+    >
+      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+        {children}
+      </Typography.Text>
+    </div>
   );
 }

@@ -876,6 +876,19 @@ owner wrote the Thai by hand and the shot lengths were guessed.
 - The profile "Calorie Deficit" has **sound on** (Kling with audio is ~1.5x the price of silent and its audio is Chinese/English
   only): a narrated 2D profile should normally have the sound switch off.
 
+## Shot card sections and playing a clip with its narration (built 2026-11-28)
+
+- The shot card (`app/profiles/[id]/ShotCard.tsx`) is four numbered boxes (`Section`): **1 Pictures** (start / end),
+  **2 Prompts** (motion, picture, end picture), **3 Narration** (text, voice, audio), **4 Clip** (length, Generate,
+  the newest attempt and its player). One **Save** sits under all of them with an "unsaved changes" note. No data or
+  API change.
+- **Play with sound:** `ShotPlayer.tsx` shows the take's `<video>` (normal controls, muted while a narration exists)
+  and a hidden `<audio>` of the shot's voice-over that follows it: it starts, pauses and seeks with the video (checked
+  on screen: audio within ~3 ms of the video after a seek). Without a voice-over it is the plain clip player. If the
+  narration changed after the audio was made, it says the old audio is what is heard. The clip's own sound (a profile
+  with sound on) is muted on purpose: it is Chinese/English, not the narration. Drift is not tracked after a start, only
+  re-aligned at each play/seek. **Not built:** playing every shot of the video in a row.
+
 ## Explicitly OUT of scope for Phase 2 (do not build yet)
 
 - TikTok / Instagram integration — after YouTube is solid
