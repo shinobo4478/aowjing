@@ -166,6 +166,10 @@ func (fakeLLM) Complete(_ context.Context, req generate.LLMRequest) (generate.LL
 	}
 
 	// A revision of one shot (see revise.go).
+	// A review of a whole video (see review.go): one fixable and one narration finding.
+	if strings.HasPrefix(req.Prompt, "Review this video.") {
+		return generate.LLMResult{Text: `{"findings":[{"shot":1,"kind":"stray-object","messageTh":"ประโยคฉากมีไอคอนตาชั่งกลางภาพ ชนกับภาพของช็อตนี้","fixTh":"ตัวการ์ตูนยืนอยู่บนตาชั่ง มีไอคอนกระเพาะอยู่บนตัว"},{"shot":2,"kind":"narration-loanword","messageTh":"บทขึ้นต้นด้วยคำทับศัพท์","fixTh":""}]}`}, nil
+	}
 	if strings.HasPrefix(req.Prompt, "Revise this one shot.") {
 		return generate.LLMResult{Text: `{"picturePrompt":"Fake revised picture prompt: a flat character stands on a flat scale, a stomach icon drawn on its belly.","picturePromptTh":"พรอมต์ภาพที่แก้แล้วจำลอง: ตัวการ์ตูนยืนบนตาชั่ง มีไอคอนกระเพาะที่ท้อง","endPicturePrompt":"","endPicturePromptTh":"","motionPrompt":"The food icon slides out along an arrow. Static camera, no zoom.","motionPromptTh":"ไอคอนอาหารเลื่อนออกตามลูกศร กล้องนิ่ง ไม่ซูม"}`}, nil
 	}
