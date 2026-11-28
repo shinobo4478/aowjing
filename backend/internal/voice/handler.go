@@ -85,6 +85,9 @@ func (h *Handler) samples(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Text       string   `json:"text"`
 		Candidates []string `json:"candidates"`
+		// CustomVoices are voice names or ElevenLabs voice ids the owner typed in (see
+		// studio.CustomVoice), spoken in ElevenLabs v3 like the listed ones.
+		CustomVoices []string `json:"customVoices"`
 	}
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
@@ -92,7 +95,7 @@ func (h *Handler) samples(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "Invalid JSON body.")
 		return
 	}
-	text, cands, errs := validate(body.Text, body.Candidates)
+	text, cands, errs := validate(body.Text, body.Candidates, body.CustomVoices)
 	if len(errs) > 0 {
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"errors": errs})
 		return
@@ -144,7 +147,7 @@ func (h *Handler) speaker(ctx context.Context) (generate.Voice, error) {
 
 // validate trims the text and resolves the candidate keys, returning a message
 // per field (empty = valid).
-func validate(rawText string, keys []string) (string, []studio.VoiceCandidate, map[string]string) {
+func validate(rawText string, keys, custom []string) (string, []studio.VoiceCandidate, map[string]string) {
 	errs := map[string]string{}
 	text := strings.TrimSpace(rawText)
 	switch n := utf8.RuneCountInString(text); {
@@ -166,7 +169,20 @@ func validate(rawText string, keys []string) (string, []studio.VoiceCandidate, m
 			cands = append(cands, c)
 		}
 	}
-	if _, bad := errs["candidates"]; !bad {
+	// The voices the owner typed in. A bad name is refused with its own message;
+	// a name already in the list (or typed twice) is counted once.
+	for _, name := range custom {
+		c, ok := studio.CustomVoice(name)
+		if !ok {
+			errs["customVoices"] = "A voice name or id may have only letters, digits, spaces, \"_\" and \"-\" (up to " + strconv.Itoa(studio.MaxCustomVoiceChars) + " characters)."
+			break
+		}
+		if !seen[c.Key] {
+			seen[c.Key] = true
+			cands = append(cands, c)
+		}
+	}
+	if _, bad := errs["candidates"]; !bad && errs["customVoices"] == "" {
 		switch {
 		case len(cands) == 0:
 			errs["candidates"] = "Choose at least one voice."

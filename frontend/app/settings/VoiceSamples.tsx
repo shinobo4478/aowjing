@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Alert, App, Button, Checkbox, Input, Typography } from "antd";
+import { Alert, App, Button, Checkbox, Input, Tag, Typography } from "antd";
 import { ApiError, getVoiceCandidates, makeVoiceSamples } from "@/lib/api";
 import { formatUsd } from "@/lib/format";
 import type { VoiceCandidates, VoiceSampleResult } from "@/lib/types";
@@ -20,6 +20,34 @@ const DEFAULT_TEXT =
  *  many mistakes and is no longer offered. */
 const DEFAULT_PICKS = ["eleven-v3-rachel", "eleven-v3-sarah", "eleven-v3-roger", "eleven-v3-daniel"];
 
+/** Names from fal's own examples that are not in the list above, offered as one
+ *  click to try. Whether each reads Thai well is for the ear to say (Aria and
+ *  Brian read Thai but not well, which is why they are not listed). */
+const SUGGESTED_NAMES = ["Alice", "Matilda", "Jessica", "Lily", "Laura", "Eric", "Will", "Liam", "Chris", "Bill", "Charlie", "Callum", "River"];
+
+/** ElevenLabs v3 on fal, per 1000 characters. Mirrors studio.CustomVoice; the
+ *  server's own figure is the one charged. */
+const CUSTOM_PRICE_PER_1K = 0.1;
+
+const NOTES_KEY = "acmp.voiceNotes";
+
+/** What the owner wrote about each voice, kept in this browser only. */
+function loadNotes(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(NOTES_KEY) ?? "{}") as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
+
+function saveNotes(notes: Record<string, string>) {
+  try {
+    localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
+  } catch {
+    /* private window or blocked storage: the notes just are not kept */
+  }
+}
+
 /**
  * Listen before choosing: the SAME Thai text is spoken by each candidate voice.
  * There is no independent Thai ranking, so the choice is made by ear. Costs fal
@@ -33,6 +61,16 @@ export default function VoiceSamples() {
   const [busy, setBusy] = useState(false);
   const [results, setResults] = useState<VoiceSampleResult[] | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // Voices the owner typed in (a name or an ElevenLabs voice id), and what they
+  // wrote about each voice they heard. Notes live in this browser only.
+  const [custom, setCustom] = useState<string[]>([]);
+  const [customDraft, setCustomDraft] = useState("");
+  const [notes, setNotes] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    // Read once on the client (localStorage does not exist on the server).
+    setNotes(loadNotes()); // eslint-disable-line react-hooks/set-state-in-effect
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,9 +89,28 @@ export default function VoiceSamples() {
   const chars = [...text.trim()].length;
   const priceOf = (per1k: number) => (per1k * chars) / 1000;
   const chosen = (info?.candidates ?? []).filter((c) => picked.includes(c.key));
-  const total = chosen.reduce((sum, c) => sum + priceOf(c.pricePer1kChars), 0);
+  const voiceCount = chosen.length + custom.length;
+  const total =
+    chosen.reduce((sum, c) => sum + priceOf(c.pricePer1kChars), 0) +
+    custom.length * priceOf(CUSTOM_PRICE_PER_1K);
   const tooShort = !!info && chars < info.minChars;
   const tooLong = !!info && chars > info.maxChars;
+
+  // Adds a voice the owner named (once; the server checks the characters too).
+  function addCustom(raw: string) {
+    const name = raw.trim();
+    if (name === "") return;
+    setCustom((cur) => (cur.includes(name) ? cur : [...cur, name]));
+    setCustomDraft("");
+  }
+
+  function setNote(key: string, text: string) {
+    setNotes((cur) => {
+      const next = { ...cur, [key]: text };
+      saveNotes(next);
+      return next;
+    });
+  }
 
   function toggle(key: string, on: boolean) {
     setPicked((cur) => (on ? [...cur, key] : cur.filter((k) => k !== key)));
@@ -62,11 +119,11 @@ export default function VoiceSamples() {
   // Speaking costs fal credits per character, so ask first, with the price.
   function confirmMake() {
     modal.confirm({
-      title: `Make ${chosen.length} voice sample${chosen.length === 1 ? "" : "s"}?`,
+      title: `Make ${voiceCount} voice sample${voiceCount === 1 ? "" : "s"}?`,
       content: (
         <>
           <p style={{ margin: "0 0 8px" }}>
-            {chars} characters × {chosen.length} voice{chosen.length === 1 ? "" : "s"} ≈{" "}
+            {chars} characters × {voiceCount} voice{voiceCount === 1 ? "" : "s"} ≈{" "}
             <strong>{formatUsd(total)}</strong> at fal&apos;s list prices, charged to your fal.ai
             credits. A voice that fails costs nothing.
           </p>
@@ -86,7 +143,7 @@ export default function VoiceSamples() {
     setErrors({});
     setResults(null);
     try {
-      const r = await makeVoiceSamples({ text, candidates: picked });
+      const r = await makeVoiceSamples({ text, candidates: picked, customVoices: custom });
       setResults(r.results);
     } catch (err) {
       if (err instanceof ApiError && err.fieldErrors) {
@@ -135,7 +192,7 @@ export default function VoiceSamples() {
             <Checkbox
               key={c.key}
               checked={picked.includes(c.key)}
-              disabled={!picked.includes(c.key) && picked.length >= (info?.maxVoices ?? 7)}
+              disabled={!picked.includes(c.key) && picked.length + custom.length >= (info?.maxVoices ?? 12)}
               onChange={(e) => toggle(c.key, e.target.checked)}
             >
               <span>
@@ -157,18 +214,63 @@ export default function VoiceSamples() {
         )}
       </div>
 
+      <div style={{ marginTop: 20 }}>
+        <Typography.Text>ลองเสียงอื่น · Try another voice</Typography.Text>
+        <Typography.Paragraph type="secondary" style={{ fontSize: 12, margin: "2px 0 8px" }}>
+          พิมพ์ชื่อหรือ ID ของเสียง ElevenLabs (อ่านด้วยรุ่น v3 เหมือนกัน) หรือกดชื่อด้านล่าง
+          เสียงมาตรฐาน (Default) ของ ElevenLabs จะหมดอายุ 31 ธ.ค. 2026 ตามเอกสารของเขา และถูกแทนด้วยเสียง
+          “Infinity” (มีสัญลักษณ์ ∞ ใน Voice Library) ที่เอกสารไม่บอกชื่อหรือ ID ถ้าคุณมีเสียงแบบนั้นในบัญชี
+          ลองใส่ ID ที่นี่เพื่อฟังว่า fal รับหรือไม่ (ไม่รับ = ขึ้นข้อผิดพลาด ไม่เสียเงิน)
+        </Typography.Paragraph>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Input
+            value={customDraft}
+            onChange={(e) => setCustomDraft(e.target.value)}
+            onPressEnter={() => addCustom(customDraft)}
+            placeholder="เช่น Alice หรือ ID ของเสียง"
+            maxLength={64}
+            style={{ maxWidth: 320 }}
+            status={errors.customVoices ? "error" : undefined}
+          />
+          <Button onClick={() => addCustom(customDraft)} disabled={customDraft.trim() === ""}>
+            เพิ่ม
+          </Button>
+        </div>
+        {errors.customVoices && (
+          <Typography.Text type="danger" style={{ display: "block", marginTop: 4 }}>
+            {errors.customVoices}
+          </Typography.Text>
+        )}
+        {custom.length > 0 && (
+          <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {custom.map((n) => (
+              <Tag key={n} closable onClose={() => setCustom((cur) => cur.filter((x) => x !== n))}>
+                {n} · ≈ {formatUsd(priceOf(CUSTOM_PRICE_PER_1K))}
+              </Tag>
+            ))}
+          </div>
+        )}
+        <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {SUGGESTED_NAMES.filter((n) => !custom.includes(n)).map((n) => (
+            <Tag key={n} style={{ cursor: "pointer" }} onClick={() => addCustom(n)}>
+              + {n}
+            </Tag>
+          ))}
+        </div>
+      </div>
+
       <div style={{ marginTop: 20, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <Button
           type="primary"
           loading={busy}
-          disabled={!info || chosen.length === 0 || tooShort || tooLong}
+          disabled={!info || voiceCount === 0 || tooShort || tooLong}
           onClick={confirmMake}
         >
           Make samples
         </Button>
-        {chosen.length > 0 && (
+        {voiceCount > 0 && (
           <Typography.Text type="secondary">
-            ≈ {formatUsd(total)} for {chosen.length} voice{chosen.length === 1 ? "" : "s"}
+            ≈ {formatUsd(total)} for {voiceCount} voice{voiceCount === 1 ? "" : "s"}
           </Typography.Text>
         )}
         {busy && (
@@ -188,6 +290,14 @@ export default function VoiceSamples() {
                   {r.durationMs > 0 ? `${(r.durationMs / 1000).toFixed(1)} s · ` : ""}≈ {formatUsd(r.costUsd)}
                 </Typography.Text>
                 <audio controls preload="none" src={r.audioUrl} style={{ display: "block", width: "100%", marginTop: 4 }} />
+                <Input
+                  size="small"
+                  value={notes[r.key] ?? ""}
+                  onChange={(e) => setNote(r.key, e.target.value)}
+                  placeholder="โน้ตของคุณเกี่ยวกับเสียงนี้ (เก็บในเบราว์เซอร์นี้เท่านั้น)"
+                  maxLength={200}
+                  style={{ marginTop: 6 }}
+                />
               </div>
             ) : (
               <Alert

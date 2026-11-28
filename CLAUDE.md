@@ -720,16 +720,28 @@ voice speaks the SAME text, with an audio player per voice. Nothing is saved (fa
   and, for MiniMax only, `duration_ms`. `FakeVoice` (AI_FAKE_FAL=1) returns a second of silence as a data URI.
 - API: `GET /voice/candidates` (voices, prices, limits), `POST /voice/samples` `{text, candidates[]}` →
   `{results[{key,label,ok,audioUrl,durationMs,costUsd,error}], chars, totalCostUsd}`; 20–1500 characters, at
-  most 7 voices; the daily spending limit is checked first (402), the voices run at once.
+  most 12 voices (with `customVoices`); the daily spending limit is checked first (402), the voices run at once.
 - **Heard by the owner (2026-11-28, same Thai text):** **MiniMax 2.8 misread Thai a lot** (HD and Turbo,
   the Thai system voices); **ElevenLabs v3 read it without a mistake, accent acceptable** (voice Rachel,
-  `language_code: "th"` accepted on fal, no duration in the reply). The owner then reported that the
-  ElevenLabs voices **Aria and Brian and the Multilingual v2 model do not work for Thai**, and they were
-  removed. The registry now offers ElevenLabs v3 voices only (Rachel, Sarah, Charlotte, Roger, Daniel, George) to
-  pick a narrator's gender and tone by ear; MiniMax stays supported in `generate/voice.go` but is not offered.
-  Names are from fal's examples (`voice` is a free string), none documented as Thai-specific: **a voice
-  name is not a promise of Thai, so each new one must be heard before it is trusted.**
-  **Chosen model: ElevenLabs v3** ($0.10 per 1K characters). Still to choose: the narrator voice.
+  `language_code: "th"` accepted on fal, no duration in the reply). The ElevenLabs **Multilingual v2 model
+  does not support Thai**; the voices **Aria and Brian read Thai but not well** (first reported the other way
+  round, corrected by the owner), and all three were removed. The registry offers ElevenLabs v3 voices only
+  (Rachel, Sarah, Charlotte, Roger, Daniel, George); MiniMax stays supported in `generate/voice.go` but is
+  not offered. **Chosen model: ElevenLabs v3** ($0.10 per 1K characters). Still to choose: the narrator voice.
+- **Choosing among voices that differ:** ElevenLabs' official per-voice descriptions (gender, age, accent,
+  tone) were NOT reachable (help centre 403, voice library is script-rendered), so none is invented here; the
+  authenticated `GET /v2/voices?category=premade` would return them. The screen instead lets the owner
+  (1) try any other voice by typing a name or an ElevenLabs voice id, or clicking one of fal's example names
+  (`studio.CustomVoice`: letters, digits, space, `_`, `-`; spoken in v3; up to 12 voices per request),
+  and (2) write a note under each voice they heard (kept in the browser's localStorage, key
+  `acmp.voiceNotes`).
+- **Deadline:** ElevenLabs' docs say its **Default voices (the names fal lists: Rachel, Sarah, Roger…) expire
+  on 2026-12-31** and are replaced by "Infinity" voices (marked ∞ in the Voice Library, "an infinite notice
+  period"). Those docs give no Infinity names or ids, no API or Thai statement for them, and fal's `voice`
+  field page says nothing about ids or library voices. So a narrator chosen among the Default voices works
+  only until then; **before building on one, test an Infinity / library voice id through the custom field**
+  (and keep the narrator as a setting, not code, so it can be swapped). Voice Library voices are not
+  available to ElevenLabs free-tier API users.
   Samples are not counted in the daily spend or the dashboard (like the Draft and translations), though fal
   credits drop.
 

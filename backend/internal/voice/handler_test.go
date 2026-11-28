@@ -32,7 +32,7 @@ func TestValidate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, cands, errs := validate(tt.text, tt.keys)
+			_, cands, errs := validate(tt.text, tt.keys, nil)
 			if tt.wantField == "" {
 				if len(errs) != 0 || len(cands) != tt.wantN {
 					t.Fatalf("want valid with %d voices, got %d voices, errors %v", tt.wantN, len(cands), errs)
@@ -108,5 +108,45 @@ func TestFakeVoiceAnswersWithPlayableAudio(t *testing.T) {
 	}
 	if _, err := (generate.FakeVoice{}).Speak(context.Background(), generate.VoiceRequest{Text: "  "}); err == nil {
 		t.Error("fake voice must refuse an empty text, like the real one")
+	}
+}
+
+func TestValidateCustomVoices(t *testing.T) {
+	ok := strings.Repeat("ก", studio.MinVoiceSampleChars)
+	tests := []struct {
+		name      string
+		keys      []string
+		custom    []string
+		wantField string
+		wantN     int
+		wantVoice string // VoiceID of the last candidate
+	}{
+		{"a custom voice alone", nil, []string{"Alice"}, "", 1, "Alice"},
+		{"an id with digits and dashes", nil, []string{"21m00Tcm4TlvDq8ikWAM"}, "", 1, "21m00Tcm4TlvDq8ikWAM"},
+		{"beside a listed voice", []string{"eleven-v3-rachel"}, []string{"Matilda"}, "", 2, "Matilda"},
+		{"typed twice is counted once", nil, []string{"Alice", " Alice "}, "", 1, "Alice"},
+		{"a name with a symbol is refused", nil, []string{"Alice; drop"}, "customVoices", 0, ""},
+		{"Thai letters are refused", nil, []string{"สมชาย"}, "customVoices", 0, ""},
+		{"too long", nil, []string{strings.Repeat("a", studio.MaxCustomVoiceChars+1)}, "customVoices", 0, ""},
+		{"a blank name is refused", nil, []string{"   "}, "customVoices", 0, ""},
+		{"over the cap with the custom ones", []string{"eleven-v3-rachel", "eleven-v3-sarah", "eleven-v3-roger", "eleven-v3-daniel", "eleven-v3-charlotte", "eleven-v3-george"},
+			[]string{"a1", "a2", "a3", "a4", "a5", "a6", "a7"}, "candidates", 0, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, cands, errs := validate(ok, tt.keys, tt.custom)
+			if tt.wantField == "" {
+				if len(errs) != 0 || len(cands) != tt.wantN {
+					t.Fatalf("want %d voices, got %d, errors %v", tt.wantN, len(cands), errs)
+				}
+				if got := cands[len(cands)-1].VoiceID; got != tt.wantVoice {
+					t.Errorf("last voice = %q, want %q", got, tt.wantVoice)
+				}
+				return
+			}
+			if _, has := errs[tt.wantField]; !has {
+				t.Fatalf("want an error on %q, got %v", tt.wantField, errs)
+			}
+		})
 	}
 }

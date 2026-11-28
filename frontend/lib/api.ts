@@ -685,7 +685,7 @@ export function getVoiceCandidates() {
 
 /** Every chosen voice speaks the same text. Costs fal credits per character, so
  *  the screen asks first. Can take up to a minute or two. */
-export function makeVoiceSamples(input: { text: string; candidates: string[] }) {
+export function makeVoiceSamples(input: { text: string; candidates: string[]; customVoices?: string[] }) {
   return request<{ results: VoiceSampleResult[]; chars: number; totalCostUsd: number }>(
     "/voice/samples",
     { method: "POST", body: JSON.stringify(input) },

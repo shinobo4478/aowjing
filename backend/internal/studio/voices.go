@@ -1,6 +1,9 @@
 package studio
 
-import "unicode/utf8"
+import (
+	"strings"
+	"unicode/utf8"
+)
 
 // Thai voice-over: the voices the owner can listen to before choosing one. The
 // clips are silent (the video models' own audio is not Thai), so narration comes
@@ -32,7 +35,7 @@ const MaxVoiceSampleChars = 1500
 const MinVoiceSampleChars = 20
 
 // MaxVoiceCandidates is how many voices one samples request may ask for.
-const MaxVoiceCandidates = 10
+const MaxVoiceCandidates = 12
 
 // VoiceCandidate is one voice the owner can listen to.
 type VoiceCandidate struct {
@@ -96,4 +99,34 @@ func VoiceCandidateFor(key string) (VoiceCandidate, bool) {
 		}
 	}
 	return VoiceCandidate{}, false
+}
+
+// MaxCustomVoiceChars caps a voice name or id the owner types in.
+const MaxCustomVoiceChars = 64
+
+// CustomVoice makes a candidate for an ElevenLabs v3 voice the owner names
+// themselves: a name from fal's examples, or an ElevenLabs voice id (for example
+// a Voice Library voice). ElevenLabs' docs say the Default voices expire on
+// 2026-12-31 and are replaced by "Infinity" voices, whose names and ids those
+// pages do not give, and fal's page does not say whether its `voice` field takes
+// ids at all; this lets the owner try one and hear whether it works. The name is
+// sent to fal as it is, so only letters, digits, spaces, "_" and "-" are allowed.
+func CustomVoice(name string) (VoiceCandidate, bool) {
+	name = strings.TrimSpace(name)
+	if name == "" || utf8.RuneCountInString(name) > MaxCustomVoiceChars {
+		return VoiceCandidate{}, false
+	}
+	for _, r := range name {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == ' ', r == '_', r == '-':
+		default:
+			return VoiceCandidate{}, false
+		}
+	}
+	return VoiceCandidate{
+		Key: "custom:" + name, Label: "ElevenLabs v3 · " + name + " (your voice)",
+		Family: VoiceElevenLabs, Model: "fal-ai/elevenlabs/tts/eleven-v3", VoiceID: name,
+		PricePer1KChars: 0.10,
+		Note:            "A voice you named. If fal does not know it, it answers with an error and costs nothing.",
+	}, true
 }
