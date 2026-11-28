@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
@@ -84,15 +85,15 @@ func (in *profileInput) normalizeAndValidate() map[string]string {
 
 	errs := map[string]string{}
 	switch {
-	case len(in.Name) < 2:
+	case utf8.RuneCountInString(in.Name) < 2:
 		errs["name"] = "Name must be at least 2 characters."
-	case len(in.Name) > 80:
+	case utf8.RuneCountInString(in.Name) > 80:
 		errs["name"] = "Name must be 80 characters or fewer."
 	}
-	if len(in.Niche) < 2 {
+	if utf8.RuneCountInString(in.Niche) < 2 {
 		errs["niche"] = "Niche must be at least 2 characters."
 	}
-	if len(in.Description) > 600 {
+	if utf8.RuneCountInString(in.Description) > 600 {
 		errs["description"] = "Description must be 600 characters or fewer."
 	}
 	if !generate.ValidProvider(in.Provider) {

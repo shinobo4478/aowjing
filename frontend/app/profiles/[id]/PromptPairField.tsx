@@ -2,6 +2,7 @@
 
 import { App, Button, Collapse, Input, Popconfirm, Typography } from "antd";
 import { formatUsd } from "@/lib/format";
+import { lintPrompt, type LintKind } from "@/lib/promptLint";
 import { hasThaiLetters, type PromptPair } from "@/lib/promptPair";
 
 const shorten = (s: string, n: number) => {
@@ -17,6 +18,7 @@ const shorten = (s: string, n: number) => {
  */
 export default function PromptPairField({
   pair,
+  kind,
   title,
   hint,
   placeholder,
@@ -24,6 +26,9 @@ export default function PromptPairField({
   maxRows = 8,
 }: {
   pair: PromptPair;
+  /** What the prompt is for: the English is checked against that kind's rules
+   *  (lib/promptLint.ts) and slips are shown as warnings. */
+  kind?: LintKind;
   /** What the prompt is, in a few words. */
   title: string;
   /** One line on what to write in it. */
@@ -43,6 +48,9 @@ export default function PromptPairField({
   }
 
   const englishHasThai = hasThaiLetters(pair.en);
+  // Warnings on the English. Skipped while the Thai is ahead of it (the English is
+  // about to be translated again, so what it says now does not matter).
+  const issues = kind && !pair.stale ? lintPrompt(kind, pair.en) : [];
 
   return (
     <div style={{ marginTop: 12 }}>
@@ -106,6 +114,24 @@ export default function PromptPairField({
           </Typography.Text>
         )}
       </div>
+
+      {issues.map((issue) => (
+        <div key={issue.id} style={{ fontSize: 12, margin: "0 0 4px" }}>
+          <Typography.Text type="warning" style={{ fontSize: 12 }}>
+            ⚠ {issue.message}
+          </Typography.Text>
+          {issue.fix && (
+            <Button
+              size="small"
+              type="link"
+              onClick={() => pair.setEn(issue.fix!(pair.en))}
+              style={{ fontSize: 12 }}
+            >
+              {issue.fixLabel ?? "แก้ให้"}
+            </Button>
+          )}
+        </div>
+      ))}
 
       <Collapse
         size="small"

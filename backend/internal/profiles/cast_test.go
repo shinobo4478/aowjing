@@ -40,3 +40,23 @@ func TestCastInputValidate(t *testing.T) {
 		})
 	}
 }
+
+// Limits are counted in characters, not bytes: a Thai letter is 3 bytes, so a
+// byte count would allow a Thai description of only about 200 letters.
+func TestProfileLimitsCountCharactersNotBytes(t *testing.T) {
+	thai := strings.Repeat("ก", 600) // 600 characters, 1800 bytes
+	in := profileInput{Name: "ช่องหนังสั้น", Niche: "ตลก", Description: thai, Provider: "text", VideoStyle: "3d", VideoModel: "kling-v3"}
+	if errs := in.normalizeAndValidate(); errs["description"] != "" || errs["name"] != "" || errs["niche"] != "" {
+		t.Errorf("600 Thai characters must be accepted, got %v", errs)
+	}
+	in.Description = thai + "ก"
+	if errs := in.normalizeAndValidate(); errs["description"] == "" {
+		t.Error("601 characters must be refused")
+	}
+	// Two Thai letters are a valid niche (2 characters, 6 bytes); one is not.
+	in.Description = ""
+	in.Niche = "ก"
+	if errs := in.normalizeAndValidate(); errs["niche"] == "" {
+		t.Error("a one-letter niche must be refused")
+	}
+}

@@ -244,3 +244,26 @@ func TestSystemPromptForbidsStyleWordsAndLooks(t *testing.T) {
 		}
 	}
 }
+
+// The first real short-film draft (CLAUDE.md, Realistic style and the Cast) broke
+// these rules; each must stay spelled out in the standing prompt.
+func TestSystemPromptKeepsTheRulesTheFirstFilmDraftBroke(t *testing.T) {
+	for _, want := range []string{
+		"Describe the PLACE only",                 // scene held camera framing
+		`never with a role word such as "hero"`,   // "costar" in a motion prompt
+		"End the prompt with ONE camera sentence", // static camera + zoom out
+		"never combine \"static camera\" with a movement",
+		"must not reveal anything outside the starting picture",
+		"the moment BEFORE the clip's action starts", // picture already showed the action
+		`Never write a negative`,                     // "nothing visible around his feet"
+		"Show a feeling as a concrete visible action",
+	} {
+		if !strings.Contains(systemPrompt, want) {
+			t.Errorf("the system prompt lost %q", want)
+		}
+	}
+	// The worked example must not teach the contradiction it forbids.
+	if strings.Contains(systemPrompt, "Static camera, slight slow zoom") {
+		t.Error("the example still combines a static camera with a zoom")
+	}
+}

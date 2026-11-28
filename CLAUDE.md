@@ -621,6 +621,25 @@ the default for controlled motion and is ~5x cheaper. Veo Fast offers only image
 were not read) and its with-sound price is not seen on a bill. Existing DBs need `ALTER TABLE profiles ADD COLUMN video_model text NOT NULL DEFAULT 'kling-v3',
 ADD COLUMN video_audio boolean NOT NULL DEFAULT false;`.
 
+## Prompt rules and a prompt linter (built 2026-11-28)
+
+After the owner's first short-film test (the mistakes are listed with the Draft modes in the Realistic /
+Cast section, once that PR is merged). The standing prompt (`scriptwriter/prompt.go`) now says: the scene is
+the PLACE only (no framing, no style phrase); motion prompts use plain nouns and never role words ("hero",
+"costar", "lead character"); end with ONE camera sentence ("Static camera, no zoom." by default; one slow
+movement only when asked, never both, and never a move that reveals what is outside the start picture — cut
+to a wider picture instead); the picture is the moment BEFORE the action; no negatives in picture prompts;
+a feeling is a visible action. The worked example no longer combines "static camera" with a zoom.
+
+`lib/promptLint.ts` runs on the English of every prompt as it is typed (shot cards and the picture dialog)
+and shows ⚠ lines, with a one-click fix for role words ("the person"): role words in motion, static camera +
+a movement, "reveal", a framing phrase at the start of a picture prompt ("A wide view…", "showing the
+full…"), negatives in a picture prompt, an end picture not starting "Only". It only warns, and skips a
+prompt whose Thai is ahead of its English. `scripts/promptLint.smoke.mjs` checks it on the owner's real draft
+texts (no test framework is installed: `node --experimental-strip-types scripts/promptLint.smoke.mjs`).
+**Not detected** (needs the model): a start picture that already shows the action, and too many beats.
+Profile name / niche / description limits now count characters, not bytes (Thai is 3 bytes a letter).
+
 ## Price check, daily limit and the rendering indicator (built 2026-11-27)
 
 - **Live prices.** `GET /studio/pricing` also asks fal's pricing API (`GET api.fal.ai/v1/models/pricing?endpoint_id=…`,
