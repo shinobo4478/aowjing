@@ -567,6 +567,32 @@ captions added in the editor while voice-over is on hold).
   ticked by the owner when the picture is made. A test keeps `the lead character` identical on both
   sides. **Not tried on a real model yet:** whether the model follows the product rules (states,
   no logo close-ups) and writes a joke that lands, and what a draft costs.
+- **First short-film test (owner, 2026-11-28; plot: another character drinks from plastic bottles, a cut
+  to a wider shot shows three empties, a cut to the hero drinking from the green bottle, cap open) —
+  what a real Film draft got wrong, to fix in the system prompt and a linter:**
+  1. the scene line carried camera framing ("A wide view … showing the full court") and a style phrase;
+     it must say only the place (and it is copied in front of EVERY shot's picture prompt, so a fix means
+     editing every shot — storing the scene once on the video is a to-do);
+  2. role words ("costar", "lead character") in clip (motion) prompts — the clip model sees only the
+     start picture and the text, so use a plain noun ("the person", "the player"); role words belong only
+     in picture prompts, where the picture step names the reference pictures with the same words;
+  3. camera instructions that contradict each other ("pulls back" + "Static camera, slight slow zoom
+     out"): the standing rule makes the model append "Static camera, no zoom" even when it asked for a move;
+  4. the start picture already shows the action the motion begins ("tilting his head back to drink" vs
+     "raises the bottle") — the picture must be the moment BEFORE the motion;
+  5. negatives in picture prompts ("nothing visible around his feet"): frame instead ("from the chest
+     up") — and a zoom-out that reveals what is not in the first frame makes the model invent it, so
+     do the reveal as a cut to a wider picture;
+  6. static objects mentioned in a motion prompt (the empty bottles), three beats in 5 s, mood words
+     where a concrete action reads better (a small smile and a slow exhale);
+  7. "badminton player" written for a character who is only sitting (the model may add a kit/racket);
+  8. cast notes are sent as typed inside the picture prompt: write them in English ("cap open"), names may
+     stay Thai; image models do not promise Thai. Object counts ("exactly three") are unreliable: make
+     3–4 candidates and pick one.
+  **Verified by the owner:** ticking "Keep the same scene as" an earlier shot's picture (which holds
+  another character) did NOT pull that character into the hero's picture (one sample).
+  Also found: the profile description limit counts bytes, not characters (Thai ≈ 200 characters of 600
+  bytes) while its message says characters.
 - **Next** (agreed order): ~~product pictures on `Product`~~ (done above); ~~Draft knows the modes~~
   (done above); then Kling `elements` (A/B test of two clips first, ≈ $0.84) and the `2d` style. + a "product" role in the picture dialog; the
   script helper learning the product mode and the cast names; a real test (hero + product, ≈ $0.16 per
